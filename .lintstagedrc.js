@@ -18,9 +18,7 @@ const buildHardhatSolhintCommand = (filenames) =>
     .join(" ")}`;
 
 const buildHardhatSlitherCommand = (filenames) =>
-  `yarn hardhat:slither ${filenames
-    .map((f) => path.relative(path.join("packages", "hardhat"), f))
-    .join(" ")}`;
+  `yarn hardhat:slither`;
 
 module.exports = {
   "packages/nextjs/**/*.{ts,tsx}": [

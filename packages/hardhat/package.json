@@ -19,7 +19,7 @@
     "lint": "eslint",
     "lint:sol": "solhint 'contracts/**/*.sol' 'test/**/*.sol'",
     "lint-staged": "eslint",
-    "slither": "slither",
+    "slither": "slither .",
     "test": "REPORT_GAS=true hardhat test --network hardhat",
     "verify": "hardhat etherscan-verify"
   },

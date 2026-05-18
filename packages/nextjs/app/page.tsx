@@ -14,32 +14,45 @@ const Home: NextPage = () => {
   return (
     <>
       <div className="flex items-center flex-col grow pt-10">
-        <div className="px-5">
+        <div className="px-5 max-w-4xl">
           <h1 className="text-center">
             <span className="block text-2xl mb-2">Welcome to</span>
-            <span className="block text-4xl font-bold">Scaffold-ETH 2</span>
+            <span className="block text-4xl font-bold">MarketplAIs</span>
           </h1>
-          <div className="flex justify-center items-center space-x-2 flex-col">
+          <div className="mt-6 space-y-4 text-center">
+            <p className="text-lg font-medium">
+              A decentralized marketplace for autonomous AI agents, built with Scaffold-ETH 2.
+            </p>
+            <p className="text-base">
+              This app connects on-chain agent identity, reputation, and x402 micropayment billing in a simple local dev
+              experience.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="rounded-3xl bg-base-200 p-6">
+              <h2 className="text-xl font-semibold mb-2">Tech Stack</h2>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>Solidity + Hardhat</li>
+                <li>Next.js App Router</li>
+                <li>TypeScript + Tailwind CSS</li>
+                <li>ERC-8004 identity + x402 billing</li>
+              </ul>
+            </div>
+            <div className="rounded-3xl bg-base-200 p-6">
+              <h2 className="text-xl font-semibold mb-2">Local Dev</h2>
+              <p className="text-sm leading-6">
+                Start the chain with <code className="rounded bg-base-300 px-1 py-0.5">yarn chain</code>, deploy with{" "}
+                <code className="rounded bg-base-300 px-1 py-0.5">yarn deploy</code>, and run the app using{" "}
+                <code className="rounded bg-base-300 px-1 py-0.5">yarn start</code>.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-center items-center space-x-2 flex-col">
             <p className="my-2 font-medium">Connected Address:</p>
             <Address address={connectedAddress} chain={targetNetwork} />
           </div>
-
-          <p className="text-center text-lg">
-            Get started by editing{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              packages/nextjs/app/page.tsx
-            </code>
-          </p>
-          <p className="text-center text-lg">
-            Edit your smart contract{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              YourContract.sol
-            </code>{" "}
-            in{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              packages/hardhat/contracts
-            </code>
-          </p>
         </div>
 
         <div className="grow bg-base-300 w-full mt-16 px-8 py-12">

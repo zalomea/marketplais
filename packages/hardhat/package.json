@@ -17,7 +17,9 @@
     "generate": "yarn account:generate",
     "hardhat-verify": "hardhat verify",
     "lint": "eslint",
+    "lint:sol": "solhint 'contracts/**/*.sol' 'test/**/*.sol'",
     "lint-staged": "eslint",
+    "slither": "slither",
     "test": "REPORT_GAS=true hardhat test --network hardhat",
     "verify": "hardhat etherscan-verify"
   },
@@ -55,6 +57,7 @@
     "hardhat-gas-reporter": "~2.2.1",
     "prettier": "^3.5.3",
     "prettier-plugin-solidity": "~1.4.1",
+    "solhint": "^3.4.0",
     "solidity-coverage": "~0.8.13",
     "ts-node": "~10.9.1",
     "typechain": "~8.3.2",

@@ -31,6 +31,8 @@
     "hardhat:hardhat-verify": "yarn workspace @se-2/hardhat hardhat-verify",
     "hardhat:lint": "yarn workspace @se-2/hardhat lint",
     "hardhat:lint-staged": "yarn workspace @se-2/hardhat lint-staged",
+    "hardhat:lint:sol": "yarn workspace @se-2/hardhat lint:sol",
+    "hardhat:slither": "yarn workspace @se-2/hardhat slither",
     "hardhat:test": "yarn workspace @se-2/hardhat test",
     "hardhat:verify": "yarn workspace @se-2/hardhat verify",
     "postinstall": "husky install",

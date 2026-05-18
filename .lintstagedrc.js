@@ -12,10 +12,24 @@ const buildHardhatEslintCommand = (filenames) =>
     .map((f) => path.relative(path.join("packages", "hardhat"), f))
     .join(" ")}`;
 
+const buildHardhatSolhintCommand = (filenames) =>
+  `yarn hardhat:lint:sol ${filenames
+    .map((f) => path.relative(path.join("packages", "hardhat"), f))
+    .join(" ")}`;
+
+const buildHardhatSlitherCommand = (filenames) =>
+  `yarn hardhat:slither ${filenames
+    .map((f) => path.relative(path.join("packages", "hardhat"), f))
+    .join(" ")}`;
+
 module.exports = {
   "packages/nextjs/**/*.{ts,tsx}": [
     buildNextEslintCommand,
     checkTypesNextCommand,
   ],
   "packages/hardhat/**/*.{ts,tsx}": [buildHardhatEslintCommand],
+  "packages/hardhat/**/*.sol": [
+    buildHardhatSolhintCommand,
+    buildHardhatSlitherCommand,
+  ],
 };

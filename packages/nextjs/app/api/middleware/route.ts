@@ -8,6 +8,9 @@ const DEFAULT_SCHEME = "exact";
 const MIN_PRICE_ATOMS = 5_000; // 0.005 USDC
 const MAX_PRICE_ATOMS = 100_000; // 0.10 USDC
 const PRICE_PER_1K_CHARS = 1_000; // 0.001 USDC
+const DEFAULT_CORS_ALLOW_ORIGIN = "*";
+const CORS_ALLOWED_HEADERS = "content-type,x-payment,authorization";
+const CORS_EXPOSED_HEADERS = "PAYMENT-REQUIRED, X-PAYMENT-REQUIRED, X-PAYMENT-RESPONSE";
 
 const readJsonBody = async (request: NextRequest) => {
   try {
@@ -47,6 +50,34 @@ const getX402Config = () => ({
   network: process.env.X402_NETWORK ?? DEFAULT_NETWORK,
   scheme: process.env.X402_SCHEME ?? DEFAULT_SCHEME,
   facilitatorUrl: process.env.X402_FACILITATOR_URL,
+  corsAllowOrigin: process.env.X402_CORS_ALLOW_ORIGIN ?? DEFAULT_CORS_ALLOW_ORIGIN,
+});
+
+const getCorsAllowOrigin = (request: NextRequest) => {
+  const configuredOrigins = getX402Config()
+    .corsAllowOrigin.split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+  if (configuredOrigins.length === 0 || configuredOrigins.includes("*")) {
+    return "*";
+  }
+
+  const requestOrigin = request.headers.get("origin");
+
+  if (requestOrigin && configuredOrigins.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+
+  return configuredOrigins[0];
+};
+
+const buildCorsHeaders = (request: NextRequest) => ({
+  "Access-Control-Allow-Headers": CORS_ALLOWED_HEADERS,
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Origin": getCorsAllowOrigin(request),
+  "Access-Control-Expose-Headers": CORS_EXPOSED_HEADERS,
+  Vary: "Origin",
 });
 
 const getFacilitatorEndpoint = (facilitatorUrl: string, path: "verify" | "settle") => {
@@ -122,10 +153,11 @@ type PaymentRequiredResponse = ReturnType<typeof buildPaymentRequiredResponse>;
 
 type PaymentRequirements = PaymentRequiredResponse["accepts"][number];
 
-const buildPaymentRequiredHeaders = (paymentRequiredResponse: PaymentRequiredResponse) => {
+const buildPaymentRequiredHeaders = (request: NextRequest, paymentRequiredResponse: PaymentRequiredResponse) => {
   const paymentRequired = JSON.stringify(paymentRequiredResponse);
 
   return {
+    ...buildCorsHeaders(request),
     "Cache-Control": "no-store",
     "PAYMENT-REQUIRED": paymentRequired,
     "X-PAYMENT-REQUIRED": paymentRequired,
@@ -207,22 +239,37 @@ const processPaymentHeader = async (paymentHeader: string, paymentRequirements: 
   }
 };
 
-export async function GET() {
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      ...buildCorsHeaders(request),
+      "Access-Control-Max-Age": "600",
+    },
+  });
+}
+
+export async function GET(request: NextRequest) {
   const config = getX402Config();
 
-  return NextResponse.json({
-    name: "MarketplAIs x402 middleware",
-    description: "Returns x402 Payment Required payloads for paid agent task submissions.",
-    route: "/api/middleware",
-    accepts: [
-      {
-        scheme: config.scheme,
-        network: config.network,
-        asset: config.asset,
-        payTo: config.payTo,
-      },
-    ],
-  });
+  return NextResponse.json(
+    {
+      name: "MarketplAIs x402 middleware",
+      description: "Returns x402 Payment Required payloads for paid agent task submissions.",
+      route: "/api/middleware",
+      accepts: [
+        {
+          scheme: config.scheme,
+          network: config.network,
+          asset: config.asset,
+          payTo: config.payTo,
+        },
+      ],
+    },
+    {
+      headers: buildCorsHeaders(request),
+    },
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -233,7 +280,7 @@ export async function POST(request: NextRequest) {
   if (!paymentHeader) {
     return NextResponse.json(paymentRequiredResponse, {
       status: 402,
-      headers: buildPaymentRequiredHeaders(paymentRequiredResponse),
+      headers: buildPaymentRequiredHeaders(request, paymentRequiredResponse),
     });
   }
 
@@ -247,7 +294,7 @@ export async function POST(request: NextRequest) {
       },
       {
         status: payment.status,
-        headers: buildPaymentRequiredHeaders(paymentRequiredResponse),
+        headers: buildPaymentRequiredHeaders(request, paymentRequiredResponse),
       },
     );
   }
@@ -265,6 +312,7 @@ export async function POST(request: NextRequest) {
     {
       status: 202,
       headers: {
+        ...buildCorsHeaders(request),
         "X-PAYMENT-RESPONSE": JSON.stringify(payment.settlement),
       },
     },

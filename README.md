@@ -57,9 +57,9 @@ Visit [http://localhost:3000](https://www.google.com/search?q=http://localhost:3
 
 ### x402 Middleware
 
-The paid task interceptor is available at `POST /api/middleware`. If the request does not include an `X-PAYMENT` header, the route returns HTTP `402` with an x402-compatible JSON payload that the frontend can use to trigger wallet approval/payment before retrying.
+The paid task interceptor is available at `POST /api/middleware`. If the request does not include an `X-PAYMENT` header, the route returns HTTP `402` with an x402-compatible JSON payload that the frontend can use to trigger wallet approval/payment before retrying. Requests with `X-PAYMENT` are only accepted after the configured x402 facilitator verifies the proof; a non-empty header by itself is never treated as paid access.
 
-Optional environment variables:
+Environment variables:
 
 | Variable | Default |
 | --- | --- |
@@ -67,7 +67,7 @@ Optional environment variables:
 | `X402_USDC_ASSET` | Base USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
 | `X402_NETWORK` | `base` |
 | `X402_SCHEME` | `exact` |
-| `X402_FACILITATOR_URL` | unset |
+| `X402_FACILITATOR_URL` | unset; required before paid requests can be accepted |
 
 ## 🤝 Contributing
 

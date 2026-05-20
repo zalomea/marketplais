@@ -49,6 +49,36 @@ const getX402Config = () => ({
   facilitatorUrl: process.env.X402_FACILITATOR_URL,
 });
 
+const getFacilitatorEndpoint = (facilitatorUrl: string, path: "verify" | "settle") => {
+  const url = new URL(facilitatorUrl);
+  url.pathname = `${url.pathname.replace(/\/$/, "")}/${path}`;
+  return url.toString();
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isPositiveVerification = (body: unknown) => {
+  if (!isRecord(body)) return false;
+
+  return body.isValid === true || body.valid === true || body.success === true;
+};
+
+const parsePaymentHeader = (paymentHeader: string) => {
+  try {
+    const decoded = Buffer.from(paymentHeader, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded) as unknown;
+
+    if (!isRecord(parsed) || typeof parsed.x402Version !== "number" || !isRecord(parsed.payload)) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 const buildPaymentRequiredResponse = (request: NextRequest, payload: unknown) => {
   const config = getX402Config();
   const maxAmountRequired = calculatePriceAtoms(payload).toString();
@@ -56,10 +86,16 @@ const buildPaymentRequiredResponse = (request: NextRequest, payload: unknown) =>
   return {
     x402Version: 1,
     error: "X-PAYMENT header is required to submit a paid agent task.",
+    resource: {
+      url: request.nextUrl.href,
+      description: "MarketplAIs paid agent task submission",
+      mimeType: "application/json",
+    },
     accepts: [
       {
         scheme: config.scheme,
         network: config.network,
+        amount: maxAmountRequired,
         maxAmountRequired,
         resource: request.nextUrl.href,
         description: "MarketplAIs paid agent task submission",
@@ -80,6 +116,65 @@ const buildPaymentRequiredResponse = (request: NextRequest, payload: unknown) =>
       },
     ],
   };
+};
+
+type PaymentRequiredResponse = ReturnType<typeof buildPaymentRequiredResponse>;
+
+const verifyPaymentHeader = async (
+  paymentHeader: string,
+  paymentRequirements: PaymentRequiredResponse["accepts"][number],
+) => {
+  const paymentPayload = parsePaymentHeader(paymentHeader);
+
+  if (!paymentPayload) {
+    return {
+      ok: false,
+      status: 402,
+      error: "X-PAYMENT header must be a valid base64-encoded x402 payment payload.",
+    };
+  }
+
+  const { facilitatorUrl } = getX402Config();
+
+  if (!facilitatorUrl) {
+    return {
+      ok: false,
+      status: 503,
+      error: "X402_FACILITATOR_URL must be configured before paid task requests can be accepted.",
+    };
+  }
+
+  try {
+    const response = await fetch(getFacilitatorEndpoint(facilitatorUrl, "verify"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        x402Version: paymentPayload.x402Version,
+        paymentPayload,
+        paymentRequirements,
+      }),
+    });
+
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok || !isPositiveVerification(body)) {
+      return {
+        ok: false,
+        status: 402,
+        error: "X-PAYMENT header could not be verified by the configured x402 facilitator.",
+      };
+    }
+
+    return { ok: true, body };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      error: error instanceof Error ? error.message : "Unable to reach the configured x402 facilitator.",
+    };
+  }
 };
 
 export async function GET() {
@@ -103,9 +198,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const payload = await readJsonBody(request);
   const paymentHeader = request.headers.get("x-payment");
+  const paymentRequiredResponse = buildPaymentRequiredResponse(request, payload);
 
   if (!paymentHeader) {
-    return NextResponse.json(buildPaymentRequiredResponse(request, payload), {
+    return NextResponse.json(paymentRequiredResponse, {
       status: 402,
       headers: {
         "Cache-Control": "no-store",
@@ -113,12 +209,30 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const verification = await verifyPaymentHeader(paymentHeader, paymentRequiredResponse.accepts[0]);
+
+  if (!verification.ok) {
+    return NextResponse.json(
+      {
+        ...paymentRequiredResponse,
+        error: verification.error,
+      },
+      {
+        status: verification.status,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
+
   return NextResponse.json(
     {
       ok: true,
       paymentHeaderPresent: true,
-      status: "payment_verification_pending",
-      message: "Payment proof was attached. Facilitator verification is handled in the payment-gate follow-up.",
+      paymentVerified: true,
+      status: "payment_verified",
+      message: "Payment proof was verified by the configured x402 facilitator.",
     },
     { status: 202 },
   );

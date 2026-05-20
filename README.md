@@ -55,6 +55,20 @@ yarn start
 
 Visit [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000) to interact with the MarketplAIs interface.
 
+### x402 Middleware
+
+The paid task interceptor is available at `POST /api/middleware`. If the request does not include an `X-PAYMENT` header, the route returns HTTP `402` with an x402-compatible JSON payload that the frontend can use to trigger wallet approval/payment before retrying.
+
+Optional environment variables:
+
+| Variable | Default |
+| --- | --- |
+| `X402_PAY_TO` | `0x0000000000000000000000000000000000000000` |
+| `X402_USDC_ASSET` | Base USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
+| `X402_NETWORK` | `base` |
+| `X402_SCHEME` | `exact` |
+| `X402_FACILITATOR_URL` | unset |
+
 ## 🤝 Contributing
 
 **English is the official language** for all code, comments, and project management.

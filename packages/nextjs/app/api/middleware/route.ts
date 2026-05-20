@@ -58,10 +58,10 @@ const getFacilitatorEndpoint = (facilitatorUrl: string, path: "verify" | "settle
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
-const isPositiveVerification = (body: unknown) => {
+const isPositiveFacilitatorResponse = (body: unknown) => {
   if (!isRecord(body)) return false;
 
-  return body.isValid === true || body.valid === true || body.success === true;
+  return body.isValid === true || body.valid === true || body.success === true || body.settled === true;
 };
 
 const parsePaymentHeader = (paymentHeader: string) => {
@@ -120,10 +120,42 @@ const buildPaymentRequiredResponse = (request: NextRequest, payload: unknown) =>
 
 type PaymentRequiredResponse = ReturnType<typeof buildPaymentRequiredResponse>;
 
-const verifyPaymentHeader = async (
-  paymentHeader: string,
-  paymentRequirements: PaymentRequiredResponse["accepts"][number],
+type PaymentRequirements = PaymentRequiredResponse["accepts"][number];
+
+const buildPaymentRequiredHeaders = (paymentRequiredResponse: PaymentRequiredResponse) => {
+  const paymentRequired = JSON.stringify(paymentRequiredResponse);
+
+  return {
+    "Cache-Control": "no-store",
+    "PAYMENT-REQUIRED": paymentRequired,
+    "X-PAYMENT-REQUIRED": paymentRequired,
+  };
+};
+
+const callFacilitator = async (
+  facilitatorUrl: string,
+  path: "verify" | "settle",
+  paymentPayload: Record<string, unknown>,
+  paymentRequirements: PaymentRequirements,
 ) => {
+  const response = await fetch(getFacilitatorEndpoint(facilitatorUrl, path), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      x402Version: paymentPayload.x402Version,
+      paymentPayload,
+      paymentRequirements,
+    }),
+  });
+
+  const body = await response.json().catch(() => null);
+
+  return { response, body };
+};
+
+const processPaymentHeader = async (paymentHeader: string, paymentRequirements: PaymentRequirements) => {
   const paymentPayload = parsePaymentHeader(paymentHeader);
 
   if (!paymentPayload) {
@@ -145,21 +177,9 @@ const verifyPaymentHeader = async (
   }
 
   try {
-    const response = await fetch(getFacilitatorEndpoint(facilitatorUrl, "verify"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        x402Version: paymentPayload.x402Version,
-        paymentPayload,
-        paymentRequirements,
-      }),
-    });
+    const verification = await callFacilitator(facilitatorUrl, "verify", paymentPayload, paymentRequirements);
 
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok || !isPositiveVerification(body)) {
+    if (!verification.response.ok || !isPositiveFacilitatorResponse(verification.body)) {
       return {
         ok: false,
         status: 402,
@@ -167,7 +187,17 @@ const verifyPaymentHeader = async (
       };
     }
 
-    return { ok: true, body };
+    const settlement = await callFacilitator(facilitatorUrl, "settle", paymentPayload, paymentRequirements);
+
+    if (!settlement.response.ok || !isPositiveFacilitatorResponse(settlement.body)) {
+      return {
+        ok: false,
+        status: 402,
+        error: "X-PAYMENT header was verified, but settlement failed at the configured x402 facilitator.",
+      };
+    }
+
+    return { ok: true, verification: verification.body, settlement: settlement.body };
   } catch (error) {
     return {
       ok: false,
@@ -203,25 +233,21 @@ export async function POST(request: NextRequest) {
   if (!paymentHeader) {
     return NextResponse.json(paymentRequiredResponse, {
       status: 402,
-      headers: {
-        "Cache-Control": "no-store",
-      },
+      headers: buildPaymentRequiredHeaders(paymentRequiredResponse),
     });
   }
 
-  const verification = await verifyPaymentHeader(paymentHeader, paymentRequiredResponse.accepts[0]);
+  const payment = await processPaymentHeader(paymentHeader, paymentRequiredResponse.accepts[0]);
 
-  if (!verification.ok) {
+  if (!payment.ok) {
     return NextResponse.json(
       {
         ...paymentRequiredResponse,
-        error: verification.error,
+        error: payment.error,
       },
       {
-        status: verification.status,
-        headers: {
-          "Cache-Control": "no-store",
-        },
+        status: payment.status,
+        headers: buildPaymentRequiredHeaders(paymentRequiredResponse),
       },
     );
   }
@@ -231,9 +257,16 @@ export async function POST(request: NextRequest) {
       ok: true,
       paymentHeaderPresent: true,
       paymentVerified: true,
-      status: "payment_verified",
-      message: "Payment proof was verified by the configured x402 facilitator.",
+      paymentSettled: true,
+      status: "payment_settled",
+      message: "Payment proof was verified and settled by the configured x402 facilitator.",
+      settlement: payment.settlement,
     },
-    { status: 202 },
+    {
+      status: 202,
+      headers: {
+        "X-PAYMENT-RESPONSE": JSON.stringify(payment.settlement),
+      },
+    },
   );
 }

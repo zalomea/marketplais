@@ -3,27 +3,60 @@ import { ethers } from "hardhat";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const WHALE_ADDRESS = "0x8da91A6298eA5d1A8Bc985e99798fd0A0f05701a";
+
 describe("MarketplaceRouter", function () {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let router: Contract;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let mockUSDC: Contract;
+  let usdc: Contract;
+  let faucet: Contract;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let owner: SignerWithAddress; // Platform treasury
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let agent: SignerWithAddress; // AI Agent owner
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let client: SignerWithAddress; // Payer
 
   beforeEach(async function () {
     [owner, agent, client] = await ethers.getSigners();
-    // TODO: Deploy MockUSDC, MockERC8004Registry, and MarketplaceRouter here
+
+    // 1. Get USDC contract instance
+    usdc = await ethers.getContractAt("IERC20", USDC_ADDRESS);
+
+    // 2. Fund the whale with ETH so it can pay for gas
+    await ethers.provider.send("hardhat_setBalance", [WHALE_ADDRESS, "0x8AC7230489E80000"]);
+
+    // 3. Impersonate the whale
+    await ethers.provider.send("hardhat_impersonateAccount", [WHALE_ADDRESS]);
+    const whaleSigner = await ethers.getSigner(WHALE_ADDRESS);
+
+    // 4. Deploy the Faucet using the whale as signer
+    const FaucetFactory = await ethers.getContractFactory("USDCFaucet", whaleSigner);
+    faucet = await FaucetFactory.deploy(USDC_ADDRESS);
+    await faucet.waitForDeployment();
+
+    // 5. Fund the Faucet with 1,000,000 USDC from the whale
+    const usdcAsWhale = usdc.connect(whaleSigner);
+    await usdcAsWhale.transfer(await faucet.getAddress(), ethers.parseUnits("1000000", 6));
+
+    // 6. Stop impersonating
+    await ethers.provider.send("hardhat_stopImpersonatingAccount", [WHALE_ADDRESS]);
+
+    // 7. Client requests 1,000 USDC from the faucet
+    const faucetAsClient = faucet.connect(client);
+    await faucetAsClient.requestTokens();
+
+    // TODO: Deploy MockERC8004Registry (issue #22) and MarketplaceRouter (issue #9) here
   });
 
   describe("Initial Setup", function () {
-    it("Should correctly configure the USDC Mock and ERC-8004 Registry Mock", async function () {
-      // Verify contracts exist and client is funded
-      expect(true).to.equal(true);
+    it("Should fund the client with 1,000 USDC via the Faucet", async function () {
+      // Read the USDC balance of the client account from the real USDC contract
+      // This verifies the full setup chain worked correctly:
+      // Whale was impersonated -> Faucet was deployed -> Faucet was funded -> client called requestTokens()
+      // USDC uses 6 decimals, so 1,000 USDC = 1,000 * 10^6 = 1_000_000_000
+      const balance = await usdc.balanceOf(client.address);
+      expect(balance).to.equal(ethers.parseUnits("1000", 6));
     });
   });
 

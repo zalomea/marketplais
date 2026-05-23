@@ -34,7 +34,16 @@ jobs:
         run: |
           yarn chain > /tmp/chain.log 2>&1 &
           CHAIN_PID=$!
-          sleep 10
+          
+          echo "Waiting for Hardhat node to be ready..."
+          for i in {1..30}; do
+            if nc -z localhost 8545; then
+              echo "Hardhat node is ready!"
+              break
+            fi
+            sleep 1
+          done
+
           yarn deploy
           kill $CHAIN_PID || true
 

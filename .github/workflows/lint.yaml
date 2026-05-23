@@ -30,8 +30,22 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
       
-      - name: Run hardhat node, deploy contracts (& generate contracts typescript output)
-        run: yarn chain & yarn deploy
+      - name: Run hardhat node and deploy contracts
+        run: |
+          yarn chain > /tmp/chain.log 2>&1 &
+          CHAIN_PID=$!
+          
+          echo "Waiting for Hardhat node to be ready..."
+          for i in {1..30}; do
+            if nc -z localhost 8545; then
+              echo "Hardhat node is ready!"
+              break
+            fi
+            sleep 1
+          done
+
+          yarn deploy
+          kill $CHAIN_PID || true
 
       - name: Run hardhat lint
         run: yarn hardhat:lint --max-warnings=0

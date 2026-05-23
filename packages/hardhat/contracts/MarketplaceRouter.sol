@@ -14,6 +14,7 @@ contract MarketplaceRouter{
     uint256 public feeBps;          //will be the fee amount in basis points , meaning 1% = 100 or 15% = 1500//
     address public owner ;
     address public pendingOwner ; 
+    address public treasury ;       // The address that will hold the funds. By using a different one we decentralize the power of the contract so if someone manages to take control of the owner he doesn´t steal the funds. //
 
     error AgentNotActive();
     error NotOwner();
@@ -37,11 +38,13 @@ contract MarketplaceRouter{
     }
 
 
-    constructor (address _identityRegistry ,address _agentMarketplace, address _token , uint256 _feeBps) {
+    constructor (address _identityRegistry ,address _agentMarketplace, address _token , uint256 _feeBps , address _treasury) {
+        if (_treasury == address(0)) revert ZeroAddress();
         if (_identityRegistry == address(0)) revert ZeroAddress();
         if (_agentMarketplace == address(0)) revert ZeroAddress();
         if (_token == address(0)) revert ZeroAddress();
         if (_feeBps > 1000) revert FeeTooHigh();                    //the max fee percentage alloweed is 10%//
+        treasury = _treasury;
         agentMarketplace = IAgentMarketplace(_agentMarketplace); 
         identityRegistry = IIdentityRegistry(_identityRegistry) ;
         token = IERC20(_token);
@@ -76,7 +79,7 @@ contract MarketplaceRouter{
         if (accumulatedFees == 0 ) revert NoFeesToWithdraw();
         uint256 tokenAmount = accumulatedFees;
         accumulatedFees=0;
-        bool success = token.transfer(owner,tokenAmount);
+        bool success = token.transfer(treasury,tokenAmount);
         if (!success) revert TransferFailed();
         emit FeesWithdrawn(tokenAmount,block.timestamp);
     }

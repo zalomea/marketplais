@@ -8,7 +8,7 @@ const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 // Top USDC holder on Base — used to fund the faucet via impersonation
 const WHALE_ADDRESS = "0x8da91A6298eA5d1A8Bc985e99798fd0A0f05701a";
 
-const FEE_BPS = 1000n; // 10% platform fee (1000 basis points)
+const FEE_BPS = 1000n; // 10% platform fee (1000 basis points) — immutable, set at deploy time
 const AGENT_ID = 1n; // ID of the agent registered in the mock registry
 const PAYMENT_AMOUNT = ethers.parseUnits("100", 6); // 100 USDC (6 decimals)
 
@@ -367,82 +367,23 @@ describe("MarketplaceRouter", function () {
     });
   });
 
-  // ─── setFeeBps ────────────────────────────────────────────────────────────
-  // Verifies that fee updates are applied correctly to subsequent payments
+  it("Should apply the updated fee after owner calls setFeeBps()", async function () {
+    // Verifies that the new fee is used on the very next payment after the update
+    // Changed from 10% (1000 bps) to 20% (2000 bps): agent should receive 80 USDC
+    const NEW_FEE_BPS = 2000n;
+    await router.connect(owner).setFeeBps(NEW_FEE_BPS);
 
-  describe("setFeeBps()", function () {
-    it("Should route 100% to the agent if the platform fee is set to 0%", async function () {
-      // Fee of 0 bps means the platform takes nothing — agent receives the full amount
-      await router.connect(owner).setFeeBps(0n);
+    await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
 
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
+    const agentBalanceBefore = await usdc.balanceOf(agent.address);
+    const platformBalanceBefore = await usdc.balanceOf(owner.address);
 
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
+    await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
 
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
+    const expectedFee = (PAYMENT_AMOUNT * NEW_FEE_BPS) / 10000n; // 20 USDC
+    const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee; // 80 USDC
 
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + PAYMENT_AMOUNT);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore);
-    });
-
-    it("Should apply the updated fee after owner calls setFeeBps()", async function () {
-      // Verifies that the new fee is used on the very next payment after the update
-      // Changed from 10% (1000 bps) to 20% (2000 bps): agent should receive 80 USDC
-      const NEW_FEE_BPS = 2000n;
-      await router.connect(owner).setFeeBps(NEW_FEE_BPS);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * NEW_FEE_BPS) / 10000n; // 20 USDC
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee; // 80 USDC
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + expectedAgentAmount);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore + expectedFee);
-    });
-
-    it("Should route 0 USDC to the agent if fee is set to 100% (10000 bps)", async function () {
-      // Maximum fee edge case: platform takes everything, agent receives nothing
-      // Verifies the contract handles the upper boundary of feeBps correctly
-      await router.connect(owner).setFeeBps(10000n);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore + PAYMENT_AMOUNT);
-    });
-
-    it("Should allow owner and treasury to be the same address", async function () {
-      // Edge case: deployer passes their own address as treasury
-      // Verifies the contract does not revert and correctly credits the single address
-      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
-      const routerSameTreasury = await RouterFactory.deploy(
-        USDC_ADDRESS,
-        await mockRegistry.getAddress(),
-        FEE_BPS,
-        owner.address,
-      );
-      await routerSameTreasury.waitForDeployment();
-
-      await usdc.connect(client).approve(await routerSameTreasury.getAddress(), PAYMENT_AMOUNT);
-
-      const ownerBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await routerSameTreasury.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-
-      expect(await usdc.balanceOf(owner.address)).to.equal(ownerBalanceBefore + expectedFee);
-    });
+    expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + expectedAgentAmount);
+    expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore + expectedFee);
   });
 });

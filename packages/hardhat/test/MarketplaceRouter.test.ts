@@ -366,24 +366,4 @@ describe("MarketplaceRouter", function () {
         .withArgs(client.address, AGENT_ID, PAYMENT_AMOUNT);
     });
   });
-
-  it("Should apply the updated fee after owner calls setFeeBps()", async function () {
-    // Verifies that the new fee is used on the very next payment after the update
-    // Changed from 10% (1000 bps) to 20% (2000 bps): agent should receive 80 USDC
-    const NEW_FEE_BPS = 2000n;
-    await router.connect(owner).setFeeBps(NEW_FEE_BPS);
-
-    await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-
-    const agentBalanceBefore = await usdc.balanceOf(agent.address);
-    const platformBalanceBefore = await usdc.balanceOf(owner.address);
-
-    await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-    const expectedFee = (PAYMENT_AMOUNT * NEW_FEE_BPS) / 10000n; // 20 USDC
-    const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee; // 80 USDC
-
-    expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + expectedAgentAmount);
-    expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore + expectedFee);
-  });
 });

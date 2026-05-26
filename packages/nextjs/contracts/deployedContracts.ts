@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     USDCFaucet: {
-      address: "0x764f8fa9B5C617024f64603bF3622D6C40192570",
+      address: "0xF96d5527d394dD52136BE363c318968cc9d9967D",
       abi: [
         {
           inputs: [
@@ -19,6 +19,16 @@ const deployedContracts = {
           ],
           stateMutability: "nonpayable",
           type: "constructor",
+        },
+        {
+          inputs: [],
+          name: "FaucetOutOfFunds",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "TransferFailed",
+          type: "error",
         },
         {
           inputs: [],
@@ -35,14 +45,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "requestTokens",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "usdc",
+          name: "USDC",
           outputs: [
             {
               internalType: "contract IERC20",
@@ -53,9 +56,16 @@ const deployedContracts = {
           stateMutability: "view",
           type: "function",
         },
+        {
+          inputs: [],
+          name: "requestTokens",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46176756,
+      deployedOnBlock: 46509671,
     },
   },
 } as const;

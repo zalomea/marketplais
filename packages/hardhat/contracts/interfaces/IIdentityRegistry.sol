@@ -6,4 +6,5 @@ interface IIdentityRegistry{
     function ownerOf(uint256 agentId) external view returns (address);
     function tokenURI(uint256 agentId) external view returns (string memory);
     function getAgentWallet(uint256 agentId) external view returns (address); 
+    function transferOwnership(address newOwner) public virtual onlyOwner;
 }

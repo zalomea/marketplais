@@ -43,12 +43,14 @@ contract MarketplaceRouter{
         if (_identityRegistry == address(0)) revert ZeroAddress();
         if (_agentMarketplace == address(0)) revert ZeroAddress();
         if (_token == address(0)) revert ZeroAddress();
-        if (_feeBps > 1000) revert FeeTooHigh();                    //the max fee percentage alloweed is 10%//
+        //the max fee percentage alloweed is 10%
+        if (_feeBps > 1000) revert FeeTooHigh();                    
         treasury = _treasury;
         agentMarketplace = IAgentMarketplace(_agentMarketplace); 
         identityRegistry = IIdentityRegistry(_identityRegistry) ;
         token = IERC20(_token);
-        feeBps = _feeBps;                                           //it is possible for the deployer to use 0 fees//
+        //it is possible for the deployer to use 0 fees
+        feeBps = _feeBps;                                           
         owner = msg.sender;
     }
 

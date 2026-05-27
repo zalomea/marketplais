@@ -57,12 +57,13 @@ contract MarketplaceRouter {
     }
 
     function withdrawFees() external onlyOwner {
+        uint256 feesToWithdraw = token.balanceOf(address(this));
         // slither-disable-next-line incorrect-equality
-        if (token.balanceOf(address(this)) == 0) revert NoFeesToWithdraw();
+        if (feesToWithdraw == 0) revert NoFeesToWithdraw();
 
-        emit FeesWithdrawn(token.balanceOf(address(this)), block.timestamp);
-        
-        bool success = token.transfer(treasury, token.balanceOf(address(this)));
+        emit FeesWithdrawn(feesToWithdraw, block.timestamp);
+
+        bool success = token.transfer(treasury, feesToWithdraw);
         if (!success) revert TransferFailed();
     }
 

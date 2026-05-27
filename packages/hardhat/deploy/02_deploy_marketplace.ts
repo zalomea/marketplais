@@ -8,7 +8,7 @@ const deployMarketplace: DeployFunction = async function (hre: HardhatRuntimeEnv
   const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
   const FEE_BPS = Number(process.env.MARKETPLACE_FEE_BPS || "1000");
   const treasury = process.env.MARKETPLACE_TREASURY_ADDRESS || deployer;
-  const identityRegistryAddress = process.env.IDENTITY_REGISTRY_ADDRESS || deployer;
+  const identityRegistryAddress = process.env.IDENTITY_REGISTRY_ADDRESS;
 
   if (!identityRegistryAddress || identityRegistryAddress === hre.ethers.ZeroAddress) {
     throw new Error("IDENTITY_REGISTRY_ADDRESS is required for AgentMarketplace deployment");

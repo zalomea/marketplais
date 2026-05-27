@@ -3,12 +3,12 @@ pragma solidity ^0.8.35;
 
 import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
 import {IAgentMarketplace} from "./interfaces/IAgentMarketplace.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
+import {IUSDC} from "./interfaces/IUSDC.sol";
 
 contract MarketplaceRouter {
     address public owner;
     IAgentMarketplace public immutable agentMarketplace;
-    IERC20 public immutable token;
+    IUSDC public immutable token;
 
     uint256 public feeBps; //will be the fee amount in basis points , meaning 1% = 100 or 15% = 1500//
     uint256 public constant WAITING_PERIOD = 7 days; // Waiting period to transfer ownership.
@@ -50,7 +50,7 @@ contract MarketplaceRouter {
         if (_feeBps > 1000) revert FeeTooHigh();
         treasury = _treasury;
         agentMarketplace = IAgentMarketplace(_agentMarketplace);
-        token = IERC20(_token);
+        token = IUSDC(_token);
         //it is possible for the deployer to use 0 fees
         feeBps = _feeBps;
         owner = msg.sender;
@@ -151,6 +151,6 @@ contract MarketplaceRouter {
         agentBalances[agentId] += agent.price;
         emit PaymentRouted(client, agentId, amount);
 
-        IERC20(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
+        IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
     }
 }

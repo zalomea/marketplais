@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-import { IERC20 } from "./interfaces/IERC20.sol";
+import { IUSDC } from "./interfaces/IUSDC.sol";
 
 error FaucetOutOfFunds();
 error TransferFailed();
 
 contract USDCFaucet {
     // slither-disable-next-line naming-convention
-    IERC20 public immutable USDC;
+    IUSDC public immutable USDC;
     uint256 public constant DRIP_AMOUNT = 1000 * 10 ** 6; // 1,000 USDC (USDC has 6 decimals)
 
     constructor(address _usdcAddress) {
-        USDC = IERC20(_usdcAddress);
+        USDC = IUSDC(_usdcAddress);
     }
 
     // Function called by your frontend

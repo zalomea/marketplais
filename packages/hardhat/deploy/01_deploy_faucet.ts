@@ -36,7 +36,7 @@ const deployUSDCFaucet: DeployFunction = async function (hre: HardhatRuntimeEnvi
     });
 
     const whaleSigner = await hre.ethers.getSigner(WHALE_ADDRESS);
-    const usdc = await hre.ethers.getContractAt("IERC20", USDC_ADDRESS, whaleSigner);
+    const usdc = await hre.ethers.getContractAt("IUSDC", USDC_ADDRESS, whaleSigner);
 
     // Transfer 1,000,000 USDC forcing the gas limit
     console.log("💸 Transferring USDC...");

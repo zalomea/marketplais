@@ -24,3 +24,6 @@ dist
 
 # AI Agent config
 .atl/
+
+# local environment variables
+.env

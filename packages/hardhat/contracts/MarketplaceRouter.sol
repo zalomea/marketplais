@@ -150,7 +150,6 @@ contract MarketplaceRouter {
         agentBalances[agentId] += agent.price;
         emit PaymentRouted(client, agentId, amount);
 
-        bool success = IERC20(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
-        if (!success) revert TransferFailed();
+        IERC20(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
     }
 }

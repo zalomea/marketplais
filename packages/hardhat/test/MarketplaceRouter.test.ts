@@ -391,9 +391,7 @@ describe("MarketplaceRouter", function () {
       const receipt = await tx.wait();
       const block = await ethers.provider.getBlock(receipt!.blockNumber);
 
-      await expect(tx)
-        .to.emit(router, "FeesWithdrawn")
-        .withArgs(PLATFORM_FEE, block!.timestamp);
+      await expect(tx).to.emit(router, "FeesWithdrawn").withArgs(PLATFORM_FEE, block!.timestamp);
     });
 
     it("Should accumulate correct total fees after payments to two different agents", async function () {
@@ -469,9 +467,7 @@ describe("MarketplaceRouter", function () {
       const receipt = await tx.wait();
       const block = await ethers.provider.getBlock(receipt!.blockNumber);
 
-      await expect(tx)
-        .to.emit(router, "FeeBpsUpdated")
-        .withArgs(FEE_BPS, 500n, block!.timestamp);
+      await expect(tx).to.emit(router, "FeeBpsUpdated").withArgs(FEE_BPS, 500n, block!.timestamp);
     });
   });
 
@@ -509,9 +505,7 @@ describe("MarketplaceRouter", function () {
       const receipt = await tx.wait();
       const block = await ethers.provider.getBlock(receipt!.blockNumber);
 
-      await expect(tx)
-        .to.emit(router, "OwnerTransferred")
-        .withArgs(owner.address, newOwner.address, block!.timestamp);
+      await expect(tx).to.emit(router, "OwnerTransferred").withArgs(owner.address, newOwner.address, block!.timestamp);
     });
   });
 

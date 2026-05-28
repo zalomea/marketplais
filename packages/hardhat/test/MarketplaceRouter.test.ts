@@ -1,369 +1,850 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Contract } from "ethers";
+import { Contract, Signature } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
-// Real USDC contract on Base mainnet (available via fork)
+// ─── Network constants (Base mainnet fork) ────────────────────────────────────
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-// Top USDC holder on Base — used to fund the faucet via impersonation
 const WHALE_ADDRESS = "0x8da91A6298eA5d1A8Bc985e99798fd0A0f05701a";
 
-const FEE_BPS = 1000n; // 10% platform fee (1000 basis points) — immutable, set at deploy time
-const AGENT_ID = 1n; // ID of the agent registered in the mock registry
-const PAYMENT_AMOUNT = ethers.parseUnits("100", 6); // 100 USDC (6 decimals)
+// ─── Contract parameters ──────────────────────────────────────────────────────
+
+// 10% platform fee expressed in basis points (1 bps = 0.01%)
+const FEE_BPS = 1000n;
+
+// Agent price set at registration: 100 USDC (6 decimals)
+const AGENT_PRICE = ethers.parseUnits("100", 6);
+
+const AGENT_URI = "ipfs://QmTestAgentURI";
+
+// Fee is added ON TOP of the agent price: fee = price * feeBps / 10000
+// Client pays: price + fee. Agent accumulates: price. Router retains: fee.
+const PLATFORM_FEE = (AGENT_PRICE * FEE_BPS) / 10000n;
+const TOTAL_PAYMENT = AGENT_PRICE + PLATFORM_FEE;
+
+// ─── EIP-3009 helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Builds a valid EIP-3009 typed signature for transferWithAuthorization.
+ * Uses chainId 31337 to match the Hardhat fork's local chain identifier.
+ * The domain matches the real USDC contract deployed on Base mainnet.
+ */
+async function buildTransferAuthorization(
+  signer: SignerWithAddress,
+  to: string,
+  value: bigint,
+  validUntil: number,
+  nonce: string,
+  validAfter: number = 0,
+): Promise<{ v: number; r: string; s: string }> {
+  const domain = {
+    name: "USD Coin",
+    version: "2",
+    // Hardhat fork preserves the local chainId (31337), not Base mainnet's (8453)
+    chainId: 31337,
+    verifyingContract: USDC_ADDRESS,
+  };
+
+  const types = {
+    TransferWithAuthorization: [
+      { name: "from", type: "address" },
+      { name: "to", type: "address" },
+      { name: "value", type: "uint256" },
+      { name: "validAfter", type: "uint256" },
+      { name: "validBefore", type: "uint256" },
+      { name: "nonce", type: "bytes32" },
+    ],
+  };
+
+  const message = {
+    from: signer.address,
+    to,
+    value,
+    validAfter,
+    validBefore: validUntil,
+    nonce,
+  };
+
+  const rawSig = await signer.signTypedData(domain, types, message);
+  const sig = Signature.from(rawSig);
+  return { v: sig.v, r: sig.r, s: sig.s };
+}
+
+// ─── Test suite ───────────────────────────────────────────────────────────────
 
 describe("MarketplaceRouter", function () {
   let router: Contract;
-  let usdc: Contract;
-  let faucet: Contract;
+  let agentMarketplace: Contract;
   let mockRegistry: Contract;
-  let owner: SignerWithAddress; // Platform admin — deploys and manages the router
-  let agent: SignerWithAddress; // AI Agent owner — receives payments
-  let client: SignerWithAddress; // Payer — initiates payments to agents
+  let usdc: Contract;
 
-  // Runs before each test: deploys all contracts and funds the client with 1,000 USDC
-  beforeEach(async function () {
-    [owner, agent, client] = await ethers.getSigners();
+  // Router deployer — only address allowed to call processAgentPayment
+  let owner: SignerWithAddress;
+  // Receives accumulated platform fees on withdrawFees()
+  let treasury: SignerWithAddress;
+  // Registered agent owner — receives earnings on withdrawAgentEarnings()
+  let agentOwner: SignerWithAddress;
+  // Signs EIP-3009 authorizations and pays for agent services
+  let client: SignerWithAddress;
 
-    // 1. Get USDC contract instance from the forked Base mainnet
-    usdc = await ethers.getContractAt("IERC20", USDC_ADDRESS);
+  let agentId: bigint;
+  let routerAddress: string;
 
-    // 2. Fund the whale with ETH so it can pay for gas on the local fork
+  // Snapshot ID used to restore blockchain state between tests
+  let snapshotId: string;
+
+  // ─── before ─────────────────────────────────────────────────────────────────
+  // Runs ONCE before all tests. Deploys all contracts and funds the client.
+  // This avoids repeating expensive fork calls and deploys on every test.
+  before(async function () {
+    [owner, treasury, agentOwner, client] = await ethers.getSigners();
+
+    // Attach to the real USDC contract already deployed on the Base mainnet fork
+    usdc = await ethers.getContractAt("IUSDC", USDC_ADDRESS);
+
+    // Fund the whale with ETH so it can pay gas on the local network
     await ethers.provider.send("hardhat_setBalance", [WHALE_ADDRESS, "0x8AC7230489E80000"]);
 
-    // 3. Impersonate the whale to act on its behalf (Hardhat fork feature)
+    // Impersonate the whale account to transfer USDC without needing its private key
     await ethers.provider.send("hardhat_impersonateAccount", [WHALE_ADDRESS]);
     const whaleSigner = await ethers.getSigner(WHALE_ADDRESS);
 
-    // 4. Deploy the USDCFaucet contract using the whale as the deployer/signer
-    const FaucetFactory = await ethers.getContractFactory("USDCFaucet", whaleSigner);
-    faucet = await FaucetFactory.deploy(USDC_ADDRESS);
-    await faucet.waitForDeployment();
+    // Transfer 1,000 USDC from the whale directly to the test client
+    await usdc.connect(whaleSigner).transfer(client.address, ethers.parseUnits("1000", 6));
 
-    // 5. Transfer 1,000,000 USDC from the whale to the faucet so it has funds to distribute
-    const usdcAsWhale = usdc.connect(whaleSigner);
-    await usdcAsWhale.transfer(await faucet.getAddress(), ethers.parseUnits("1000000", 6));
-
-    // 6. Stop impersonating the whale — no longer needed
+    // Stop impersonation immediately after the transfer to keep the environment clean
     await ethers.provider.send("hardhat_stopImpersonatingAccount", [WHALE_ADDRESS]);
 
-    // 7. Client calls requestTokens() to receive 1,000 USDC from the faucet
-    await faucet.connect(client).requestTokens();
-
-    // 8. Deploy the MockERC8004Registry and register agent #1 with agent.address as its wallet
-    // The mock simulates the real ERC-8004 IdentityRegistry without requiring the full protocol
-    const MockRegistryFactory = await ethers.getContractFactory("MockERC8004Registry");
+    // Deploy the mock identity registry to avoid Base mainnet ERC-8004 dependencies
+    const MockRegistryFactory = await ethers.getContractFactory("MockIdentityRegistry");
     mockRegistry = await MockRegistryFactory.deploy();
     await mockRegistry.waitForDeployment();
-    await mockRegistry.registerAgent(AGENT_ID, agent.address);
 
-    // 9. Deploy the MarketplaceRouter with USDC, the mock registry, and a 10% platform fee
+    // Deploy AgentMarketplace pointing to the mock registry
+    const AgentMarketplaceFactory = await ethers.getContractFactory("AgentMarketplace");
+    agentMarketplace = await AgentMarketplaceFactory.deploy(await mockRegistry.getAddress());
+    await agentMarketplace.waitForDeployment();
+
+    // Register an agent with 100 USDC price and payToAgentWallet=false (pay to owner address)
+    const tx = await agentMarketplace.connect(agentOwner).register(AGENT_PRICE, AGENT_URI, false);
+    const receipt = await tx.wait();
+    const event = receipt?.logs
+      .map((log: any) => {
+        try {
+          return agentMarketplace.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find((e: any) => e?.name === "AgentRegistered");
+    agentId = event?.args.agentId;
+
+    // Deploy the MarketplaceRouter with the marketplace, USDC token, fee, and treasury
     const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
-    router = await RouterFactory.deploy(USDC_ADDRESS, await mockRegistry.getAddress(), FEE_BPS);
+    router = await RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, FEE_BPS, treasury.address);
     await router.waitForDeployment();
+    routerAddress = await router.getAddress();
   });
 
-  // ─── Initial Setup ────────────────────────────────────────────────────────
-  // Verifies that the test environment is correctly configured before each test
+  // ─── beforeEach / afterEach ──────────────────────────────────────────────────
+  // Snapshot the EVM state before each test and revert after.
+  // This gives every test a clean slate without redeploying contracts.
+  beforeEach(async function () {
+    snapshotId = await ethers.provider.send("evm_snapshot", []);
+  });
+
+  afterEach(async function () {
+    await ethers.provider.send("evm_revert", [snapshotId]);
+  });
+
+  // ─── Helper: get current block timestamp from the fork ───────────────────────
+
+  /**
+   * Returns the timestamp of the latest block on the forked network.
+   * Must be used instead of Date.now() to avoid EIP-3009 signature expiry
+   * mismatches caused by the fork's block time being in the past.
+   */
+  async function getBlockTimestamp(): Promise<number> {
+    const block = await ethers.provider.getBlock("latest");
+    return block!.timestamp;
+  }
+
+  // ─── Helper: process a valid payment ────────────────────────────────────────
+
+  /**
+   * Builds and submits a complete valid payment flow:
+   * signs an EIP-3009 authorization and calls processAgentPayment as the owner.
+   * Returns the nonce used so tests can reference it for replay-attack checks.
+   */
+  async function processPayment(amount: bigint = TOTAL_PAYMENT, customNonce?: string): Promise<string> {
+    const nonce = customNonce ?? ethers.hexlify(ethers.randomBytes(32));
+    // Authorize the transfer for 24 hours from the current block timestamp
+    const validUntil = (await getBlockTimestamp()) + 86400;
+    const { v, r, s } = await buildTransferAuthorization(client, routerAddress, amount, validUntil, nonce);
+    const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+    await router.connect(owner).processAgentPayment(client.address, agentId, amount, validUntil, nonce, sig);
+    return nonce;
+  }
+
+  // ─── Initial Setup ───────────────────────────────────────────────────────────
 
   describe("Initial Setup", function () {
-    it("Should fund the client with 1,000 USDC via the Faucet", async function () {
-      // Confirms the full setup chain worked:
-      // whale impersonated → faucet deployed → faucet funded → client called requestTokens()
-      const balance = await usdc.balanceOf(client.address);
-      expect(balance).to.equal(ethers.parseUnits("1000", 6));
+    it("Should fund the client with 1,000 USDC", async function () {
+      expect(await usdc.balanceOf(client.address)).to.equal(ethers.parseUnits("1000", 6));
+    });
+
+    it("Should register an agent with the correct price", async function () {
+      const agent = await agentMarketplace.getAgent(agentId);
+      expect(agent.price).to.equal(AGENT_PRICE);
+      expect(agent.active).to.equal(true);
     });
   });
 
-  // ─── Deployment State ─────────────────────────────────────────────────────
-  // Verifies that the constructor correctly initializes all contract state variables
+  // ─── Deployment State ────────────────────────────────────────────────────────
 
   describe("Deployment state", function () {
     it("Should initialize feeBps with the value passed to the constructor", async function () {
-      // Ensures the fee is stored correctly and readable as a public variable
       expect(await router.feeBps()).to.equal(FEE_BPS);
     });
 
-    it("Should initialize the IdentityRegistry address with the value passed to the constructor", async function () {
-      // Ensures the router will query the correct registry on every payment
-      expect(await router.identityRegistry()).to.equal(await mockRegistry.getAddress());
+    it("Should initialize treasury with the address passed to the constructor", async function () {
+      expect(await router.treasury()).to.equal(treasury.address);
     });
 
-    it("Should initialize the treasury address with the value passed to the constructor", async function () {
-      // Deploys a new router with a dedicated treasury to verify it is stored correctly
-      // Treasury is separate from owner: owner manages the contract, treasury receives platform fees
-      const [, , , , treasury] = await ethers.getSigners();
-
-      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
-      const routerWithTreasury = await RouterFactory.deploy(
-        USDC_ADDRESS,
-        await mockRegistry.getAddress(),
-        FEE_BPS,
-        treasury.address,
-      );
-      await routerWithTreasury.waitForDeployment();
-
-      expect(await routerWithTreasury.treasury()).to.equal(treasury.address);
+    it("Should initialize owner as the deployer", async function () {
+      expect(await router.owner()).to.equal(owner.address);
     });
 
-    it("Should have zero USDC balance after deployment (router must not retain funds)", async function () {
-      // The router is a pass-through contract — it should never hold USDC at rest
-      expect(await usdc.balanceOf(await router.getAddress())).to.equal(0n);
-    });
-
-    it("Should have zero USDC balance after a payment (router must not retain funds)", async function () {
-      // Verifies that all USDC is forwarded to agent and treasury in a single transaction
-      // Any leftover balance would indicate a bug or potential fund lock
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      expect(await usdc.balanceOf(await router.getAddress())).to.equal(0n);
+    it("Should have zero USDC balance after deployment", async function () {
+      expect(await usdc.balanceOf(routerAddress)).to.equal(0n);
     });
   });
 
-  // ─── Fee Split ────────────────────────────────────────────────────────────
-  // Verifies the payment math: correct amounts reach agent and treasury, and client is debited
+  // ─── processAgentPayment ─────────────────────────────────────────────────────
 
-  describe("Fee split", function () {
-    it("Should transfer 90 USDC to the agent and 10 USDC to the platform", async function () {
-      // Standard payment: 100 USDC in, 90 to agent (after 10% fee), 10 to platform treasury
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
+  describe("processAgentPayment()", function () {
+    it("Should accumulate the agent earnings correctly after one payment", async function () {
+      await processPayment();
+      expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
+    });
 
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n; // 10 USDC
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee; // 90 USDC
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + expectedAgentAmount);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore + expectedFee);
+    it("Should hold the total payment amount in the router balance after one payment", async function () {
+      await processPayment();
+      expect(await usdc.balanceOf(routerAddress)).to.equal(TOTAL_PAYMENT);
     });
 
     it("Should deduct the full payment amount from the client balance", async function () {
-      // Verifies that transferFrom correctly debits the full amount from the client
-      // Ensures the router does not spend more or less than what was approved
-      const clientBalanceBefore = await usdc.balanceOf(client.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      expect(await usdc.balanceOf(client.address)).to.equal(clientBalanceBefore - PAYMENT_AMOUNT);
-    });
-
-    it("Should maintain the total USDC supply intact (invariant)", async function () {
-      // Conservation of funds: total USDC does not appear or disappear during routing
-      // What left the client must exactly equal what arrived at agent + platform
       const clientBefore = await usdc.balanceOf(client.address);
-      const agentBefore = await usdc.balanceOf(agent.address);
-      const platformBefore = await usdc.balanceOf(owner.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const clientAfter = await usdc.balanceOf(client.address);
-      const agentAfter = await usdc.balanceOf(agent.address);
-      const platformAfter = await usdc.balanceOf(owner.address);
-
-      expect(clientBefore - clientAfter).to.equal(agentAfter - agentBefore + platformAfter - platformBefore);
+      await processPayment();
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore - TOTAL_PAYMENT);
     });
 
-    it("Should send the platform fee to the treasury address, not the owner", async function () {
-      // Verifies the separation of concerns: owner manages the contract, treasury receives fees
-      // If the router used owner() instead of treasury, this test would fail after ownership transfer
-      const [, , , , treasury] = await ethers.getSigners();
+    it("Should emit PaymentRouted event with correct args", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      )
+        .to.emit(router, "PaymentRouted")
+        .withArgs(client.address, agentId, TOTAL_PAYMENT);
+    });
+
+    it("Should accumulate correctly after two payments to the same agent", async function () {
+      await processPayment();
+      await processPayment();
+
+      expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE * 2n);
+      expect(await usdc.balanceOf(routerAddress)).to.equal(TOTAL_PAYMENT * 2n);
+    });
+
+    it("Should mark the nonce as processed after a successful payment", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      await processPayment(TOTAL_PAYMENT, nonce);
+      expect(await router.proccessesNonces(nonce)).to.equal(true);
+    });
+
+    it("Should conserve funds: client debit equals agent balance plus router fee (invariant)", async function () {
+      const clientBefore = await usdc.balanceOf(client.address);
+      await processPayment();
+      const clientAfter = await usdc.balanceOf(client.address);
+
+      const agentAccumulated = await router.agentBalances(agentId);
+      const routerBalance = await usdc.balanceOf(routerAddress);
+
+      // The implicit fee is whatever the router holds beyond the agent's share
+      const implicitFee = routerBalance - agentAccumulated;
+
+      expect(clientBefore - clientAfter).to.equal(TOTAL_PAYMENT);
+      expect(agentAccumulated + implicitFee).to.equal(TOTAL_PAYMENT);
+    });
+
+    it("Should accumulate balances independently for two different agents", async function () {
+      const [, , , , secondAgentOwner] = await ethers.getSigners();
+
+      // Register a second agent to verify balances are tracked per agentId
+      const tx = await agentMarketplace.connect(secondAgentOwner).register(AGENT_PRICE, AGENT_URI, false);
+      const receipt = await tx.wait();
+      const event = receipt?.logs
+        .map((log: any) => {
+          try {
+            return agentMarketplace.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e?.name === "AgentRegistered");
+      const agentId2 = event?.args.agentId;
+
+      // Pay agent 1
+      await processPayment();
+
+      // Pay agent 2 with a fresh nonce and authorization
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await router.connect(owner).processAgentPayment(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
+
+      expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
+      expect(await router.agentBalances(agentId2)).to.equal(AGENT_PRICE);
+      expect(await usdc.balanceOf(routerAddress)).to.equal(TOTAL_PAYMENT * 2n);
+    });
+
+    it("Should process payment with 1 wei price (truncation check)", async function () {
+      // Tests Solidity division truncation with extreme low values (1 wei)
+      // to ensure the contract doesn't revert when handling minimal values.
+      const lowPrice = 1n;
+      const lowAgentUri = "ipfs://LowPriceAgent";
+
+      const tx = await agentMarketplace.connect(agentOwner).register(lowPrice, lowAgentUri, false);
+      const receipt = await tx.wait();
+      const event = receipt?.logs
+        .map((log: any) => {
+          try {
+            return agentMarketplace.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e?.name === "AgentRegistered");
+      const lowAgentId = event?.args.agentId;
+
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, lowPrice, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, lowAgentId, lowPrice, validUntil, nonce, sig),
+      ).to.not.be.reverted;
+    });
+  });
+
+  // ─── withdrawAgentEarnings ───────────────────────────────────────────────────
+
+  describe("withdrawAgentEarnings()", function () {
+    it("Should transfer accumulated earnings to the agent owner (payToAgentWallet=false)", async function () {
+      await processPayment();
+
+      const agentOwnerBefore = await usdc.balanceOf(agentOwner.address);
+      await router.withdrawAgentEarnings(agentId);
+
+      expect(await usdc.balanceOf(agentOwner.address)).to.equal(agentOwnerBefore + AGENT_PRICE);
+      expect(await router.agentBalances(agentId)).to.equal(0n);
+    });
+
+    it("Should reset agent balance to zero after withdrawal", async function () {
+      await processPayment();
+      await router.withdrawAgentEarnings(agentId);
+      expect(await router.agentBalances(agentId)).to.equal(0n);
+    });
+
+    it("Should transfer to agentWallet when payToAgentWallet=true", async function () {
+      const [, , , , dedicatedWallet] = await ethers.getSigners();
+
+      // Register a second agent configured to receive payments at a dedicated wallet address
+      const tx = await agentMarketplace.connect(agentOwner).register(AGENT_PRICE, AGENT_URI, true);
+      const receipt = await tx.wait();
+      const event = receipt?.logs
+        .map((log: any) => {
+          try {
+            return agentMarketplace.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e?.name === "AgentRegistered");
+      const agentId2 = event?.args.agentId;
+
+      // Configure the mock registry to return dedicatedWallet for this agentId
+      await mockRegistry.setAgentWallet(agentId2, dedicatedWallet.address);
+
+      // Process payment for this agent
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await router.connect(owner).processAgentPayment(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
+
+      const walletBefore = await usdc.balanceOf(dedicatedWallet.address);
+      await router.withdrawAgentEarnings(agentId2);
+
+      expect(await usdc.balanceOf(dedicatedWallet.address)).to.equal(walletBefore + AGENT_PRICE);
+    });
+  });
+
+  // ─── withdrawFees ────────────────────────────────────────────────────────────
+
+  describe("withdrawFees()", function () {
+    it("Should transfer only the platform fee to treasury after agent withdraws earnings", async function () {
+      await processPayment();
+
+      // Agent withdraws their share first so the router only holds the platform fee
+      await router.withdrawAgentEarnings(agentId);
+
+      const treasuryBefore = await usdc.balanceOf(treasury.address);
+      await router.connect(owner).withdrawFees();
+
+      expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBefore + PLATFORM_FEE);
+      expect(await usdc.balanceOf(routerAddress)).to.equal(0n);
+    });
+
+    it("Should emit FeesWithdrawn event with correct amount", async function () {
+      await processPayment();
+      await router.withdrawAgentEarnings(agentId);
+
+      const tx = await router.connect(owner).withdrawFees();
+      const receipt = await tx.wait();
+      const block = await ethers.provider.getBlock(receipt!.blockNumber);
+
+      await expect(tx).to.emit(router, "FeesWithdrawn").withArgs(PLATFORM_FEE, block!.timestamp);
+    });
+
+    it("Should accumulate correct total fees after payments to two different agents", async function () {
+      const [, , , , secondAgentOwner] = await ethers.getSigners();
+
+      // Register a second agent so we can verify fee accumulation across multiple payments
+      const tx = await agentMarketplace.connect(secondAgentOwner).register(AGENT_PRICE, AGENT_URI, false);
+      const receipt = await tx.wait();
+      const event = receipt?.logs
+        .map((log: any) => {
+          try {
+            return agentMarketplace.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e?.name === "AgentRegistered");
+      const agentId2 = event?.args.agentId;
+
+      // Process one payment per agent
+      await processPayment();
+
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await router.connect(owner).processAgentPayment(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
+
+      // Both agents withdraw first so only platform fees remain in the router
+      await router.withdrawAgentEarnings(agentId);
+      await router.withdrawAgentEarnings(agentId2);
+
+      const treasuryBefore = await usdc.balanceOf(treasury.address);
+      await router.connect(owner).withdrawFees();
+
+      // Two payments → two platform fees accumulated
+      expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBefore + PLATFORM_FEE * 2n);
+      expect(await usdc.balanceOf(routerAddress)).to.equal(0n);
+    });
+
+    // Previously withdrawFees() would drain agent earnings if called before withdrawAgentEarnings()
+    // because the contract used balanceOf(address(this)) without separate accounting.
+    // Fixed in b78208b by introducing totalAgentLiabilities to track agent funds separately.
+    it("Should NOT drain agent earnings when withdrawFees() is called before withdrawAgentEarnings()", async function () {
+      await processPayment();
+
+      // Owner withdraws fees first — should only take the platform fee, not agent funds
+      await router.connect(owner).withdrawFees();
+
+      // Agent balance mapping must still show the full earnings
+      expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
+
+      // Agent must still be able to withdraw their earnings successfully
+      const agentOwnerBefore = await usdc.balanceOf(agentOwner.address);
+      await router.withdrawAgentEarnings(agentId);
+      expect(await usdc.balanceOf(agentOwner.address)).to.equal(agentOwnerBefore + AGENT_PRICE);
+    });
+  });
+
+  // ─── updateFeeBps ────────────────────────────────────────────────────────────
+
+  describe("updateFeeBps()", function () {
+    it("Should update feeBps correctly", async function () {
+      await router.connect(owner).updateFeeBps(500n);
+      expect(await router.feeBps()).to.equal(500n);
+    });
+
+    it("Should emit FeeBpsUpdated event with old and new values", async function () {
+      const tx = await router.connect(owner).updateFeeBps(500n);
+      const receipt = await tx.wait();
+      const block = await ethers.provider.getBlock(receipt!.blockNumber);
+
+      await expect(tx).to.emit(router, "FeeBpsUpdated").withArgs(FEE_BPS, 500n, block!.timestamp);
+    });
+  });
+
+  // ─── transferOwnership / acceptOwnership ─────────────────────────────────────
+
+  describe("transferOwnership() / acceptOwnership()", function () {
+    it("Should set pendingOwner after transferOwnership", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+      expect(await router.pendingOwner()).to.equal(newOwner.address);
+    });
+
+    it("Should transfer ownership after waiting period", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+
+      // Fast-forward 7 days to satisfy the ownership transfer waiting period
+      await ethers.provider.send("evm_increaseTime", [7 * 24 * 60 * 60]);
+      await ethers.provider.send("evm_mine", []);
+
+      await router.connect(newOwner).acceptOwnership();
+      expect(await router.owner()).to.equal(newOwner.address);
+      expect(await router.pendingOwner()).to.equal(ethers.ZeroAddress);
+    });
+
+    it("Should emit OwnerTransferred event on acceptOwnership", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+
+      // Fast-forward 7 days to satisfy the ownership transfer waiting period
+      await ethers.provider.send("evm_increaseTime", [7 * 24 * 60 * 60]);
+      await ethers.provider.send("evm_mine", []);
+
+      const tx = await router.connect(newOwner).acceptOwnership();
+      const receipt = await tx.wait();
+      const block = await ethers.provider.getBlock(receipt!.blockNumber);
+
+      await expect(tx).to.emit(router, "OwnerTransferred").withArgs(owner.address, newOwner.address, block!.timestamp);
+    });
+  });
+
+  // ─── changeTreasury ──────────────────────────────────────────────────────────
+
+  describe("changeTreasury()", function () {
+    it("Should update the treasury address", async function () {
+      const [, , , , , newTreasury] = await ethers.getSigners();
+      await router.connect(owner).changeTreasury(newTreasury.address);
+      expect(await router.treasury()).to.equal(newTreasury.address);
+    });
+  });
+
+  // ─── Failure Cases ───────────────────────────────────────────────────────────
+
+  describe("processAgentPayment() — reverts", function () {
+    it("Should revert with NotOwner if caller is not the owner", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      // client is not the owner — must revert
+      await expect(
+        router.connect(client).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    it("Should revert with TransferFailed if nonce was already used (replay attack)", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+
+      // First payment consumes the nonce
+      await processPayment(TOTAL_PAYMENT, nonce);
+
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      // Second payment with the same nonce must fail — USDC rejects replayed authorizations
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "TransferFailed");
+    });
+
+    it("Should revert with AgentNotFoundInMarketplace if agent does not exist", async function () {
+      const nonExistentAgentId = 999n;
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router
+          .connect(owner)
+          .processAgentPayment(client.address, nonExistentAgentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "AgentNotFoundInMarketplace");
+    });
+
+    it("Should revert with AgentNotActive if agent is deactivated", async function () {
+      // Deactivate the registered agent before attempting the payment
+      await agentMarketplace.connect(agentOwner).deactivateAgent(agentId);
+
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "AgentNotActive");
+    });
+
+    it("Should revert with InsufficientAmount if amount is less than agent price", async function () {
+      // One wei below the agent price — the router should reject this
+      const belowPrice = AGENT_PRICE - 1n;
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, belowPrice, validUntil, nonce, 0);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, belowPrice, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "InsufficientAmount");
+    });
+
+    it("Should revert if validAfter is in the future", async function () {
+      // Verifies that authorizations with a validAfter timestamp in the future
+      // are strictly rejected by the USDC contract to prevent processing signatures
+      // that are not yet active or "frozen".
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const futureValidAfter = (await getBlockTimestamp()) + 3600; // 1 hour in the future
+
+      // Sign with a future validAfter
+      const { v, r, s } = await buildTransferAuthorization(
+        client,
+        routerAddress,
+        TOTAL_PAYMENT,
+        validUntil,
+        nonce,
+        futureValidAfter,
+      );
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      // Contract hardcodes '0' as validAfter, mismatching the signature digest
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.reverted;
+    });
+
+    it("Should revert with InvalidAuthorization if signature length is not 65 bytes", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+
+      // A 64-byte random blob is not a valid ECDSA signature — router must reject it early
+      const invalidSig = ethers.hexlify(ethers.randomBytes(64));
+
+      await expect(
+        router
+          .connect(owner)
+          .processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, invalidSig),
+      ).to.be.revertedWithCustomError(router, "InvalidAuthorization");
+    });
+
+    it("Should revert if the signature is from a different signer than the client", async function () {
+      const [, , , , attacker] = await ethers.getSigners();
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+
+      // Attacker signs an authorization claiming to spend from client's address — USDC will reject
+      const { v, r, s } = await buildTransferAuthorization(attacker, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.reverted;
+    });
+
+    it("Should revert if the authorization has expired", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+
+      // Set validUntil in the past relative to the current block timestamp
+      const expiredUntil = (await getBlockTimestamp()) - 3600;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, expiredUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, expiredUntil, nonce, sig),
+      ).to.be.reverted;
+    });
+  });
+
+  describe("withdrawFees() — reverts", function () {
+    it("Should revert with NotOwner if caller is not the owner", async function () {
+      await processPayment();
+      await router.withdrawAgentEarnings(agentId);
+
+      // client is not the owner — must revert
+      await expect(router.connect(client).withdrawFees()).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    it("Should revert with NoFeesToWithdraw if there are no fees accumulated", async function () {
+      // No payments have been processed — router has zero balance
+      await expect(router.connect(owner).withdrawFees()).to.be.revertedWithCustomError(router, "NoFeesToWithdraw");
+    });
+  });
+
+  describe("withdrawAgentEarnings() — reverts", function () {
+    it("Should revert with AgentNotFoundInMarketplace if agent does not exist", async function () {
+      // agentId 999 was never registered in the marketplace
+      await expect(router.withdrawAgentEarnings(999n)).to.be.revertedWithCustomError(
+        router,
+        "AgentNotFoundInMarketplace",
+      );
+    });
+
+    it("Should revert with NoFeesToWithdraw if agent has no earnings", async function () {
+      // Registered agent but no payment was ever processed for it
+      await expect(router.withdrawAgentEarnings(agentId)).to.be.revertedWithCustomError(router, "NoFeesToWithdraw");
+    });
+
+    it("Should revert on second withdrawal when agent balance is already zero", async function () {
+      await processPayment();
+
+      // First withdrawal drains the balance
+      await router.withdrawAgentEarnings(agentId);
+
+      // Second withdrawal must fail — nothing left to withdraw
+      await expect(router.withdrawAgentEarnings(agentId)).to.be.revertedWithCustomError(router, "NoFeesToWithdraw");
+    });
+  });
+
+  describe("updateFeeBps() — reverts", function () {
+    it("Should revert with NotOwner if caller is not the owner", async function () {
+      await expect(router.connect(client).updateFeeBps(500n)).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    it("Should revert with FeeTooHigh if fee exceeds 1000 bps (10%)", async function () {
+      // 1001 bps = 10.01% — exceeds the maximum allowed fee
+      await expect(router.connect(owner).updateFeeBps(1001n)).to.be.revertedWithCustomError(router, "FeeTooHigh");
+    });
+
+    it("Should revert with SameFeeBps if new fee equals current fee", async function () {
+      // Setting the same fee that is already configured must be rejected
+      await expect(router.connect(owner).updateFeeBps(FEE_BPS)).to.be.revertedWithCustomError(router, "SameFeeBps");
+    });
+  });
+
+  describe("transferOwnership() — reverts", function () {
+    it("Should revert with NotOwner if caller is not the owner", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+
+      // client is not the owner — must revert
+      await expect(router.connect(client).transferOwnership(newOwner.address)).to.be.revertedWithCustomError(
+        router,
+        "NotOwner",
+      );
+    });
+
+    it("Should revert with SameOwner if new owner is the current owner", async function () {
+      // Transferring ownership to the same address must be rejected
+      await expect(router.connect(owner).transferOwnership(owner.address)).to.be.revertedWithCustomError(
+        router,
+        "SameOwner",
+      );
+    });
+  });
+
+  describe("acceptOwnership() — reverts", function () {
+    it("Should revert with NotOwner if caller is not the pending owner", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+
+      // client was not nominated as pending owner — must revert
+      await expect(router.connect(client).acceptOwnership()).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    it("Should revert with WaitingPeriodNotOver if called before 7 days", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+
+      // Attempting to accept immediately without advancing time must fail
+      await expect(router.connect(newOwner).acceptOwnership()).to.be.revertedWithCustomError(
+        router,
+        "WaitingPeriodNotOver",
+      );
+    });
+
+    it("Should revert with NotOwner if called without a prior transferOwnership", async function () {
+      // No pending owner was ever set — any call to acceptOwnership must fail
+      await expect(router.connect(client).acceptOwnership()).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+  });
+
+  describe("changeTreasury() — reverts", function () {
+    it("Should revert with NotOwner if caller is not the owner", async function () {
+      const [, , , , , newTreasury] = await ethers.getSigners();
+
+      // client is not the owner — must revert
+      await expect(router.connect(client).changeTreasury(newTreasury.address)).to.be.revertedWithCustomError(
+        router,
+        "NotOwner",
+      );
+    });
+
+    it("Should revert with ZeroAddress if new treasury is address(0)", async function () {
+      // Setting treasury to the zero address must be rejected to prevent fund loss
+      await expect(router.connect(owner).changeTreasury(ethers.ZeroAddress)).to.be.revertedWithCustomError(
+        router,
+        "ZeroAddress",
+      );
+    });
+  });
+
+  describe("Constructor — reverts", function () {
+    it("Should revert with FeeTooHigh if feeBps exceeds 1000 at deploy", async function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
-      const routerWithTreasury = await RouterFactory.deploy(
+      await expect(
+        RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, 1001n, treasury.address),
+      ).to.be.revertedWithCustomError(router, "FeeTooHigh");
+    });
+
+    it("Should deploy successfully with feeBps at the maximum limit (1000)", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      const routerAtLimit = await RouterFactory.deploy(
+        await agentMarketplace.getAddress(),
         USDC_ADDRESS,
-        await mockRegistry.getAddress(),
-        FEE_BPS,
+        1000n,
         treasury.address,
       );
-      await routerWithTreasury.waitForDeployment();
-
-      await usdc.connect(client).approve(await routerWithTreasury.getAddress(), PAYMENT_AMOUNT);
-
-      const treasuryBalanceBefore = await usdc.balanceOf(treasury.address);
-      const ownerBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await routerWithTreasury.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-
-      expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBalanceBefore + expectedFee);
-      expect(await usdc.balanceOf(owner.address)).to.equal(ownerBalanceBefore);
+      await routerAtLimit.waitForDeployment();
+      expect(await routerAtLimit.feeBps()).to.equal(1000n);
     });
 
-    it("Should correctly handle dust payments (fee truncates to 0 due to integer precision)", async function () {
-      // Solidity uses integer division: (9 * 1000) / 10000 = 0.9 → truncates to 0
-      // In this case the agent receives the full dust amount and the platform receives nothing
-      const DUST_AMOUNT = 9n; // 9 USDC wei — below the minimum for a non-zero fee at 10%
-      await usdc.connect(client).approve(await router.getAddress(), DUST_AMOUNT);
-
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await router.connect(client).payAgent(AGENT_ID, DUST_AMOUNT);
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + DUST_AMOUNT);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore);
+    it("Should deploy successfully with feeBps at zero", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      const routerZeroFee = await RouterFactory.deploy(
+        await agentMarketplace.getAddress(),
+        USDC_ADDRESS,
+        0n,
+        treasury.address,
+      );
+      await routerZeroFee.waitForDeployment();
+      expect(await routerZeroFee.feeBps()).to.equal(0n);
     });
 
-    it("Should handle payment at the exact limit of client balance", async function () {
-      // Edge case: client spends their entire balance in one payment
-      // Verifies no off-by-one errors and that the client ends at exactly 0
-      const fullBalance = ethers.parseUnits("1000", 6);
-
-      await usdc.connect(client).approve(await router.getAddress(), fullBalance);
-      await router.connect(client).payAgent(AGENT_ID, fullBalance);
-
-      const expectedFee = (fullBalance * FEE_BPS) / 10000n;
-      const expectedAgentAmount = fullBalance - expectedFee;
-
-      expect(await usdc.balanceOf(client.address)).to.equal(0n);
-      expect(await usdc.balanceOf(agent.address)).to.equal(expectedAgentAmount);
-      expect(await usdc.balanceOf(owner.address)).to.equal(expectedFee);
-    });
-
-    it("Should handle a payment of 1 wei of USDC", async function () {
-      // Minimum possible payment: (1 * 1000) / 10000 = 0.1 → truncates to 0
-      // Verifies the contract does not revert or behave unexpectedly at the absolute minimum
-      const ONE_WEI = 1n;
-      await usdc.connect(client).approve(await router.getAddress(), ONE_WEI);
-
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await router.connect(client).payAgent(AGENT_ID, ONE_WEI);
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + ONE_WEI);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore);
-    });
-
-    it("Should handle payment with allowance set to exactly the payment amount", async function () {
-      // Verifies that the router does not attempt to spend more than what was approved
-      // If the contract tried to spend even 1 wei extra, the ERC-20 transferFrom would revert
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee;
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(expectedAgentAmount);
-      expect(await usdc.balanceOf(owner.address)).to.equal(expectedFee);
-    });
-  });
-
-  // ─── IdentityRegistry Routing ─────────────────────────────────────────────
-  // Verifies that the router always fetches the agent wallet from the registry at call time
-
-  describe("IdentityRegistry routing", function () {
-    it("Should route payment to the wallet registered in the IdentityRegistry, not a hardcoded address", async function () {
-      // Overrides agentId=1 to point to thirdParty instead of agent.address
-      // The only way this test passes is if the router queries the registry at payment time
-      const [, , , thirdParty] = await ethers.getSigners();
-
-      await mockRegistry.registerAgent(AGENT_ID, thirdParty.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee;
-
-      expect(await usdc.balanceOf(thirdParty.address)).to.equal(expectedAgentAmount);
-      expect(await usdc.balanceOf(agent.address)).to.equal(0n);
-    });
-
-    it("Should route payments to the correct wallet when paying two different agents", async function () {
-      // Verifies the router does not mix up wallets between different agent IDs
-      // If there were any caching or state bug, one agent would receive the other's payment
-      const AGENT_ID_2 = 2n;
-      const [, , , secondAgent] = await ethers.getSigners();
-
-      await mockRegistry.registerAgent(AGENT_ID_2, secondAgent.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT * 2n);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID_2, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee;
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(expectedAgentAmount);
-      expect(await usdc.balanceOf(secondAgent.address)).to.equal(expectedAgentAmount);
-    });
-
-    it("Should route correctly to an agent registered after the router was deployed", async function () {
-      // Verifies the router queries the registry dynamically at payment time, not at deploy time
-      // A new agent registered after deploy must be payable without redeploying the router
-      const AGENT_ID_3 = 3n;
-      const [, , , , , lateAgent] = await ethers.getSigners();
-
-      await mockRegistry.registerAgent(AGENT_ID_3, lateAgent.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID_3, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee;
-
-      expect(await usdc.balanceOf(lateAgent.address)).to.equal(expectedAgentAmount);
-    });
-
-    it("Should correctly accumulate balances after multiple payments to the same agent", async function () {
-      // Verifies there is no internal state that resets or corrupts between consecutive calls
-      // Both payments use the same approval (approved 2x the amount upfront)
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-      const platformBalanceBefore = await usdc.balanceOf(owner.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT * 2n);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee;
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + expectedAgentAmount * 2n);
-      expect(await usdc.balanceOf(owner.address)).to.equal(platformBalanceBefore + expectedFee * 2n);
-      expect(await usdc.balanceOf(client.address)).to.equal(ethers.parseUnits("1000", 6) - PAYMENT_AMOUNT * 2n);
-    });
-
-    it("Should correctly accumulate balances when multiple clients pay the same agent", async function () {
-      // Verifies the router handles concurrent clients without mixing balances
-      // Both clients fund independently via the faucet and pay separately
-      const [, , , secondClient] = await ethers.getSigners();
-
-      await faucet.connect(secondClient).requestTokens();
-
-      const agentBalanceBefore = await usdc.balanceOf(agent.address);
-
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-      await usdc.connect(secondClient).approve(await router.getAddress(), PAYMENT_AMOUNT);
-
-      await router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-      await router.connect(secondClient).payAgent(AGENT_ID, PAYMENT_AMOUNT);
-
-      const expectedFee = (PAYMENT_AMOUNT * FEE_BPS) / 10000n;
-      const expectedAgentAmount = PAYMENT_AMOUNT - expectedFee;
-
-      expect(await usdc.balanceOf(agent.address)).to.equal(agentBalanceBefore + expectedAgentAmount * 2n);
-    });
-  });
-
-  // ─── Event ────────────────────────────────────────────────────────────────
-  // Verifies that the PaymentRouted event is emitted correctly for the x402 middleware
-
-  describe("Event", function () {
-    it("Should emit PaymentRouted event with correct args (critical for x402 middleware)", async function () {
-      // The x402 middleware listens for this event to confirm payment on-chain
-      // All three args must match exactly: client address, agent ID, and full payment amount
-      await usdc.connect(client).approve(await router.getAddress(), PAYMENT_AMOUNT);
-
-      await expect(router.connect(client).payAgent(AGENT_ID, PAYMENT_AMOUNT))
-        .to.emit(router, "PaymentRouted")
-        .withArgs(client.address, AGENT_ID, PAYMENT_AMOUNT);
+    it("Should revert with ZeroAddress if treasury is address(0)", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      await expect(
+        RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, FEE_BPS, ethers.ZeroAddress),
+      ).to.be.revertedWithCustomError(router, "ZeroAddress");
     });
   });
 });

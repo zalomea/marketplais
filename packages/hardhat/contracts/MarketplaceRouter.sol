@@ -17,6 +17,7 @@ contract MarketplaceRouter {
     address public treasury; // The address that will hold the funds. By using a different one we decentralize the power of the contract so if someone manages to take control of the owner he doesn´t steal the funds. //
 
     mapping(uint256 => uint256) public agentBalances; // This is to keep track of the balance of each agent, this way we can make sure that the agent has enough balance to cover the payments and fees. //
+    uint256 public totalAgentLiabilities; // Tracks global debt owed to agents. Fee withdrawal sweeps the entire contract balance minus this liability, preventing trapped funds while securing agent earnings.
     mapping(bytes32 => bool) public proccessesNonces; // This is to keep track of the nonces that have been proccessed, this way we can prevent replay attacks.
 
     error AgentNotActive();
@@ -24,6 +25,7 @@ contract MarketplaceRouter {
     error NoFeesToWithdraw();
     error ZeroAddress();
     error ZeroPrice();
+    error InsufficientAmount();
     error FeeTooHigh();
     error SameOwner();
     error SameFeeBps();
@@ -57,13 +59,15 @@ contract MarketplaceRouter {
     }
 
     function withdrawFees() external onlyOwner {
-        uint256 feesToWithdraw = token.balanceOf(address(this));
+        // Calculate the available balance to sweep to the treasury.
+        // This is the total contract balance minus the total amount owed to agents.
+        uint256 available = token.balanceOf(address(this)) - totalAgentLiabilities;
         // slither-disable-next-line incorrect-equality
-        if (feesToWithdraw == 0) revert NoFeesToWithdraw();
+        if (available == 0) revert NoFeesToWithdraw();
 
-        emit FeesWithdrawn(feesToWithdraw, block.timestamp);
+        emit FeesWithdrawn(available, block.timestamp);
 
-        bool success = token.transfer(treasury, feesToWithdraw);
+        bool success = token.transfer(treasury, available);
         if (!success) revert TransferFailed();
     }
 
@@ -81,6 +85,7 @@ contract MarketplaceRouter {
         if (receipient == address(0)) revert ZeroAddress();
 
         agentBalances[agentId] = 0; // Set the agent balance to 0 before the transfer to prevent reentrancy attacks.
+        totalAgentLiabilities -= amountToTransfer; // Deduct from global liabilities as the agent has withdrawn their earnings.
         emit FeesWithdrawn(amountToTransfer, block.timestamp);
         
         bool success = token.transfer(receipient, amountToTransfer);
@@ -125,11 +130,13 @@ contract MarketplaceRouter {
         bytes32 nonce,
         bytes calldata signature
     ) external onlyOwner {
-        if (proccessesNonces[nonce]) revert TransferFailed(); // This is to prevent replay attacks, if the nonce has been proccessed it cannot be used again. //
+        if (proccessesNonces[nonce]) revert TransferFailed(); // This is to prevent replay attacks; if the nonce has been processed, it cannot be used again.
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (!agent.active) revert AgentNotActive();
-        if (amount < agent.price) revert TransferFailed(); // The amount sent by the client has to be at least the price of the agent. //
+        // Exact amount matching (price + fee) is validated off-chain by the backend facilitator.
+        // Contract only enforces that the agent's base price is fully covered.
+        if (amount < agent.price) revert InsufficientAmount(); // The amount sent by the client has to be at least the price of the agent.
         proccessesNonces[nonce] = true; // Mark the nonce as processed to prevent replay attacks.
 
         if (signature.length != 65) revert InvalidAuthorization();
@@ -149,6 +156,7 @@ contract MarketplaceRouter {
         }
 
         agentBalances[agentId] += agent.price;
+        totalAgentLiabilities += agent.price; // Add agent's price to total liabilities.
         emit PaymentRouted(client, agentId, amount);
 
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);

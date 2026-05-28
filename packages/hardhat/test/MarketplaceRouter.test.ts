@@ -463,26 +463,23 @@ describe("MarketplaceRouter", function () {
       expect(await usdc.balanceOf(routerAddress)).to.equal(0n);
     });
 
-    // KNOWN ISSUE: withdrawFees() drains agent earnings if called before withdrawAgentEarnings().
-    // The contract has no separate accounting for fees vs agent balances — withdrawFees() uses
-    // token.balanceOf(address(this)) which includes agentBalances. If the owner calls
-    // withdrawFees() before agents withdraw, agent funds are permanently lost.
-    // Mitigated in production by the Safe multisig (issue #20) which requires quorum.
-    // Permanent fix: introduce a dedicated accumulatedFees variable in the contract.
-    // Uncomment this test when the contract is fixed — it should FAIL until then.
-    //
-    // it("withdrawFees() drains agent earnings if called before withdrawAgentEarnings()", async function () {
-    //   await processPayment();
-    //
-    //   // Owner withdraws everything — including the 100 USDC owed to the agent
-    //   await router.connect(owner).withdrawFees();
-    //
-    //   // Agent balance mapping still shows 100 USDC but the contract has no funds left
-    //   expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
-    //
-    //   // USDC reverts with its own message, not the router's custom error
-    //   await expect(router.withdrawAgentEarnings(agentId)).to.be.reverted;
-    // });
+    // Previously withdrawFees() would drain agent earnings if called before withdrawAgentEarnings()
+    // because the contract used balanceOf(address(this)) without separate accounting.
+    // Fixed in b78208b by introducing totalAgentLiabilities to track agent funds separately.
+    it("Should NOT drain agent earnings when withdrawFees() is called before withdrawAgentEarnings()", async function () {
+      await processPayment();
+
+      // Owner withdraws fees first — should only take the platform fee, not agent funds
+      await router.connect(owner).withdrawFees();
+
+      // Agent balance mapping must still show the full earnings
+      expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
+
+      // Agent must still be able to withdraw their earnings successfully
+      const agentOwnerBefore = await usdc.balanceOf(agentOwner.address);
+      await router.withdrawAgentEarnings(agentId);
+      expect(await usdc.balanceOf(agentOwner.address)).to.equal(agentOwnerBefore + AGENT_PRICE);
+    });
   });
 
   // ─── updateFeeBps ────────────────────────────────────────────────────────────

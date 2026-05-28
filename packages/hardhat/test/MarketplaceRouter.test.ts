@@ -35,6 +35,7 @@ async function buildTransferAuthorization(
   value: bigint,
   validUntil: number,
   nonce: string,
+  validAfter: number = 0,
 ): Promise<{ v: number; r: string; s: string }> {
   const domain = {
     name: "USD Coin",
@@ -59,7 +60,7 @@ async function buildTransferAuthorization(
     from: signer.address,
     to,
     value,
-    validAfter: 0,
+    validAfter,
     validBefore: validUntil,
     nonce,
   };
@@ -311,6 +312,36 @@ describe("MarketplaceRouter", function () {
       expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
       expect(await router.agentBalances(agentId2)).to.equal(AGENT_PRICE);
       expect(await usdc.balanceOf(routerAddress)).to.equal(TOTAL_PAYMENT * 2n);
+    });
+
+    it("Should process payment with 1 wei price (truncation check)", async function () {
+      // Tests Solidity division truncation with extreme low values (1 wei)
+      // to ensure the contract doesn't revert when handling minimal values.
+      const lowPrice = 1n;
+      const lowAgentUri = "ipfs://LowPriceAgent";
+
+      const tx = await agentMarketplace.connect(agentOwner).register(lowPrice, lowAgentUri, false);
+      const receipt = await tx.wait();
+      const event = receipt?.logs
+        .map((log: any) => {
+          try {
+            return agentMarketplace.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e?.name === "AgentRegistered");
+      const lowAgentId = event?.args.agentId;
+
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, lowPrice, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, lowAgentId, lowPrice, validUntil, nonce, sig),
+      ).to.not.be.reverted;
     });
   });
 
@@ -578,17 +609,42 @@ describe("MarketplaceRouter", function () {
       ).to.be.revertedWithCustomError(router, "AgentNotActive");
     });
 
-    it("Should revert with TransferFailed if amount is less than agent price", async function () {
+    it("Should revert with InsufficientAmount if amount is less than agent price", async function () {
       // One wei below the agent price — the router should reject this
       const belowPrice = AGENT_PRICE - 1n;
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, belowPrice, validUntil, nonce);
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, belowPrice, validUntil, nonce, 0);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
         router.connect(owner).processAgentPayment(client.address, agentId, belowPrice, validUntil, nonce, sig),
-      ).to.be.revertedWithCustomError(router, "TransferFailed");
+      ).to.be.revertedWithCustomError(router, "InsufficientAmount");
+    });
+
+    it("Should revert if validAfter is in the future", async function () {
+      // Verifies that authorizations with a validAfter timestamp in the future
+      // are strictly rejected by the USDC contract to prevent processing signatures
+      // that are not yet active or "frozen".
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const futureValidAfter = (await getBlockTimestamp()) + 3600; // 1 hour in the future
+
+      // Sign with a future validAfter
+      const { v, r, s } = await buildTransferAuthorization(
+        client,
+        routerAddress,
+        TOTAL_PAYMENT,
+        validUntil,
+        nonce,
+        futureValidAfter,
+      );
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      // Contract hardcodes '0' as validAfter, mismatching the signature digest
+      await expect(
+        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.reverted;
     });
 
     it("Should revert with InvalidAuthorization if signature length is not 65 bytes", async function () {
@@ -760,10 +816,7 @@ describe("MarketplaceRouter", function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       await expect(
         RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, 1001n, treasury.address),
-      ).to.be.revertedWithCustomError(
-        await RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, 1000n, treasury.address),
-        "FeeTooHigh",
-      );
+      ).to.be.revertedWithCustomError(router, "FeeTooHigh");
     });
 
     it("Should deploy successfully with feeBps at the maximum limit (1000)", async function () {
@@ -794,10 +847,7 @@ describe("MarketplaceRouter", function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       await expect(
         RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, FEE_BPS, ethers.ZeroAddress),
-      ).to.be.revertedWithCustomError(
-        await RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, 1000n, treasury.address),
-        "ZeroAddress",
-      );
+      ).to.be.revertedWithCustomError(router, "ZeroAddress");
     });
   });
 });

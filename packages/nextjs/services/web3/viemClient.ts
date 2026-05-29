@@ -1,11 +1,35 @@
 import { createPublicClient, http } from "viem";
-import { base } from "viem/chains";
+import scaffoldConfig from "~~/scaffold.config";
+import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth";
 
-// Read-only client connected to Base mainnet, used server-side to verify on-chain payments.
-// Falls back to the public Base RPC if BASE_RPC_URL is not set (not recommended for production).
+// Read-only client connected to the active target network, used server-side to verify on-chain payments.
+const targetNetwork = scaffoldConfig.targetNetworks[0];
+
+// Resolves the RPC URL dynamically using existing configurations:
+// 1. RPC_URL environment variable if set.
+// 2. Custom RPC override from scaffold.config.ts if configured for this chain.
+// 3. NEXT_PUBLIC_RPC_URL environment variable for local hardhat network.
+// 4. Alchemy URL built using NEXT_PUBLIC_ALCHEMY_API_KEY.
+// 5. Fallback to the default public RPC for the active target network.
+const getRpcUrl = () => {
+  if (process.env.RPC_URL) return process.env.RPC_URL;
+
+  const override = (scaffoldConfig.rpcOverrides as Record<number, string>)?.[targetNetwork.id];
+  if (override) return override;
+
+  if (targetNetwork.id === 31337 && process.env.NEXT_PUBLIC_RPC_URL) {
+    return process.env.NEXT_PUBLIC_RPC_URL;
+  }
+
+  const alchemyUrl = getAlchemyHttpUrl(targetNetwork.id);
+  if (alchemyUrl) return alchemyUrl;
+
+  return undefined;
+};
+
 export const publicClient = createPublicClient({
-  chain: base,
-  transport: http(process.env.BASE_RPC_URL),
+  chain: targetNetwork,
+  transport: http(getRpcUrl()),
 });
 
 /** Returns the raw transaction data (sender, recipient, input data, etc.) for a given hash. */

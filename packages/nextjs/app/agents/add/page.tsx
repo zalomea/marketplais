@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
 type ServiceType = "web" | "A2A" | "MCP" | "OASF" | "ENS" | "DID" | "email";
 
@@ -25,7 +27,10 @@ interface WizardState {
 }
 
 export default function AddAgentPage() {
+  const { writeContractAsync } = useScaffoldWriteContract({ contractName: "AgentMarketplace" });
   const [activeTab, setActiveTab] = useState<"new" | "existing">("new");
+  // Local pending flag for new agent form
+  const [pendingNew, setPendingNew] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
 
   // Tab 1: New Agent with agentURI
@@ -33,7 +38,6 @@ export default function AddAgentPage() {
   const [agentURI, setAgentURI] = useState("");
   const [agentJSON, setAgentJSON] = useState("");
   const [message, setMessage] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
   // Wizard state
   const [wizard, setWizard] = useState<WizardState>({
@@ -55,11 +59,12 @@ export default function AddAgentPage() {
 
   // Tab 2: Existing Agent with agentID
   const [agentID, setAgentID] = useState("");
+  // Local pending flag for existing form to avoid double submissions
+  const [pendingExisting, setPendingExisting] = useState(false);
   const [priceExisting, setPriceExisting] = useState("");
   const [messageExisting, setMessageExisting] = useState("");
-  const [submittedExisting, setSubmittedExisting] = useState(false);
 
-  const onSubmitNew = (e: React.FormEvent) => {
+  const onSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!price || Number(price) <= 0) {
       setMessage("Please enter a valid price");
@@ -70,22 +75,59 @@ export default function AddAgentPage() {
       return;
     }
     setMessage("");
-    setSubmitted(true);
+
+    setPendingNew(true);
+    try {
+      const result = await writeContractAsync({
+        functionName: "register",
+        args: [BigInt(price), agentURI, false],
+      });
+      notification.success("Agent registered with ID: " + result);
+      // Reset form fields after success
+      setPrice("");
+      setAgentURI("");
+      setAgentJSON("");
+    } catch (err) {
+      const msg = getParsedError(err);
+      notification.error(msg);
+    } finally {
+      setPendingNew(false);
+    }
     console.log({ price, agentURI });
   };
 
-  const onSubmitExisting = (e: React.FormEvent) => {
+  const onSubmitExisting = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Prevent double submissions
+    if (pendingExisting) return;
     if (!priceExisting || Number(priceExisting) <= 0) {
       setMessageExisting("Please enter a valid price");
       return;
     }
-    if (!agentID.trim()) {
-      setMessageExisting("Please enter an agentID");
+    if (!agentID || Number(agentID) <= 0) {
+      setMessageExisting("Please enter a valid agent ID");
       return;
     }
     setMessageExisting("");
-    setSubmittedExisting(true);
+
+    setPendingExisting(true);
+    try {
+      const result = await writeContractAsync({
+        functionName: "register",
+        args: [BigInt(priceExisting), BigInt(agentID), false],
+      });
+      notification.success("Existing agent registered with ID: " + result);
+      // Reset form fields after success
+      setPriceExisting("");
+      setAgentID("");
+
+      setMessageExisting("");
+    } catch (err) {
+      const msg = getParsedError(err);
+      notification.error(msg);
+    } finally {
+      setPendingExisting(false);
+    }
     console.log({ agentID, priceExisting });
   };
 
@@ -228,7 +270,6 @@ export default function AddAgentPage() {
               onClick={() => {
                 setActiveTab("new");
                 setMessageExisting("");
-                setSubmittedExisting(false);
               }}
             >
               Create New Agent
@@ -238,7 +279,6 @@ export default function AddAgentPage() {
               onClick={() => {
                 setActiveTab("existing");
                 setMessage("");
-                setSubmitted(false);
               }}
             >
               Register Existing Agent
@@ -305,14 +345,9 @@ export default function AddAgentPage() {
               </div>
 
               {message && <div className="text-error">{message}</div>}
-
-              {submitted && (
-                <div className="text-success">Entry ready (frontend-only): {JSON.stringify({ price, agentURI })}</div>
-              )}
-
               <div className="card-actions justify-end">
-                <button type="submit" className="btn btn-primary">
-                  Submit
+                <button type="submit" className="btn btn-primary" disabled={pendingNew}>
+                  {pendingNew ? "Loading..." : "Submit"}
                 </button>
               </div>
             </form>
@@ -341,25 +376,19 @@ export default function AddAgentPage() {
                   <span className="label-text">agentID (from IdentityRegistry)</span>
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   value={agentID}
                   onChange={e => setAgentID(e.target.value)}
                   className="input input-bordered w-full"
-                  placeholder="e.g. 0x1234567890abcdef..."
+                  placeholder="e.g. 12345"
                 />
               </div>
 
               {messageExisting && <div className="text-error">{messageExisting}</div>}
 
-              {submittedExisting && (
-                <div className="text-success">
-                  Entry ready (frontend-only): {JSON.stringify({ agentID, priceExisting })}
-                </div>
-              )}
-
               <div className="card-actions justify-end">
-                <button type="submit" className="btn btn-primary">
-                  Submit
+                <button type="submit" className="btn btn-primary" disabled={pendingExisting}>
+                  {pendingExisting ? "Loading..." : "Submit"}
                 </button>
               </div>
             </form>

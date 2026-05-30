@@ -1,9 +1,15 @@
 import { parseEventLogs } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
+import scaffoldConfig from "~~/scaffold.config";
 import { getTransactionReceipt } from "~~/services/web3/viemClient";
 
-// MarketplaceRouter address from the deployed contracts on the local hardhat network (chainId 31337).
-const MARKETPLACE_ROUTER_ADDRESS = deployedContracts[31337].MarketplaceRouter.address.toLowerCase();
+// MarketplaceRouter address resolved dynamically from the active target network.
+const chainId = scaffoldConfig.targetNetworks[0].id as keyof typeof deployedContracts;
+const MARKETPLACE_ROUTER_ADDRESS = deployedContracts[chainId]?.MarketplaceRouter?.address?.toLowerCase();
+
+if (!MARKETPLACE_ROUTER_ADDRESS) {
+  throw new Error(`MarketplaceRouter not deployed on chain ${chainId}`);
+}
 
 // Minimal ABI for the PaymentRouted event, used to decode the logs from the receipt.
 // event PaymentRouted(address indexed client, uint256 indexed agentId, uint256 amount)
@@ -78,10 +84,10 @@ export async function verifyPayment(
     throw new PaymentVerificationError("No PaymentRouted event found in transaction", 402);
   }
 
-  const event = logs[0];
+  // Find the event that matches the expected agentId — handles batch transactions with multiple events.
+  const event = logs.find(log => log.args.agentId.toString() === agentId.toString());
 
-  // Reject if the agentId in the event does not match the expected agentId.
-  if (event.args.agentId.toString() !== agentId.toString()) {
+  if (!event) {
     throw new PaymentVerificationError("AgentId mismatch", 402);
   }
 

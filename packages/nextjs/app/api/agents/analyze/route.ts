@@ -5,8 +5,12 @@ import Groq from "groq-sdk";
 | LLM Provider (Groq)
 */
 
+if (!process.env.GROQ_API_KEY) {
+  throw new Error("GROQ_API_KEY environment variable is not set");
+}
+
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY!,
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 /*
@@ -32,6 +36,10 @@ export async function POST(req: NextRequest) {
 
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
+    }
+
+    if (prompt.length > 8000) {
+      return NextResponse.json({ error: "prompt exceeds maximum length of 8000 characters" }, { status: 400 });
     }
 
     /*
@@ -99,7 +107,12 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("[analyze] error:", error instanceof Error ? error.message : "unknown error");
+
+    if (error instanceof Groq.APIError) {
+      const status = error.status === 429 ? 429 : error.status === 400 ? 400 : 500;
+      return NextResponse.json({ error: error.message }, { status });
+    }
 
     return NextResponse.json(
       {

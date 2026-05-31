@@ -260,13 +260,14 @@ describe("MarketplaceRouter", function () {
       const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
-      await expect(
-        router
-          .connect(owner)
-          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
-      )
-        .to.emit(router, "PaymentRouted")
-        .withArgs(client.address, agentId, TOTAL_PAYMENT);
+      // Execute payment and check both PaymentRouted and Reputation attestation events
+      const tx = await router
+        .connect(owner)
+        .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await expect(tx).to.emit(router, "PaymentRouted").withArgs(client.address, agentId, TOTAL_PAYMENT);
+      await expect(tx)
+        .to.emit(mockReputation, "FeedbackGiven")
+        .withArgs(agentId, 100, ethers.ZeroHash, ethers.ZeroHash, "", ethers.ZeroHash, "0x");
     });
 
     it("Should accumulate correctly after two payments to the same agent", async function () {

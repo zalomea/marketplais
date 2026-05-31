@@ -267,7 +267,18 @@ describe("MarketplaceRouter", function () {
       await expect(tx).to.emit(router, "PaymentRouted").withArgs(client.address, agentId, TOTAL_PAYMENT);
       await expect(tx)
         .to.emit(mockReputation, "FeedbackGiven")
-        .withArgs(agentId, 100, ethers.ZeroHash, ethers.ZeroHash, "", ethers.ZeroHash, "0x");
+        .withArgs(
+          agentId,
+          100,
+          ethers.keccak256(ethers.toUtf8Bytes("EXECUTION_PROOF")),
+          ethers.ZeroHash,
+          "x402 Paid Execution",
+          nonce,
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            ["address", "uint256", "bytes"],
+            [client.address, TOTAL_PAYMENT, nonce],
+          ),
+        );
     });
 
     it("Should accumulate correctly after two payments to the same agent", async function () {

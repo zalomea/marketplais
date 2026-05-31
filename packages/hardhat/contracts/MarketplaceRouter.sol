@@ -170,7 +170,17 @@ contract MarketplaceRouter {
 
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
 
-        // Submit attestation to ReputationRegistry for successful execution
-        reputationRegistry.giveFeedback(agentId, 100, bytes32(0), bytes32(0), "", bytes32(0), bytes(""));
+        // Prepare payment proof data for attestation
+        bytes32 category = keccak256("EXECUTION_PROOF");
+        bytes memory economicProof = abi.encode(client, amount, nonce);
+        reputationRegistry.giveFeedback(
+            agentId,
+            100,
+            category,
+            bytes32(0),
+            "x402 Paid Execution",
+            nonce,
+            economicProof
+        );
     }
 }

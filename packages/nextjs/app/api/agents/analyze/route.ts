@@ -5,14 +5,6 @@ import Groq from "groq-sdk";
 | LLM Provider (Groq)
 */
 
-if (!process.env.GROQ_API_KEY) {
-  throw new Error("GROQ_API_KEY environment variable is not set");
-}
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 /*
 | TEMPORARY PRICING (NO ESTIMATION YET)
 
@@ -29,6 +21,13 @@ const DEFAULT_AGENT_PRICE_MICRO_USDC = 20_000; // 0.02 USDC
 */
 
 export async function POST(req: NextRequest) {
+  // Validate API key before using Groq
+  if (!process.env.GROQ_API_KEY) {
+    console.error("GROQ_API_KEY not set – cannot call LLM");
+    return NextResponse.json({ error: "GROQ_API_KEY not set" }, { status: 500 });
+  }
+  // Initialize Groq client now that we know the key exists
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   try {
     const body = await req.json();
 

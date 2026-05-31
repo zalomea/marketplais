@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
-import {IAgentMarketplace} from "./interfaces/IAgentMarketplace.sol";
-import {IUSDC} from "./interfaces/IUSDC.sol";
+import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
+import { IAgentMarketplace } from "./interfaces/IAgentMarketplace.sol";
+import { IUSDC } from "./interfaces/IUSDC.sol";
+import { IReputationRegistry } from "./interfaces/IReputationRegistry.sol";
 
 contract MarketplaceRouter {
     address public owner;
     IAgentMarketplace public immutable agentMarketplace;
+    IReputationRegistry public immutable reputationRegistry;
     IUSDC public immutable token;
 
     uint256 public feeBps; //will be the fee amount in basis points , meaning 1% = 100 or 15% = 1500//
@@ -44,7 +46,13 @@ contract MarketplaceRouter {
         _;
     }
 
-    constructor(address _agentMarketplace, address _token, uint256 _feeBps, address _treasury) {
+    constructor(
+        address _agentMarketplace,
+        address _reputationRegistry,
+        address _token,
+        uint256 _feeBps,
+        address _treasury
+    ) {
         if (_treasury == address(0)) revert ZeroAddress();
         if (_agentMarketplace == address(0)) revert ZeroAddress();
         if (_token == address(0)) revert ZeroAddress();
@@ -52,6 +60,7 @@ contract MarketplaceRouter {
         if (_feeBps > 1000) revert FeeTooHigh();
         treasury = _treasury;
         agentMarketplace = IAgentMarketplace(_agentMarketplace);
+        reputationRegistry = IReputationRegistry(_reputationRegistry);
         token = IUSDC(_token);
         //it is possible for the deployer to use 0 fees
         feeBps = _feeBps;
@@ -78,7 +87,7 @@ contract MarketplaceRouter {
 
         uint256 amountToTransfer = agentBalances[agentId];
         address receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).ownerOf(agentId);
-        
+
         if (agent.payToAgentWallet) {
             receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).getAgentWallet(agentId);
         }
@@ -87,7 +96,7 @@ contract MarketplaceRouter {
         agentBalances[agentId] = 0; // Set the agent balance to 0 before the transfer to prevent reentrancy attacks.
         totalAgentLiabilities -= amountToTransfer; // Deduct from global liabilities as the agent has withdrawn their earnings.
         emit FeesWithdrawn(amountToTransfer, block.timestamp);
-        
+
         bool success = token.transfer(receipient, amountToTransfer);
         if (!success) revert TransferFailed();
     }
@@ -122,7 +131,7 @@ contract MarketplaceRouter {
         feeBps = newFeeBps;
     }
 
-    function processAgentPayment(
+    function processAgentPaymentAndReputation(
         address client,
         uint256 agentId,
         uint256 amount,
@@ -160,5 +169,8 @@ contract MarketplaceRouter {
         emit PaymentRouted(client, agentId, amount);
 
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
+
+        // Submit attestation to ReputationRegistry for successful execution
+        reputationRegistry.giveFeedback(agentId, 100, bytes32(0), bytes32(0), "", bytes32(0), bytes(""));
     }
 }

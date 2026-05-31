@@ -76,9 +76,10 @@ describe("MarketplaceRouter", function () {
   let router: Contract;
   let agentMarketplace: Contract;
   let mockRegistry: Contract;
+  let mockReputation: Contract;
   let usdc: Contract;
 
-  // Router deployer — only address allowed to call processAgentPayment
+  // Router deployer — only address allowed to call processAgentPaymentAndReputation
   let owner: SignerWithAddress;
   // Receives accumulated platform fees on withdrawFees()
   let treasury: SignerWithAddress;
@@ -120,6 +121,11 @@ describe("MarketplaceRouter", function () {
     mockRegistry = await MockRegistryFactory.deploy();
     await mockRegistry.waitForDeployment();
 
+    // Deploy the mock reputation registry to avoid Base mainnet ERC-8004 dependencies
+    const MockReputationFactory = await ethers.getContractFactory("MockReputationRegistry");
+    mockReputation = await MockReputationFactory.deploy();
+    await mockReputation.waitForDeployment();
+
     // Deploy AgentMarketplace pointing to the mock registry
     const AgentMarketplaceFactory = await ethers.getContractFactory("AgentMarketplace");
     agentMarketplace = await AgentMarketplaceFactory.deploy(await mockRegistry.getAddress());
@@ -139,9 +145,15 @@ describe("MarketplaceRouter", function () {
       .find((e: any) => e?.name === "AgentRegistered");
     agentId = event?.args.agentId;
 
-    // Deploy the MarketplaceRouter with the marketplace, USDC token, fee, and treasury
+    // Deploy the MarketplaceRouter with the marketplace, reputation registry, USDC token, fee, and treasury
     const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
-    router = await RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, FEE_BPS, treasury.address);
+    router = await RouterFactory.deploy(
+      await agentMarketplace.getAddress(),
+      await mockReputation.getAddress(),
+      USDC_ADDRESS,
+      FEE_BPS,
+      treasury.address,
+    );
     await router.waitForDeployment();
     routerAddress = await router.getAddress();
   });
@@ -173,7 +185,7 @@ describe("MarketplaceRouter", function () {
 
   /**
    * Builds and submits a complete valid payment flow:
-   * signs an EIP-3009 authorization and calls processAgentPayment as the owner.
+   * signs an EIP-3009 authorization and calls processAgentPaymentAndReputation as the owner.
    * Returns the nonce used so tests can reference it for replay-attack checks.
    */
   async function processPayment(amount: bigint = TOTAL_PAYMENT, customNonce?: string): Promise<string> {
@@ -183,7 +195,9 @@ describe("MarketplaceRouter", function () {
     const { v, r, s } = await buildTransferAuthorization(client, routerAddress, amount, validUntil, nonce);
     const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
-    await router.connect(owner).processAgentPayment(client.address, agentId, amount, validUntil, nonce, sig);
+    await router
+      .connect(owner)
+      .processAgentPaymentAndReputation(client.address, agentId, amount, validUntil, nonce, sig);
     return nonce;
   }
 
@@ -221,9 +235,9 @@ describe("MarketplaceRouter", function () {
     });
   });
 
-  // ─── processAgentPayment ─────────────────────────────────────────────────────
+  // ─── processAgentPaymentAndReputation ─────────────────────────────────────────────────────
 
-  describe("processAgentPayment()", function () {
+  describe("processAgentPaymentAndReputation()", function () {
     it("Should accumulate the agent earnings correctly after one payment", async function () {
       await processPayment();
       expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
@@ -247,7 +261,9 @@ describe("MarketplaceRouter", function () {
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       )
         .to.emit(router, "PaymentRouted")
         .withArgs(client.address, agentId, TOTAL_PAYMENT);
@@ -307,7 +323,9 @@ describe("MarketplaceRouter", function () {
       const validUntil = (await getBlockTimestamp()) + 86400;
       const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
-      await router.connect(owner).processAgentPayment(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await router
+        .connect(owner)
+        .processAgentPaymentAndReputation(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
 
       expect(await router.agentBalances(agentId)).to.equal(AGENT_PRICE);
       expect(await router.agentBalances(agentId2)).to.equal(AGENT_PRICE);
@@ -340,7 +358,9 @@ describe("MarketplaceRouter", function () {
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
-        router.connect(owner).processAgentPayment(client.address, lowAgentId, lowPrice, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, lowAgentId, lowPrice, validUntil, nonce, sig),
       ).to.not.be.reverted;
     });
   });
@@ -389,7 +409,9 @@ describe("MarketplaceRouter", function () {
       const validUntil = (await getBlockTimestamp()) + 86400;
       const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
-      await router.connect(owner).processAgentPayment(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await router
+        .connect(owner)
+        .processAgentPaymentAndReputation(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
 
       const walletBefore = await usdc.balanceOf(dedicatedWallet.address);
       await router.withdrawAgentEarnings(agentId2);
@@ -449,7 +471,9 @@ describe("MarketplaceRouter", function () {
       const validUntil = (await getBlockTimestamp()) + 86400;
       const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
-      await router.connect(owner).processAgentPayment(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await router
+        .connect(owner)
+        .processAgentPaymentAndReputation(client.address, agentId2, TOTAL_PAYMENT, validUntil, nonce, sig);
 
       // Both agents withdraw first so only platform fees remain in the router
       await router.withdrawAgentEarnings(agentId);
@@ -549,7 +573,7 @@ describe("MarketplaceRouter", function () {
 
   // ─── Failure Cases ───────────────────────────────────────────────────────────
 
-  describe("processAgentPayment() — reverts", function () {
+  describe("processAgentPaymentAndReputation() — reverts", function () {
     it("Should revert with NotOwner if caller is not the owner", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
@@ -558,7 +582,9 @@ describe("MarketplaceRouter", function () {
 
       // client is not the owner — must revert
       await expect(
-        router.connect(client).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+        router
+          .connect(client)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       ).to.be.revertedWithCustomError(router, "NotOwner");
     });
 
@@ -574,7 +600,9 @@ describe("MarketplaceRouter", function () {
 
       // Second payment with the same nonce must fail — USDC rejects replayed authorizations
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       ).to.be.revertedWithCustomError(router, "TransferFailed");
     });
 
@@ -588,7 +616,7 @@ describe("MarketplaceRouter", function () {
       await expect(
         router
           .connect(owner)
-          .processAgentPayment(client.address, nonExistentAgentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+          .processAgentPaymentAndReputation(client.address, nonExistentAgentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       ).to.be.revertedWithCustomError(router, "AgentNotFoundInMarketplace");
     });
 
@@ -602,7 +630,9 @@ describe("MarketplaceRouter", function () {
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       ).to.be.revertedWithCustomError(router, "AgentNotActive");
     });
 
@@ -615,7 +645,9 @@ describe("MarketplaceRouter", function () {
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, belowPrice, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, belowPrice, validUntil, nonce, sig),
       ).to.be.revertedWithCustomError(router, "InsufficientAmount");
     });
 
@@ -640,7 +672,9 @@ describe("MarketplaceRouter", function () {
 
       // Contract hardcodes '0' as validAfter, mismatching the signature digest
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       ).to.be.reverted;
     });
 
@@ -654,7 +688,7 @@ describe("MarketplaceRouter", function () {
       await expect(
         router
           .connect(owner)
-          .processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, invalidSig),
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, invalidSig),
       ).to.be.revertedWithCustomError(router, "InvalidAuthorization");
     });
 
@@ -668,7 +702,9 @@ describe("MarketplaceRouter", function () {
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
       ).to.be.reverted;
     });
 
@@ -681,7 +717,9 @@ describe("MarketplaceRouter", function () {
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
-        router.connect(owner).processAgentPayment(client.address, agentId, TOTAL_PAYMENT, expiredUntil, nonce, sig),
+        router
+          .connect(owner)
+          .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, expiredUntil, nonce, sig),
       ).to.be.reverted;
     });
   });

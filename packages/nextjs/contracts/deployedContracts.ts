@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x4302914124826Fda760b7775E98b89c05647fd39",
+      address: "0x6C26a1075f1F66d173f342773e55bf912297F1C8",
       abi: [
         {
           inputs: [
@@ -57,7 +57,17 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "SameOwner",
+          type: "error",
+        },
+        {
+          inputs: [],
           name: "SamePrice",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "WaitingPeriodNotOver",
           type: "error",
         },
         {
@@ -144,6 +154,31 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "address",
+              name: "oldOwner",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "newOwner",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "time",
+              type: "uint256",
+            },
+          ],
+          name: "OwnerTransferred",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "uint256",
               name: "agentId",
               type: "uint256",
@@ -169,6 +204,26 @@ const deployedContracts = {
           ],
           name: "PriceUpdated",
           type: "event",
+        },
+        {
+          inputs: [],
+          name: "WAITING_PERIOD",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "acceptOwnership",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
         },
         {
           inputs: [
@@ -384,6 +439,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "pendingOwner",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint256",
@@ -400,7 +468,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "_price",
+              name: "price",
               type: "uint256",
             },
             {
@@ -410,7 +478,7 @@ const deployedContracts = {
             },
             {
               internalType: "bool",
-              name: "_payToAgentWallet",
+              name: "payToAgentWallet",
               type: "bool",
             },
           ],
@@ -429,16 +497,29 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "_nftContract",
+              name: "nftContract",
               type: "address",
             },
             {
               internalType: "uint256",
-              name: "_tokenId",
+              name: "tokenId",
               type: "uint256",
             },
           ],
           name: "rescueERC721",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "newOwner",
+              type: "address",
+            },
+          ],
+          name: "transferOwnership",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -461,22 +542,40 @@ const deployedContracts = {
           stateMutability: "nonpayable",
           type: "function",
         },
+        {
+          inputs: [],
+          name: "waitOwnerUntil",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
       ],
       inheritedFunctions: {
         getAgent: "contracts/interfaces/IAgentMarketplace.sol",
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 46176910,
+      deployedOnBlock: 46731038,
     },
     MarketplaceRouter: {
-      address: "0xd9964e3235D18B040228e7D269D8702D13245351",
+      address: "0x22Bd1Fb25Bbb3Fc2D66F54f886Ded7B1697F5893",
       abi: [
         {
           inputs: [
             {
               internalType: "address",
               name: "_agentMarketplace",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "_reputationRegistry",
               type: "address",
             },
             {
@@ -511,6 +610,11 @@ const deployedContracts = {
         {
           inputs: [],
           name: "FeeTooHigh",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "InsufficientAmount",
           type: "error",
         },
         {
@@ -705,6 +809,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "address",
+              name: "newTreasury",
+              type: "address",
+            },
+          ],
+          name: "changeTreasury",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "feeBps",
           outputs: [
@@ -795,9 +912,22 @@ const deployedContracts = {
               type: "bytes",
             },
           ],
-          name: "processAgentPayment",
+          name: "processAgentPaymentAndReputation",
           outputs: [],
           stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "reputationRegistry",
+          outputs: [
+            {
+              internalType: "contract IReputationRegistry",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -805,9 +935,22 @@ const deployedContracts = {
           name: "token",
           outputs: [
             {
-              internalType: "contract IERC20",
+              internalType: "contract IUSDC",
               name: "",
               type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalAgentLiabilities",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -887,10 +1030,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46176912,
+      deployedOnBlock: 46731086,
     },
     USDCFaucet: {
-      address: "0x0a8e573e1DFA72556efcF80b06A2C7804933c6c2",
+      address: "0x2Af09DB6897159Bac32943188bC1BC3Af22908AB",
       abi: [
         {
           inputs: [
@@ -931,7 +1074,7 @@ const deployedContracts = {
           name: "USDC",
           outputs: [
             {
-              internalType: "contract IERC20",
+              internalType: "contract IUSDC",
               name: "",
               type: "address",
             },
@@ -948,7 +1091,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46176824,
+      deployedOnBlock: 46731035,
     },
   },
 } as const;

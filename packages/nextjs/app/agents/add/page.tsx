@@ -82,7 +82,7 @@ export default function AddAgentPage() {
         functionName: "register",
         args: [BigInt(price), agentURI, false],
       });
-      notification.success("Agent registered with ID: " + result);
+      notification.success("Agent registered! tx: " + result);
       // Reset form fields after success
       setPrice("");
       setAgentURI("");

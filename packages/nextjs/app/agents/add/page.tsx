@@ -116,7 +116,7 @@ export default function AddAgentPage() {
         functionName: "register",
         args: [BigInt(priceExisting), BigInt(agentID), false],
       });
-      notification.success("Existing agent registered with ID: " + result);
+      notification.success("Existing agent registered! tx: " + result);
       // Reset form fields after success
       setPriceExisting("");
       setAgentID("");

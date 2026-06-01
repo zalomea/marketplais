@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0xC98F10137cd8111ed2fd20f0a3DF0D14CfA4b5E4",
+      address: "0x6247D3a5c8244775A5F1abE67EA308CB60f8699f",
       abi: [
         {
           inputs: [
@@ -590,10 +590,10 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 46176931,
+      deployedOnBlock: 46731099,
     },
     MarketplaceRouter: {
-      address: "0x7B8c35E1A4C8675511f88541DFD4eE52F0bc8eF1",
+      address: "0xDe1b1e66c7c5f83c29F8a3132dBb30a0453d7389",
       abi: [
         {
           inputs: [
@@ -786,6 +786,19 @@ const deployedContracts = {
           type: "event",
         },
         {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "newRelayer",
+              type: "address",
+            },
+          ],
+          name: "RelayerUpdated",
+          type: "event",
+        },
+        {
           inputs: [],
           name: "WAITING_PERIOD",
           outputs: [
@@ -948,6 +961,19 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "relayer",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "reputationRegistry",
           outputs: [
             {
@@ -957,6 +983,19 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "newRelayer",
+              type: "address",
+            },
+          ],
+          name: "setRelayer",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -1059,10 +1098,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46176933,
+      deployedOnBlock: 46731127,
     },
     USDCFaucet: {
-      address: "0x43BC1E81E446c167f8404F717CF506eCd68a934f",
+      address: "0x2Af09DB6897159Bac32943188bC1BC3Af22908AB",
       abi: [
         {
           inputs: [
@@ -1120,7 +1159,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46176928,
+      deployedOnBlock: 46731035,
     },
   },
 } as const;

@@ -184,9 +184,6 @@ contract MarketplaceRouter {
 
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
 
-        // Prepare payment proof data for attestation (new ERC-8004 signature)
-        bytes memory economicProof = abi.encode(client, amount, nonce);
-        bytes32 proofHash = keccak256(economicProof);
         reputationRegistry.giveFeedback(
             agentId,
             int128(1), // value

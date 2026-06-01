@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
-import {IAgentMarketplace} from "./interfaces/IAgentMarketplace.sol";
-import {IUSDC} from "./interfaces/IUSDC.sol";
+import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
+import { IAgentMarketplace } from "./interfaces/IAgentMarketplace.sol";
+import { IUSDC } from "./interfaces/IUSDC.sol";
 
 contract MarketplaceRouter {
     address public owner;
     IAgentMarketplace public immutable agentMarketplace;
     IUSDC public immutable token;
+    address public relayer; // Relayer address for payment processing
 
     uint256 public feeBps; //will be the fee amount in basis points , meaning 1% = 100 or 15% = 1500//
     uint256 public constant WAITING_PERIOD = 7 days; // Waiting period to transfer ownership.
@@ -38,9 +39,15 @@ contract MarketplaceRouter {
     event FeesWithdrawn(uint256 tokenAmount, uint256 time);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);
+    event RelayerUpdated(address indexed newRelayer);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    modifier onlyRelayer() {
+        if (msg.sender != relayer) revert NotOwner();
         _;
     }
 
@@ -56,6 +63,7 @@ contract MarketplaceRouter {
         //it is possible for the deployer to use 0 fees
         feeBps = _feeBps;
         owner = msg.sender;
+        relayer = msg.sender; // Initialize relayer to owner
     }
 
     function withdrawFees() external onlyOwner {
@@ -78,7 +86,7 @@ contract MarketplaceRouter {
 
         uint256 amountToTransfer = agentBalances[agentId];
         address receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).ownerOf(agentId);
-        
+
         if (agent.payToAgentWallet) {
             receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).getAgentWallet(agentId);
         }
@@ -87,7 +95,7 @@ contract MarketplaceRouter {
         agentBalances[agentId] = 0; // Set the agent balance to 0 before the transfer to prevent reentrancy attacks.
         totalAgentLiabilities -= amountToTransfer; // Deduct from global liabilities as the agent has withdrawn their earnings.
         emit FeesWithdrawn(amountToTransfer, block.timestamp);
-        
+
         bool success = token.transfer(receipient, amountToTransfer);
         if (!success) revert TransferFailed();
     }
@@ -122,6 +130,12 @@ contract MarketplaceRouter {
         feeBps = newFeeBps;
     }
 
+    function setRelayer(address newRelayer) external onlyOwner {
+        if (newRelayer == address(0)) revert ZeroAddress();
+        emit RelayerUpdated(newRelayer);
+        relayer = newRelayer;
+    }
+
     function processAgentPayment(
         address client,
         uint256 agentId,
@@ -129,7 +143,7 @@ contract MarketplaceRouter {
         uint256 validUntil,
         bytes32 nonce,
         bytes calldata signature
-    ) external onlyOwner {
+    ) external onlyRelayer {
         if (proccessesNonces[nonce]) revert TransferFailed(); // This is to prevent replay attacks; if the nonce has been processed, it cannot be used again.
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-import {IIdentityRegistry} from "../interfaces/IIdentityRegistry.sol";
+import { IIdentityRegistry } from "../interfaces/IIdentityRegistry.sol";
 
 /// @dev Minimal mock of the ERC-8004 IdentityRegistry for unit tests.
 /// Implements only the functions called by AgentMarketplace and MarketplaceRouter.

@@ -4,10 +4,12 @@ pragma solidity ^0.8.35;
 import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
 import { IAgentMarketplace } from "./interfaces/IAgentMarketplace.sol";
 import { IUSDC } from "./interfaces/IUSDC.sol";
+import { IReputationRegistry } from "./interfaces/IReputationRegistry.sol";
 
 contract MarketplaceRouter {
     address public owner;
     IAgentMarketplace public immutable agentMarketplace;
+    IReputationRegistry public immutable reputationRegistry;
     IUSDC public immutable token;
     address public relayer; // Relayer address for payment processing
 
@@ -45,13 +47,19 @@ contract MarketplaceRouter {
         if (msg.sender != owner) revert NotOwner();
         _;
     }
-
+    
     modifier onlyRelayer() {
         if (msg.sender != relayer) revert NotOwner();
         _;
     }
 
-    constructor(address _agentMarketplace, address _token, uint256 _feeBps, address _treasury) {
+    constructor(
+        address _agentMarketplace,
+        address _reputationRegistry,
+        address _token,
+        uint256 _feeBps,
+        address _treasury
+    ) {
         if (_treasury == address(0)) revert ZeroAddress();
         if (_agentMarketplace == address(0)) revert ZeroAddress();
         if (_token == address(0)) revert ZeroAddress();
@@ -59,6 +67,7 @@ contract MarketplaceRouter {
         if (_feeBps > 1000) revert FeeTooHigh();
         treasury = _treasury;
         agentMarketplace = IAgentMarketplace(_agentMarketplace);
+        reputationRegistry = IReputationRegistry(_reputationRegistry);
         token = IUSDC(_token);
         //it is possible for the deployer to use 0 fees
         feeBps = _feeBps;
@@ -136,7 +145,7 @@ contract MarketplaceRouter {
         relayer = newRelayer;
     }
 
-    function processAgentPayment(
+    function processAgentPaymentAndReputation(
         address client,
         uint256 agentId,
         uint256 amount,
@@ -174,5 +183,19 @@ contract MarketplaceRouter {
         emit PaymentRouted(client, agentId, amount);
 
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
+
+        // Prepare payment proof data for attestation (new ERC-8004 signature)
+        bytes memory economicProof = abi.encode(client, amount, nonce);
+        bytes32 proofHash = keccak256(economicProof);
+        reputationRegistry.giveFeedback(
+            agentId,
+            int128(1), // value
+            uint8(0), // valueDecimals
+            "EXECUTION_PROOF", // tag1
+            "x402_PAYMENT", // tag2
+            "", // endpoint (optional)
+            "", // feedbackURI (optional)
+            bytes32(0) // feedbackHash
+        );
     }
 }

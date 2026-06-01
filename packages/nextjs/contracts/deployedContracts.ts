@@ -604,6 +604,11 @@ const deployedContracts = {
             },
             {
               internalType: "address",
+              name: "_reputationRegistry",
+              type: "address",
+            },
+            {
+              internalType: "address",
               name: "_token",
               type: "address",
             },
@@ -936,9 +941,22 @@ const deployedContracts = {
               type: "bytes",
             },
           ],
-          name: "processAgentPayment",
+          name: "processAgentPaymentAndReputation",
           outputs: [],
           stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "reputationRegistry",
+          outputs: [
+            {
+              internalType: "contract IReputationRegistry",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
         },
         {

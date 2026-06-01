@@ -4301,6 +4301,7 @@ __metadata:
     eslint-config-next: "npm:~15.2.3"
     eslint-config-prettier: "npm:~10.1.1"
     eslint-plugin-prettier: "npm:~5.2.4"
+    groq-sdk: "npm:^1.2.0"
     kubo-rpc-client: "npm:~5.0.2"
     next: "npm:~15.2.8"
     next-nprogress-bar: "npm:~2.3.13"
@@ -11633,6 +11634,15 @@ __metadata:
   version: 1.4.0
   resolution: "graphemer@npm:1.4.0"
   checksum: 10/6dd60dba97007b21e3a829fab3f771803cc1292977fe610e240ea72afd67e5690ac9eeaafc4a99710e78962e5936ab5a460787c2a1180f1cb0ccfac37d29f897
+  languageName: node
+  linkType: hard
+
+"groq-sdk@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "groq-sdk@npm:1.2.0"
+  bin:
+    groq-sdk: bin/cli
+  checksum: 10/66a608c227d37e926be64600643b5a7297e1e6586437208d6deb6b75558433b68482d6d386da17adbf26f6abe4ce2f2583e3c6b53da58e0796e0045b210b952d
   languageName: node
   linkType: hard
 

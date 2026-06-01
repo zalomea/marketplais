@@ -170,17 +170,18 @@ contract MarketplaceRouter {
 
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
 
-        // Prepare payment proof data for attestation
-        bytes32 category = keccak256("EXECUTION_PROOF");
+        // Prepare payment proof data for attestation (new ERC-8004 signature)
         bytes memory economicProof = abi.encode(client, amount, nonce);
+        bytes32 proofHash = keccak256(economicProof);
         reputationRegistry.giveFeedback(
             agentId,
-            100,
-            category,
-            bytes32(0),
-            "x402 Paid Execution",
-            nonce,
-            economicProof
+            int128(1), // value
+            uint8(0), // valueDecimals
+            "EXECUTION_PROOF", // tag1
+            "x402_PAYMENT", // tag2
+            "", // endpoint (optional)
+            "", // feedbackURI (optional)
+            bytes32(0) // feedbackHash
         );
     }
 }

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x6C26a1075f1F66d173f342773e55bf912297F1C8",
+      address: "0xC98F10137cd8111ed2fd20f0a3DF0D14CfA4b5E4",
       abi: [
         {
           inputs: [
@@ -496,6 +496,35 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint256",
+              name: "price",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "payToAgentWallet",
+              type: "bool",
+            },
+          ],
+          name: "register",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "address",
               name: "nftContract",
               type: "address",
@@ -561,10 +590,10 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 46731038,
+      deployedOnBlock: 46176931,
     },
     MarketplaceRouter: {
-      address: "0x22Bd1Fb25Bbb3Fc2D66F54f886Ded7B1697F5893",
+      address: "0x7B8c35E1A4C8675511f88541DFD4eE52F0bc8eF1",
       abi: [
         {
           inputs: [
@@ -1030,10 +1059,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46731086,
+      deployedOnBlock: 46176933,
     },
     USDCFaucet: {
-      address: "0x2Af09DB6897159Bac32943188bC1BC3Af22908AB",
+      address: "0x43BC1E81E446c167f8404F717CF506eCd68a934f",
       abi: [
         {
           inputs: [
@@ -1091,7 +1120,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46731035,
+      deployedOnBlock: 46176928,
     },
   },
 } as const;

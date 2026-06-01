@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
-import {IAgentMarketplace} from "./interfaces/IAgentMarketplace.sol";
+import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
+import { IAgentMarketplace } from "./interfaces/IAgentMarketplace.sol";
 
 contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     address public owner;
@@ -48,11 +48,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     }
 
     // slither-disable-start reentrancy-benign,reentrancy-events
-    function register(
-        uint256 price,
-        string memory agentURI,
-        bool payToAgentWallet
-    ) external returns (uint256 agentId) {
+    function register(uint256 price, string memory agentURI, bool payToAgentWallet) external returns (uint256 agentId) {
         //cannot be <0 as it is uint and in this version of Solidity it would revert negative inputs as uints
         if (price == 0) revert ZeroPrice();
         if (bytes(agentURI).length == 0) revert EmptyURI();
@@ -70,6 +66,25 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         //As we are the owner currently we have to transfer the ownership to the msg.sender
         identityRegistry.safeTransferFrom(address(this), msg.sender, agentId);
     }
+
+    // Register an existing agent by ID
+    function register(uint256 price, uint256 agentId, bool payToAgentWallet) external returns (uint256) {
+        // Ensure caller owns the agent token
+        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
+        if (price == 0) revert ZeroPrice();
+        // Ensure not already registered
+        if (agents[agentId].agentId != 0) revert AlreadyActive();
+        agents[agentId] = IAgentMarketplace.Agent({
+            agentId: agentId,
+            price: price,
+            payToAgentWallet: payToAgentWallet,
+            active: true
+        });
+        allAgentIds.push(agentId);
+        emit AgentRegistered(agentId, msg.sender, price, payToAgentWallet);
+        return agentId;
+    }
+
     // slither-disable-end reentrancy-benign,reentrancy-events
 
     function deactivateAgent(uint256 agentId) external {

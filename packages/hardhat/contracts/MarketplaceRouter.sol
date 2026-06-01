@@ -11,6 +11,7 @@ contract MarketplaceRouter {
     IAgentMarketplace public immutable agentMarketplace;
     IReputationRegistry public immutable reputationRegistry;
     IUSDC public immutable token;
+    address public relayer; // Relayer address for payment processing
 
     uint256 public feeBps; //will be the fee amount in basis points , meaning 1% = 100 or 15% = 1500//
     uint256 public constant WAITING_PERIOD = 7 days; // Waiting period to transfer ownership.
@@ -40,9 +41,15 @@ contract MarketplaceRouter {
     event FeesWithdrawn(uint256 tokenAmount, uint256 time);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);
+    event RelayerUpdated(address indexed newRelayer);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+    
+    modifier onlyRelayer() {
+        if (msg.sender != relayer) revert NotOwner();
         _;
     }
 
@@ -65,6 +72,7 @@ contract MarketplaceRouter {
         //it is possible for the deployer to use 0 fees
         feeBps = _feeBps;
         owner = msg.sender;
+        relayer = msg.sender; // Initialize relayer to owner
     }
 
     function withdrawFees() external onlyOwner {
@@ -131,6 +139,12 @@ contract MarketplaceRouter {
         feeBps = newFeeBps;
     }
 
+    function setRelayer(address newRelayer) external onlyOwner {
+        if (newRelayer == address(0)) revert ZeroAddress();
+        emit RelayerUpdated(newRelayer);
+        relayer = newRelayer;
+    }
+
     function processAgentPaymentAndReputation(
         address client,
         uint256 agentId,
@@ -138,7 +152,7 @@ contract MarketplaceRouter {
         uint256 validUntil,
         bytes32 nonce,
         bytes calldata signature
-    ) external onlyOwner {
+    ) external onlyRelayer {
         if (proccessesNonces[nonce]) revert TransferFailed(); // This is to prevent replay attacks; if the nonce has been processed, it cannot be used again.
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();

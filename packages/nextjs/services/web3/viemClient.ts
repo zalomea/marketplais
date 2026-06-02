@@ -1,4 +1,5 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import scaffoldConfig from "~~/scaffold.config";
 import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth";
 
@@ -31,6 +32,23 @@ export const publicClient = createPublicClient({
   chain: targetNetwork,
   transport: http(getRpcUrl()),
 });
+
+// Factory (not singleton) so RELAYER_PRIVATE_KEY is read fresh on each request.
+// Dev default: Hardhat account 0 (deployer = owner = relayer). Replace in production.
+export function getRelayerWalletClient() {
+  const pk = process.env.RELAYER_PRIVATE_KEY;
+  if (!pk) throw new Error("RELAYER_PRIVATE_KEY is not set");
+  // FIX 10 — validate format before passing to privateKeyToAccount
+  if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) {
+    throw new Error("RELAYER_PRIVATE_KEY must be a 0x-prefixed 32-byte hex string");
+  }
+  const account = privateKeyToAccount(pk as `0x${string}`);
+  return createWalletClient({
+    account,
+    chain: targetNetwork,
+    transport: http(getRpcUrl()),
+  });
+}
 
 /** Returns the raw transaction data (sender, recipient, input data, etc.) for a given hash. */
 export async function getTransaction(txHash: `0x${string}`) {

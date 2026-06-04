@@ -25,5 +25,13 @@ dist
 # AI Agent config
 .atl/
 
+# Playwright / browser automation artifacts
+.playwright-mcp/
+*.png
+!packages/nextjs/public/*.png
+
+# Local process logs
+*.log
+
 # local environment variables
 .env

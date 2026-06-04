@@ -16,11 +16,17 @@ export const Footer = () => {
             <Link href="/" className="hover:text-white transition">
               Home
             </Link>
-            <Link href="/blockexplorer" className="hover:text-white transition">
+            <Link href="/marketplace" className="hover:text-white transition">
               Marketplace
             </Link>
-            <Link href="/debug" className="hover:text-white transition">
+            <Link href="/publish" className="hover:text-white transition">
               Sell Agent
+            </Link>
+            <Link href="/debug" className="hover:text-white transition">
+              Debug
+            </Link>
+            <Link href="/blockexplorer" className="hover:text-white transition">
+              Explorer
             </Link>
           </div>
         </div>

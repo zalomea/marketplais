@@ -13,13 +13,13 @@ export const IntroSplash = ({ onComplete }: { onComplete: () => void }) => {
 
   useEffect(() => {
     if (visibleChars < title.length) {
-      const timer = setTimeout(() => setVisibleChars(count => count + 1), 190);
+      const timer = setTimeout(() => setVisibleChars(count => count + 1), 40);
       return () => clearTimeout(timer);
     }
 
-    const logoTimer = setTimeout(() => setShowLogo(true), 150);
-    const fadeTimer = setTimeout(() => setFade(true), 900);
-    const completeTimer = setTimeout(() => onComplete(), 1400);
+    const logoTimer = setTimeout(() => setShowLogo(true), 50);
+    const fadeTimer = setTimeout(() => setFade(true), 250);
+    const completeTimer = setTimeout(() => onComplete(), 550);
 
     return () => {
       clearTimeout(logoTimer);
@@ -49,7 +49,7 @@ export const IntroSplash = ({ onComplete }: { onComplete: () => void }) => {
         </div>
 
         <div className="relative z-10 flex h-full w-full items-center justify-center px-6">
-          <div className="flex w-full max-w-5xl flex-col items-center gap-8 rounded-[2rem] border border-slate-200/80 bg-slate-50 p-10 shadow-2xl shadow-slate-200/50 sm:flex-row sm:justify-between">
+          <div className="flex w-full max-w-5xl flex-col items-center gap-8 rounded-none border border-slate-200/80 bg-slate-50 p-10 shadow-2xl shadow-slate-200/50 sm:flex-row sm:justify-between">
             <div className="min-w-[13rem] flex-1">
               <div className="font-mono text-[3rem] leading-none tracking-[0.04em] text-slate-950 sm:text-[4rem]">
                 <span>{displayText}</span>

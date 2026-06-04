@@ -1,0 +1,270 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import type { NextPage } from "next";
+import { useAccount } from "wagmi";
+import { IntroSplash } from "~~/components/IntroSplash";
+import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+
+export const HomePage: NextPage = () => {
+  const { address: connectedAddress } = useAccount();
+  const [showIntro, setShowIntro] = useState(true);
+  const [agentsActive, setAgentsActive] = useState<number[]>([]);
+
+  const { data: totalAgentsCount } = useScaffoldReadContract({
+    contractName: "AgentMarketplace",
+    functionName: "totalAgents",
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hasSeenIntro = sessionStorage.getItem("marketplais_intro_seen");
+      if (hasSeenIntro === "true") {
+        setShowIntro(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showIntro) {
+      const agentTimers = Array.from({ length: 5 }).map((_, i) =>
+        setTimeout(() => {
+          setAgentsActive(prev => [...prev, i]);
+        }, i * 300),
+      );
+      return () => agentTimers.forEach(clearTimeout);
+    }
+  }, [showIntro]);
+
+  const handleIntroComplete = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("marketplais_intro_seen", "true");
+    }
+    setShowIntro(false);
+  }, []);
+
+  if (showIntro) {
+    return <IntroSplash onComplete={handleIntroComplete} />;
+  }
+
+  return (
+    <div className="relative min-h-screen bg-white text-slate-900 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-50" />
+        <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="black" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className={`absolute w-1.5 h-1.5 bg-slate-400 rounded-full opacity-40 transition-all duration-700 ${
+              agentsActive.includes(i) ? "scale-100 shadow-lg shadow-slate-400/50" : "scale-0"
+            }`}
+            style={{
+              left: `${15 + (i % 4) * 20}%`,
+              top: `${20 + Math.floor(i / 4) * 30}%`,
+            }}
+          />
+        ))}
+
+        {agentsActive.length > 0 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            {Array.from({ length: Math.min(agentsActive.length - 1, 3) }).map((_, i) => {
+              const start = i;
+              const end = (i + 1) % Math.min(agentsActive.length, 4);
+              const x1 = 15 + (start % 4) * 20;
+              const y1 = 20 + Math.floor(start / 4) * 30;
+              const x2 = 15 + (end % 4) * 20;
+              const y2 = 20 + Math.floor(end / 4) * 30;
+              return (
+                <line
+                  key={i}
+                  x1={`${x1}%`}
+                  y1={`${y1}%`}
+                  x2={`${x2}%`}
+                  y2={`${y2}%`}
+                  stroke="url(#lineGradient)"
+                  strokeWidth="1"
+                  opacity="0.15"
+                  className="animate-pulse-slow"
+                />
+              );
+            })}
+            <defs>
+              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#64748b" />
+                <stop offset="100%" stopColor="#475569" />
+              </linearGradient>
+            </defs>
+          </svg>
+        )}
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-16 lg:px-8">
+        <div className="grid gap-16 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+          <div className="space-y-10">
+            <div className="inline-flex border border-slate-300 bg-slate-50 px-4 py-1.5 text-xs uppercase tracking-[0.28em] text-slate-600">
+              Enterprise AI marketplace
+            </div>
+            <div className="space-y-6">
+              <h1
+                className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl"
+                style={{ color: "var(--color-base-content)" }}
+              >
+                A sharper agent marketplace for buyers and publishers.
+              </h1>
+              <p className="max-w-2xl text-lg leading-8 text-slate-600">
+                MarketplAIs combines agent registration, USDC billing, and Web3 trust in a polished, professional
+                operator experience.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Link
+                href="/blockexplorer"
+                className="inline-flex h-12 items-center justify-center border border-slate-300 bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Buyer Zone
+              </Link>
+              <Link
+                href="/debug"
+                className="inline-flex h-12 items-center justify-center border border-slate-300 bg-white text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+              >
+                Upload Agent
+              </Link>
+            </div>
+          </div>
+
+          <div className="border border-slate-200 bg-slate-50/40 p-8 rounded-none shadow-sm relative border-t-2 border-t-slate-800">
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm font-mono text-[9px] uppercase tracking-[0.22em] text-slate-500">
+                  Workspace overview // nodes
+                </p>
+                <p className="mt-2 text-2xl font-bold text-slate-900 font-mono tracking-tight uppercase">
+                  Connected node
+                </p>
+              </div>
+
+              <div className="border border-slate-200 bg-white p-5 rounded-none">
+                <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-2">MON // ADDR_HEX</span>
+                <p className="text-xs font-mono font-medium text-slate-900 break-all leading-relaxed">
+                  {connectedAddress ?? "No active connection"}
+                </p>
+              </div>
+
+              <div className="border border-slate-200 bg-white p-5 rounded-none">
+                <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-3">
+                  SYS // LIVE_REGISTRY
+                </span>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                  <span className="font-mono text-xs text-slate-500 uppercase">ACTIVE_DEVICES</span>
+                  <span className="font-mono text-xs font-bold text-slate-900">
+                    {totalAgentsCount !== undefined ? totalAgentsCount.toString() : "0"} UNIT(S)
+                  </span>
+                </div>
+                <div className="space-y-2 font-mono text-[11px]">
+                  {totalAgentsCount !== undefined && totalAgentsCount > 0n ? (
+                    <div className="text-slate-700 bg-slate-50 p-3 border border-slate-100 flex items-center gap-2">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                      </span>
+                      <span>DEVICES LOADED ON-CHAIN</span>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 bg-slate-50/50 p-3 border border-slate-100/50 text-center italic">
+                      [ NO INSTANCES ACTIVE IN REGISTRY ]
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section className="mt-20 space-y-8">
+          <div className="border border-slate-200 bg-white p-8 rounded-none shadow-sm">
+            <div className="grid gap-8 lg:grid-cols-3">
+              <div className="space-y-3">
+                <span className="font-mono text-[9px] tracking-wider text-slate-400 block">SYS // BUY_ZONE</span>
+                <h2 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase border-b border-slate-100 pb-2">
+                  Discover agents
+                </h2>
+                <p className="text-xs leading-6 text-slate-600">
+                  Browse available agents, compare pricing, and license access with a secure marketplace flow.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <span className="font-mono text-[9px] tracking-wider text-slate-400 block">SYS // PUB_ZONE</span>
+                <h2 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase border-b border-slate-100 pb-2">
+                  Register agents
+                </h2>
+                <p className="text-xs leading-6 text-slate-600">
+                  Upload agents, set pricing, and manage identity with the same professional interface.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <span className="font-mono text-[9px] tracking-wider text-slate-400 block">SYS // AUDIT_LOG</span>
+                <h2 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase border-b border-slate-100 pb-2">
+                  Web3 billing
+                </h2>
+                <p className="text-xs leading-6 text-slate-600">
+                  USDC payments and on-chain identities provide enterprise-grade accountability for every request.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="border border-slate-200 bg-slate-50/70 p-8 rounded-none shadow-sm relative overflow-hidden flex flex-col justify-between border-t-2 border-t-slate-800">
+              <div>
+                <span className="font-mono text-[9px] tracking-wider text-slate-500 block mb-2">
+                  SEC // CRYPTO_ATTESTATION
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase">
+                  High-Trust Attestation
+                </h3>
+                <p className="mt-3 text-xs leading-6 text-slate-600">
+                  Integrates cryptographic identity validation and secure EIP-712/EIP-3009 signatures to authorize model
+                  requests and ensure system integrity.
+                </p>
+              </div>
+              <div className="mt-6 border-t border-slate-200/60 pt-3 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span>KEY_EXCHANGE // ECDSA</span>
+                <span className="text-emerald-600 font-bold">SECURE</span>
+              </div>
+            </div>
+
+            <div className="border border-slate-200 bg-slate-50/70 p-8 rounded-none shadow-sm relative overflow-hidden flex flex-col justify-between border-t-2 border-t-slate-800">
+              <div>
+                <span className="font-mono text-[9px] tracking-wider text-slate-500 block mb-2">
+                  SEC // AUDIT_COMPLIANCE
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase">
+                  On-Chain Audit Trail
+                </h3>
+                <p className="mt-3 text-xs leading-6 text-slate-600">
+                  Every agent execution and reputation update is permanently anchored on-chain, providing immutable
+                  compliance logs for enterprise audits.
+                </p>
+              </div>
+              <div className="mt-6 border-t border-slate-200/60 pt-3 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span>LEDGER_SYNC // COMPLETE</span>
+                <span className="text-emerald-600 font-bold">VERIFIED</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default HomePage;

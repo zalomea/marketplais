@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseUnits } from "viem";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
 export const AgentQuestionnaire = () => {
   const [phase, setPhase] = useState<1 | 2 | 3 | 4>(1);
@@ -32,18 +33,24 @@ export const AgentQuestionnaire = () => {
 
   const handleSubmit = async () => {
     setIsLoading(true);
+    const notificationId = notification.loading("Registering agent on-chain...");
     try {
       const priceInWei = parseUnits(price, 6); // USDC has 6 decimals
       await registerAgent({
         functionName: "register",
         args: [priceInWei, agentURI, payToAgentWallet],
       });
+      notification.remove(notificationId);
+      notification.success("Agent registered successfully!");
       // Reset form on success
       setAgentURI("");
       setPrice("");
       setPayToAgentWallet(true);
       setPhase(1);
     } catch (error) {
+      notification.remove(notificationId);
+      const parsedError = getParsedError(error);
+      notification.error(`Failed to register agent: ${parsedError}`);
       console.error("Error registering agent:", error);
     } finally {
       setIsLoading(false);
@@ -60,9 +67,9 @@ export const AgentQuestionnaire = () => {
           <span className="text-sm font-semibold text-slate-700">Step {phase} of 4</span>
           <span className="text-sm text-slate-500">{Math.round(progressPercentage)}%</span>
         </div>
-        <div className="w-full bg-slate-200 rounded-full h-2">
+        <div className="w-full bg-slate-200 rounded-none h-2">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            className="bg-slate-900 h-2 rounded-none transition-all duration-300"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
@@ -76,7 +83,7 @@ export const AgentQuestionnaire = () => {
             <p className="text-slate-600">First, tell us about your agent</p>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-none p-6 space-y-4">
             <label className="block">
               <span className="block text-sm font-semibold text-slate-900 mb-2">Agent URI *</span>
               <p className="text-xs text-slate-600 mb-3">
@@ -87,7 +94,7 @@ export const AgentQuestionnaire = () => {
                 placeholder="https://example.com/agent-metadata.json"
                 value={agentURI}
                 onChange={e => setAgentURI(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
               />
             </label>
           </div>
@@ -102,7 +109,7 @@ export const AgentQuestionnaire = () => {
             <p className="text-slate-600">How much should users pay to access your agent?</p>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-none p-6 space-y-4">
             <label className="block">
               <span className="block text-sm font-semibold text-slate-900 mb-2">Price in USDC *</span>
               <p className="text-xs text-slate-600 mb-3">Enter the cost for accessing your agent</p>
@@ -114,16 +121,16 @@ export const AgentQuestionnaire = () => {
                   onChange={e => setPrice(e.target.value)}
                   step="0.01"
                   min="0"
-                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-none focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
                 />
-                <span className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold flex items-center">
+                <span className="px-4 py-2 bg-white border border-slate-300 rounded-none text-slate-900 font-semibold flex items-center">
                   USDC
                 </span>
               </div>
             </label>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
-              <p>💡 Set a competitive price based on your agents capabilities and market demand.</p>
+            <div className="bg-slate-50 border border-slate-200 rounded-none p-4 text-xs text-slate-600 font-mono">
+              <p>INFO // Set a competitive price based on your agent capabilities and market demand.</p>
             </div>
           </div>
         </div>
@@ -137,9 +144,9 @@ export const AgentQuestionnaire = () => {
             <p className="text-slate-600">Where should payments go?</p>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-none p-6 space-y-4">
             <div className="space-y-3">
-              <label className="flex items-start gap-3 p-4 border border-slate-300 rounded-lg cursor-pointer hover:bg-white transition">
+              <label className="flex items-start gap-3 p-4 border border-slate-300 rounded-none cursor-pointer hover:bg-white transition">
                 <input
                   type="radio"
                   name="payment"
@@ -153,7 +160,7 @@ export const AgentQuestionnaire = () => {
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 p-4 border border-slate-300 rounded-lg cursor-pointer hover:bg-white transition">
+              <label className="flex items-start gap-3 p-4 border border-slate-300 rounded-none cursor-pointer hover:bg-white transition">
                 <input
                   type="radio"
                   name="payment"
@@ -179,7 +186,7 @@ export const AgentQuestionnaire = () => {
             <p className="text-slate-600">Confirm the details before registering</p>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-none p-6 space-y-4">
             <div className="space-y-4">
               <div className="border-b border-slate-200 pb-4">
                 <p className="text-sm font-semibold text-slate-600 mb-1">Agent URI</p>
@@ -195,8 +202,8 @@ export const AgentQuestionnaire = () => {
               </div>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-900">
-              <p className="font-semibold mb-1">✓ Ready to register</p>
+            <div className="bg-green-50 border border-green-200 rounded-none p-4 text-sm text-green-900">
+              <p className="font-semibold mb-1">Ready to register</p>
               <p>Click -Register- Agent to complete the process and list your agent on the marketplace.</p>
             </div>
           </div>
@@ -208,9 +215,9 @@ export const AgentQuestionnaire = () => {
         <button
           onClick={handlePrev}
           disabled={phase === 1}
-          className="px-6 py-2 border border-slate-300 rounded-lg text-slate-900 font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="px-6 py-2 border border-slate-300 rounded-none text-slate-900 font-mono uppercase tracking-wider text-xs font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
-          ← Previous
+          Previous
         </button>
         <div className="flex-1" />
         {phase < 4 ? (
@@ -221,15 +228,15 @@ export const AgentQuestionnaire = () => {
               (phase === 2 && (!price.trim() || isNaN(parseFloat(price)))) ||
               isLoading
             }
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="px-6 py-2 bg-slate-900 text-white rounded-none font-mono uppercase tracking-wider text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            Next →
+            Next
           </button>
         ) : (
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-8 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="px-8 py-2 bg-slate-900 text-white rounded-none font-mono uppercase tracking-wider text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {isLoading ? "Registering..." : "Register Agent"}
           </button>

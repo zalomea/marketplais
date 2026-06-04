@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useWatchBalance } from "@scaffold-ui/hooks";
 import { hardhat } from "viem/chains";
 import { useAccount } from "wagmi";
 import { CurrencyDollarIcon } from "@heroicons/react/24/outline";
@@ -13,11 +12,11 @@ import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 export const FaucetUSDCButton = () => {
   const { address, chain: ConnectedChain } = useAccount();
 
-  const { data: balance } = useWatchBalance({ address, chain: hardhat });
-
   const [loading, setLoading] = useState(false);
 
-  const { writeContractAsync } = useScaffoldWriteContract("USDCFaucet");
+  const { writeContractAsync } = useScaffoldWriteContract({
+    contractName: "USDCFaucet",
+  });
 
   const requestUSDC = async () => {
     if (!address) return;
@@ -38,18 +37,13 @@ export const FaucetUSDCButton = () => {
     return null;
   }
 
-  const isBalanceZero = balance && balance.value === 0n;
-
   return (
-    <div
-      className={
-        !isBalanceZero
-          ? "ml-1"
-          : "ml-1 tooltip tooltip-bottom tooltip-primary tooltip-open font-bold before:left-auto before:transform-none before:content-[attr(data-tip)] before:-translate-x-2/5"
-      }
-      data-tip="Grab USDC from faucet"
-    >
-      <button className="btn btn-secondary btn-sm px-2 rounded-full" onClick={requestUSDC} disabled={loading}>
+    <div className="ml-1 tooltip tooltip-bottom" data-tip="Grab USDC from faucet">
+      <button
+        className="btn btn-sm bg-slate-50 border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 rounded-none shadow-sm"
+        onClick={requestUSDC}
+        disabled={loading}
+      >
         {!loading ? (
           <CurrencyDollarIcon className="h-4 w-4" />
         ) : (

@@ -121,18 +121,27 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         return agent;
     }
 
+    function totalAgents() external view returns (uint256) {
+        return allAgentIds.length;
+    }
+
     function getAgentsPaginated(uint256 page, uint256 count) external view returns (IAgentMarketplace.Agent[] memory) {
         if (page == 0) revert InvalidPage();
         if (count == 0) return new IAgentMarketplace.Agent[](0);
 
-        uint256 totalAgents = allAgentIds.length;
+        uint256 totalAgentsCount = allAgentIds.length;
+        if (totalAgentsCount == 0) {
+            return new IAgentMarketplace.Agent[](0);
+        }
         uint256 startIndex = (page - 1) * count;
 
-        if (startIndex >= totalAgents) revert InvalidPage();
+        if (startIndex >= totalAgentsCount) {
+            return new IAgentMarketplace.Agent[](0);
+        }
 
         uint256 endIndex = startIndex + count;
-        if (endIndex > totalAgents) {
-            endIndex = totalAgents;
+        if (endIndex > totalAgentsCount) {
+            endIndex = totalAgentsCount;
         }
 
         uint256 actualCount = endIndex - startIndex;

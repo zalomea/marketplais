@@ -4,7 +4,7 @@ pragma solidity ^0.8.35;
 import { IReputationRegistry } from "../interfaces/IReputationRegistry.sol";
 
 contract MockReputationRegistry is IReputationRegistry {
-// Updated event matching new ERC‑8004 signature
+    // Updated event matching new ERC‑8004 signature
     event FeedbackGiven(
         uint256 agentId,
         int128 value,

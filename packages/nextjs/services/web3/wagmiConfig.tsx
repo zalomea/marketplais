@@ -1,7 +1,7 @@
 import { wagmiConnectors } from "./wagmiConnectors";
 import { Chain, createClient, fallback, http } from "viem";
 import { hardhat, mainnet } from "viem/chains";
-import { createConfig } from "wagmi";
+import { createConfig, createStorage } from "wagmi";
 import scaffoldConfig, { DEFAULT_ALCHEMY_API_KEY, ScaffoldConfig } from "~~/scaffold.config";
 import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth";
 
@@ -12,10 +12,21 @@ export const enabledChains = targetNetworks.find((network: Chain) => network.id 
   ? targetNetworks
   : ([...targetNetworks, mainnet] as const);
 
+// Use real localStorage only in the browser. On the server (SSR) some Node runtimes (e.g. Node 25)
+// expose a broken experimental `localStorage` global, so we fall back to in-memory storage there.
+const noopStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+
 export const wagmiConfig = createConfig({
   chains: enabledChains,
   connectors: wagmiConnectors(),
   ssr: true,
+  storage: createStorage({
+    storage: typeof window !== "undefined" ? window.localStorage : noopStorage,
+  }),
   client: ({ chain }) => {
     const mainnetFallbackWithDefaultRPC = [http("https://mainnet.rpc.buidlguidl.com")];
     let rpcFallbacks = [...(chain.id === mainnet.id ? mainnetFallbackWithDefaultRPC : []), http()];

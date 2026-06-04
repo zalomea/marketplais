@@ -5,9 +5,11 @@ import { ThemeProvider } from "~~/components/ThemeProvider";
 import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = getMetadata({
-  title: "Scaffold-ETH 2 App",
-  description: "Built with 🏗 Scaffold-ETH 2",
+  title: "MarketplAIs App",
+  description: "Decentralized Autonomous AI Agent Marketplace",
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {

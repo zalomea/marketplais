@@ -12,23 +12,27 @@ export const PaginationButton = ({ currentPage, totalItems, setCurrentPage }: Pa
   const isPrevButtonDisabled = currentPage === 0;
   const isNextButtonDisabled = currentPage + 1 >= Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  const prevButtonClass = isPrevButtonDisabled ? "btn-disabled cursor-default" : "btn-primary";
-  const nextButtonClass = isNextButtonDisabled ? "btn-disabled cursor-default" : "btn-primary";
+  const prevButtonClass = isPrevButtonDisabled
+    ? "bg-slate-200 text-slate-400 cursor-default border-slate-200"
+    : "bg-slate-900 text-white hover:bg-slate-800 border-slate-900";
+  const nextButtonClass = isNextButtonDisabled
+    ? "bg-slate-200 text-slate-400 cursor-default border-slate-200"
+    : "bg-slate-900 text-white hover:bg-slate-800 border-slate-900";
 
   if (isNextButtonDisabled && isPrevButtonDisabled) return null;
 
   return (
-    <div className="mt-5 justify-end flex gap-3 mx-5">
+    <div className="mt-5 justify-end flex gap-3 mx-5 items-center">
       <button
-        className={`btn btn-sm ${prevButtonClass}`}
+        className={`btn btn-sm rounded-none border ${prevButtonClass}`}
         disabled={isPrevButtonDisabled}
         onClick={() => setCurrentPage(currentPage - 1)}
       >
         <ArrowLeftIcon className="h-4 w-4" />
       </button>
-      <span className="self-center text-primary-content font-medium">Page {currentPage + 1}</span>
+      <span className="self-center text-slate-700 font-mono text-sm">Page {currentPage + 1}</span>
       <button
-        className={`btn btn-sm ${nextButtonClass}`}
+        className={`btn btn-sm rounded-none border ${nextButtonClass}`}
         disabled={isNextButtonDisabled}
         onClick={() => setCurrentPage(currentPage + 1)}
       >

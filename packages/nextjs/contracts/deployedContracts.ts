@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x6247D3a5c8244775A5F1abE67EA308CB60f8699f",
+      address: "0xbA10024DB8f96cA3F35fB40815B8800305e44654",
       abi: [
         {
           inputs: [
@@ -541,6 +541,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "totalAgents",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "address",
@@ -588,12 +601,13 @@ const deployedContracts = {
       inheritedFunctions: {
         getAgent: "contracts/interfaces/IAgentMarketplace.sol",
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
+        totalAgents: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 46731099,
+      deployedOnBlock: 46883664,
     },
     MarketplaceRouter: {
-      address: "0xDe1b1e66c7c5f83c29F8a3132dBb30a0453d7389",
+      address: "0xD6Bc9D300162993Fbc441C495F931F93B3b428EA",
       abi: [
         {
           inputs: [
@@ -1098,10 +1112,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46731127,
+      deployedOnBlock: 46883666,
     },
     USDCFaucet: {
-      address: "0x2Af09DB6897159Bac32943188bC1BC3Af22908AB",
+      address: "0xc61c13AaDf0EaBcb2d8f6D60018c2699Ea8F9747",
       abi: [
         {
           inputs: [
@@ -1159,7 +1173,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46731035,
+      deployedOnBlock: 46883661,
     },
   },
 } as const;

@@ -132,7 +132,11 @@ describe("MarketplaceRouter", function () {
     await agentMarketplace.waitForDeployment();
 
     // Register an agent with 100 USDC price and payToAgentWallet=false (pay to owner address)
-    const tx = await agentMarketplace.connect(agentOwner).register(AGENT_PRICE, AGENT_URI, false);
+    const tx = await agentMarketplace.connect(agentOwner).getFunction("register(uint256,string,bool)")(
+      AGENT_PRICE,
+      AGENT_URI,
+      false,
+    );
     const receipt = await tx.wait();
     const event = receipt?.logs
       .map((log: any) => {
@@ -303,7 +307,11 @@ describe("MarketplaceRouter", function () {
       const [, , , , secondAgentOwner] = await ethers.getSigners();
 
       // Register a second agent to verify balances are tracked per agentId
-      const tx = await agentMarketplace.connect(secondAgentOwner).register(AGENT_PRICE, AGENT_URI, false);
+      const tx = await agentMarketplace.connect(secondAgentOwner).getFunction("register(uint256,string,bool)")(
+        AGENT_PRICE,
+        AGENT_URI,
+        false,
+      );
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -339,7 +347,11 @@ describe("MarketplaceRouter", function () {
       const lowPrice = 1n;
       const lowAgentUri = "ipfs://LowPriceAgent";
 
-      const tx = await agentMarketplace.connect(agentOwner).register(lowPrice, lowAgentUri, false);
+      const tx = await agentMarketplace.connect(agentOwner).getFunction("register(uint256,string,bool)")(
+        lowPrice,
+        lowAgentUri,
+        false,
+      );
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -389,7 +401,11 @@ describe("MarketplaceRouter", function () {
       const [, , , , dedicatedWallet] = await ethers.getSigners();
 
       // Register a second agent configured to receive payments at a dedicated wallet address
-      const tx = await agentMarketplace.connect(agentOwner).register(AGENT_PRICE, AGENT_URI, true);
+      const tx = await agentMarketplace.connect(agentOwner).getFunction("register(uint256,string,bool)")(
+        AGENT_PRICE,
+        AGENT_URI,
+        true,
+      );
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -452,7 +468,11 @@ describe("MarketplaceRouter", function () {
       const [, , , , secondAgentOwner] = await ethers.getSigners();
 
       // Register a second agent so we can verify fee accumulation across multiple payments
-      const tx = await agentMarketplace.connect(secondAgentOwner).register(AGENT_PRICE, AGENT_URI, false);
+      const tx = await agentMarketplace.connect(secondAgentOwner).getFunction("register(uint256,string,bool)")(
+        AGENT_PRICE,
+        AGENT_URI,
+        false,
+      );
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -851,7 +871,13 @@ describe("MarketplaceRouter", function () {
     it("Should revert with FeeTooHigh if feeBps exceeds 1000 at deploy", async function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       await expect(
-        RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, 1001n, treasury.address),
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          1001n,
+          treasury.address,
+        ),
       ).to.be.revertedWithCustomError(router, "FeeTooHigh");
     });
 
@@ -859,6 +885,7 @@ describe("MarketplaceRouter", function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       const routerAtLimit = await RouterFactory.deploy(
         await agentMarketplace.getAddress(),
+        await mockReputation.getAddress(),
         USDC_ADDRESS,
         1000n,
         treasury.address,
@@ -871,6 +898,7 @@ describe("MarketplaceRouter", function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       const routerZeroFee = await RouterFactory.deploy(
         await agentMarketplace.getAddress(),
+        await mockReputation.getAddress(),
         USDC_ADDRESS,
         0n,
         treasury.address,
@@ -882,7 +910,13 @@ describe("MarketplaceRouter", function () {
     it("Should revert with ZeroAddress if treasury is address(0)", async function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       await expect(
-        RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, FEE_BPS, ethers.ZeroAddress),
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          FEE_BPS,
+          ethers.ZeroAddress,
+        ),
       ).to.be.revertedWithCustomError(router, "ZeroAddress");
     });
   });

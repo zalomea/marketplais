@@ -17,11 +17,19 @@ type HeaderMenuLink = {
 export const menuLinks: HeaderMenuLink[] = [
   {
     label: "Marketplace",
-    href: "/blockexplorer",
+    href: "/marketplace",
   },
   {
     label: "Sell Agent",
+    href: "/publish",
+  },
+  {
+    label: "Debug Contracts",
     href: "/debug",
+  },
+  {
+    label: "Block Explorer",
+    href: "/blockexplorer",
   },
 ];
 
@@ -39,7 +47,7 @@ export const HeaderMenuLinks = () => {
               passHref
               className={`${
                 isActive ? "border-b-2 border-slate-900 text-slate-900" : "text-slate-700 hover:text-slate-900"
-              } px-4 py-3 text-sm font-medium transition`}
+              } px-3 py-3 text-sm font-medium transition whitespace-nowrap`}
             >
               {label}
             </Link>
@@ -62,13 +70,13 @@ export const Header = () => {
   return (
     <div className="sticky top-0 w-full border-b border-slate-300 bg-white z-20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-16 items-center justify-between flex-nowrap">
           <Link href="/" className="flex items-center gap-3 shrink-0 font-semibold text-lg text-slate-900">
             <Logo className="w-7 h-7" />
             <span className="ml-1">MarketplAIs</span>
           </Link>
 
-          <ul className="hidden lg:flex lg:flex-nowrap items-center gap-8 ml-12">
+          <ul className="hidden lg:flex lg:flex-nowrap items-center gap-4 ml-8">
             <HeaderMenuLinks />
           </ul>
 
@@ -81,7 +89,7 @@ export const Header = () => {
             </ul>
           </details>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3 shrink-0 flex-nowrap">
             <RainbowKitCustomConnectButton />
             {isLocalNetwork && <FaucetButton />}
             {isLocalNetwork && <FaucetUSDCButton />}

@@ -56,7 +56,7 @@ export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps
             console.warn("Parsing Error:", parseError);
             setMetadataError(true);
           }
-        } else if (!metadataError && uri !== "") {
+        } else if (uri !== "") {
           console.warn("Empty JSON content for AgentId", agentId.toString());
           setMetadataError(true);
         }
@@ -69,7 +69,7 @@ export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps
     };
 
     fetchMetadata();
-  }, [uri]);
+  }, [uri, agentId]);
 
   return (
     <div className="card w-96 bg-base-100 shadow-xl">

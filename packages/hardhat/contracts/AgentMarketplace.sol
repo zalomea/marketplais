@@ -54,7 +54,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (bytes(agentURI).length == 0) revert EmptyURI();
         agentId = identityRegistry.register(agentURI);
 
-        agents[agentId] = IAgentMarketplace.Agent({
+        agents[agentId] = Agent({
             agentId: agentId,
             price: price,
             payToAgentWallet: payToAgentWallet,
@@ -74,7 +74,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (price == 0) revert ZeroPrice();
         // Ensure not already registered
         if (agents[agentId].agentId != 0) revert AlreadyActive();
-        agents[agentId] = IAgentMarketplace.Agent({
+        agents[agentId] = Agent({
             agentId: agentId,
             price: price,
             payToAgentWallet: payToAgentWallet,
@@ -89,7 +89,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     function deactivateAgent(uint256 agentId) external {
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
-        IAgentMarketplace.Agent storage agent = agents[agentId];
+        Agent storage agent = agents[agentId];
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (!agent.active) revert AlreadyDeactivated();
         agent.active = false;
@@ -98,7 +98,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     function reactivateAgent(uint256 agentId) external {
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
-        IAgentMarketplace.Agent storage agent = agents[agentId];
+        Agent storage agent = agents[agentId];
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (agent.active) revert AlreadyActive();
         agent.active = true;
@@ -107,7 +107,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     function updatePrice(uint256 agentId, uint256 newPrice) external {
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
-        IAgentMarketplace.Agent storage agent = agents[agentId];
+        Agent storage agent = agents[agentId];
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (newPrice == 0) revert ZeroPrice();
         if (newPrice == agent.price) revert SamePrice();
@@ -121,9 +121,18 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         return agent;
     }
 
-    function getAgentsPaginated(uint256 page, uint256 count) external view returns (IAgentMarketplace.Agent[] memory) {
+    // slither-disable-next-line calls-loop
+    function getAgentFullDetails(uint256 agentId) public view returns (AgentFullDetails memory) {
+        Agent memory agent = getAgent(agentId);
+        address agentOwner = identityRegistry.ownerOf(agentId);
+        string memory uri = identityRegistry.tokenURI(agentId);
+
+        return AgentFullDetails(agent, agentOwner, uri);
+    }
+
+    function getAgentsFullPaginated(uint256 page, uint256 count) external view returns (AgentFullDetails[] memory) {
         if (page == 0) revert InvalidPage();
-        if (count == 0) return new IAgentMarketplace.Agent[](0);
+        if (count == 0) return new AgentFullDetails[](0);
 
         uint256 totalAgents = allAgentIds.length;
         uint256 startIndex = (page - 1) * count;
@@ -136,10 +145,10 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         }
 
         uint256 actualCount = endIndex - startIndex;
-        IAgentMarketplace.Agent[] memory res = new IAgentMarketplace.Agent[](actualCount);
+        AgentFullDetails[] memory res = new AgentFullDetails[](actualCount);
 
         for (uint256 i = 0; i < actualCount; i++) {
-            res[i] = getAgent(allAgentIds[startIndex + i]);
+            res[i] = getAgentFullDetails(allAgentIds[startIndex + i]);
         }
 
         return res;

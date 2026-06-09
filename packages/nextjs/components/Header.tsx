@@ -21,6 +21,10 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "Agents",
+    href: "/agents",
+  },
+  {
     label: "Add Agent",
     href: "/agents/add",
   },

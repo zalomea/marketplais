@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { WaitForTransactionReceiptTimeoutError, isAddress } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
 import externalContracts from "~~/contracts/externalContracts";
-import { publicClient } from "~~/services/web3/viemClient";
+import { getRelayerWalletClient, publicClient } from "~~/services/web3/viemClient";
 
 // Expected request payload (application/json):
 // {
@@ -14,19 +15,9 @@ import { publicClient } from "~~/services/web3/viemClient";
 // }
 // The `request` object follows the `AgentUserRequest` interface defined below.
 
-/**
- * x402 Interceptor endpoint.
- *
- * POST body must contain `{ agentId: number | string, request: AgentUserRequest }`.
- * `request` holds the user’s original query (prompt and optional metadata) that will be forwarded to the AI agent after payment.
- * If the required payment headers are present, the request is accepted (200).
- * Otherwise, the route queries the AgentMarketplace for the agent price,
- * reads the platform fee (bps) from the MarketplaceRouter, calculates the total
- * amount (price + fee) using BigInt to preserve USDC precision (6 decimals),
- * and returns a 402 Payment Required response with a cryptographic challenge.
- */
-
-// Structured type for the user request forwarded to the AI agent
+// Phase 1 (no headers): reads price + fee from contracts and returns a 402 challenge.
+// Phase 2 (headers present): verifies the EIP-3009 signature, settles payment on-chain,
+// and calls the AI agent only after settlement succeeds.
 interface AgentUserRequest {
   /** The actual user prompt or instruction sent to the AI agent. */
   prompt: string;
@@ -34,49 +25,239 @@ interface AgentUserRequest {
   metadata?: Record<string, any>;
 }
 export async function POST(request: Request) {
-  // Parse agent identifier and user request from request body
-  const { agentId, request: userRequest } = (await request.json()) as {
-    agentId: number | string;
-    request: AgentUserRequest;
-  };
+  // malformed body returns 400, not an unhandled 500
+  let agentId: number | string;
+  let userRequest: AgentUserRequest;
+  try {
+    const body = (await request.json()) as { agentId: number | string; request: AgentUserRequest };
+    agentId = body.agentId;
+    userRequest = body.request;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-  // Check for payment headers – early return if they exist (verification handled later)
+  if (agentId === undefined || agentId === null) {
+    return NextResponse.json({ error: "agentId is required" }, { status: 400 });
+  }
+  if (!userRequest || typeof userRequest.prompt !== "string") {
+    return NextResponse.json({ error: "request.prompt is required and must be a string" }, { status: 400 });
+  }
+
   const signature = request.headers.get("x-payment-signature");
   const headerNonce = request.headers.get("x-payment-nonce");
   const headerDeadline = request.headers.get("x-payment-deadline");
-  if (signature && headerNonce && headerDeadline) {
-    console.log("Payment headers found");
-    console.log("Signature:", signature);
-    console.log("Nonce:", headerNonce);
-    console.log("Deadline:", headerDeadline);
+  const clientAddress = request.headers.get("x-payment-from");
 
-    // Verify payment
-    // 1. Recover the signer using the signature (v, r, s) and the EIP‑712 typed data.
+  if (signature && headerNonce && headerDeadline && clientAddress) {
+    // reject malformed address early — viem throws an unguarded 500 on invalid input
+    if (!isAddress(clientAddress)) {
+      return NextResponse.json({ error: "x-payment-from must be a valid Ethereum address" }, { status: 400 });
+    }
 
-    // 2. Verify that the deadline has not expired (the nonce in the header should match the one you generated in step 2).
+    // nonce must be exactly 32 bytes (bytes32 in Solidity) — reject early to avoid silent ABI encoding errors
+    if (!/^0x[0-9a-fA-F]{64}$/.test(headerNonce)) {
+      return NextResponse.json({ error: "x-payment-nonce must be a 0x-prefixed 32-byte hex string" }, { status: 400 });
+    }
 
-    // 3. Verify that the token and amount match what the agent contract requires.
+    // BigInt() throws on non-integer strings — validate format first
+    if (!/^\d+$/.test(headerDeadline)) {
+      return NextResponse.json({ error: "x-payment-deadline must be a positive integer" }, { status: 400 });
+    }
+    // expired deadline is a bad request (400), not a payment prompt (402)
+    if (BigInt(headerDeadline) <= BigInt(Math.floor(Date.now() / 1000))) {
+      return NextResponse.json({ error: "Payment deadline has expired" }, { status: 400 });
+    }
 
-    // 4. Verify that the spender is the agent contract itself.
+    const chainId = publicClient.chain.id;
+    const contracts = (deployedContracts as any)[chainId];
+    if (!contracts) return NextResponse.json({ error: "Contracts not deployed on this network" }, { status: 503 });
+    const agentMarketplace = contracts.AgentMarketplace;
+    const marketplaceRouter = contracts.MarketplaceRouter;
+    const extContracts = (externalContracts as any)[chainId];
+    if (!extContracts) return NextResponse.json({ error: "Contracts not deployed on this network" }, { status: 503 });
+    const { USDC, IdentityRegistry } = extContracts;
 
-    // 5. (Optional) If the user has already approved the USDC spend, verify that approval using the ERC‑20 approve(spender, value) function.
+    // Step 1 — recompute amount from chain; never trust what the client claims to have signed.
+    let agent: { price: bigint; active: boolean };
+    try {
+      agent = (await publicClient.readContract({
+        address: agentMarketplace.address,
+        abi: agentMarketplace.abi,
+        functionName: "getAgent",
+        args: [BigInt(agentId)],
+      })) as { price: bigint; active: boolean };
+    } catch {
+      return NextResponse.json({ error: "Failed to fetch agent data" }, { status: 500 });
+    }
 
-    // If all verifications pass, the payment is considered valid.
+    if (!agent.active) {
+      return NextResponse.json({ error: "Agent not active" }, { status: 400 });
+    }
 
-    // Forward the request to the AI agent (HTTP POST to `/agents/{agentId}/execute`)
+    let feeBps: bigint;
+    try {
+      feeBps = (await publicClient.readContract({
+        address: marketplaceRouter.address,
+        abi: marketplaceRouter.abi,
+        functionName: "feeBps",
+        args: [],
+      })) as bigint;
+    } catch (err: any) {
+      console.error("[execute] Failed to read feeBps:", err?.message);
+      return NextResponse.json({ error: "Failed to read platform fee" }, { status: 500 });
+    }
 
-    // Make the transfer of funds to the contract
+    const platformFee = (agent.price * feeBps) / 10000n;
+    const totalAmount = agent.price + platformFee;
 
-    // Execute payment on marketplace router contract
+    // Step 2 — verify TransferWithAuthorization signature off-chain (no gas).
+    const nonce = headerNonce as `0x${string}`;
+    const deadline = BigInt(headerDeadline);
 
-    // Return success response
+    const isValid = await publicClient.verifyTypedData({
+      address: clientAddress as `0x${string}`,
+      domain: {
+        name: "USD Coin",
+        version: "2",
+        chainId,
+        verifyingContract: USDC.address,
+      },
+      types: {
+        TransferWithAuthorization: [
+          { name: "from", type: "address" },
+          { name: "to", type: "address" },
+          { name: "value", type: "uint256" },
+          { name: "validAfter", type: "uint256" },
+          { name: "validBefore", type: "uint256" },
+          { name: "nonce", type: "bytes32" },
+        ],
+      },
+      primaryType: "TransferWithAuthorization",
+      message: {
+        from: clientAddress as `0x${string}`,
+        to: marketplaceRouter.address as `0x${string}`,
+        value: totalAmount,
+        validAfter: 0n,
+        validBefore: deadline,
+        nonce,
+      },
+      signature: signature as `0x${string}`,
+    });
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    if (!isValid) {
+      return NextResponse.json({ error: "Invalid payment signature" }, { status: 402 });
+    }
+
+    // Step 3 — read tokenURI from IdentityRegistry, decode EIP-8004 JSON, extract "web" endpoint.
+    let agentEndpoint: string;
+    try {
+      const agentURI = (await publicClient.readContract({
+        address: IdentityRegistry.address,
+        abi: IdentityRegistry.abi,
+        functionName: "tokenURI",
+        args: [BigInt(agentId)],
+      })) as string;
+
+      let json: any;
+      if (agentURI.startsWith("data:application/json;base64,")) {
+        // Buffer.from is idiomatic Node.js; atob is a browser API
+        const b64 = agentURI.split(",")[1];
+        if (!b64) throw new Error("Malformed base64 data URI");
+        json = JSON.parse(Buffer.from(b64, "base64").toString("utf-8"));
+      } else {
+        // block non-https to prevent SSRF against internal metadata endpoints
+        if (!agentURI.startsWith("https://")) {
+          throw new Error("Agent URI must use https");
+        }
+        json = await fetch(agentURI, { signal: AbortSignal.timeout(15_000) }).then(r => r.json());
+      }
+
+      agentEndpoint = json?.services?.find((s: { name: string }) => s.name === "web")?.endpoint;
+      if (!agentEndpoint) throw new Error("No web service endpoint found in agent metadata");
+    } catch (err: any) {
+      console.error("[execute] Failed to resolve agent endpoint:", err?.message);
+      return NextResponse.json({ error: "Could not resolve agent endpoint" }, { status: 502 });
+    }
+
+    // security policy violation is 422 — 502 would imply a retryable network error
+    if (!agentEndpoint.startsWith("https://")) {
+      return NextResponse.json({ error: "Agent endpoint must use https" }, { status: 422 });
+    }
+
+    // Step 4 — Relayer settles on-chain before the agent is called (pay-first model).
+    // broadcast and confirmation are split so timeout vs revert return different status codes.
+    let txHash: `0x${string}`;
+    try {
+      const relayerClient = getRelayerWalletClient();
+      txHash = await relayerClient.writeContract({
+        address: marketplaceRouter.address,
+        abi: marketplaceRouter.abi,
+        functionName: "processAgentPaymentAndReputation",
+        // explicit chain guards against publicClient/relayerClient divergence
+        chain: publicClient.chain,
+        args: [
+          clientAddress as `0x${string}`,
+          BigInt(agentId),
+          totalAmount,
+          deadline,
+          nonce,
+          signature as `0x${string}`,
+        ],
+      });
+    } catch (err: any) {
+      console.error("[execute] Payment broadcast failed:", err?.message);
+      return NextResponse.json({ error: "Payment broadcast failed" }, { status: 500 });
+    }
+
+    // wait for the tx to be mined; timeout prevents indefinite hanging on chain congestion
+    let receipt;
+    try {
+      receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
+    } catch (err: any) {
+      if (err instanceof WaitForTransactionReceiptTimeoutError) {
+        console.error("[execute] Payment confirmation timeout:", err?.message);
+        return NextResponse.json(
+          { error: "Payment confirmation timeout — transaction may still settle" },
+          { status: 504 },
+        );
+      }
+      console.error("[execute] Payment confirmation failed:", err?.message);
+      return NextResponse.json({ error: "Payment confirmation failed" }, { status: 500 });
+    }
+
+    if (receipt.status !== "success") {
+      // txHash lets the client inspect the revert on a block explorer
+      return NextResponse.json({ error: "Payment settlement reverted on-chain", txHash }, { status: 500 });
+    }
+
+    // Step 5 — forward prompt to the agent; payment already settled.
+    let agentResponseData: unknown;
+    try {
+      const agentResponse = await fetch(agentEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userRequest),
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      if (!agentResponse.ok) {
+        console.error("[execute] Agent returned non-200:", agentResponse.status);
+        return NextResponse.json({ error: "Agent execution failed" }, { status: 502 });
+      }
+
+      agentResponseData = await agentResponse.json();
+    } catch (err: any) {
+      console.error("[execute] Failed to reach agent:", err?.message);
+      return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
+    }
+
+    return NextResponse.json(agentResponseData, { status: 200 });
   }
 
   // Resolve contract addresses for the active network
   const chainId = publicClient.chain.id;
   const contracts = (deployedContracts as any)[chainId];
+  if (!contracts) return NextResponse.json({ error: "Contracts not deployed on this network" }, { status: 503 });
   const agentMarketplace = contracts.AgentMarketplace;
   const marketplaceRouter = contracts.MarketplaceRouter;
 
@@ -120,21 +301,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Agent not active" }, { status: 400 });
   }
 
-  // Retrieve the platform fee (basis points) from MarketplaceRouter
-  const feeBps = (await publicClient.readContract({
-    address: marketplaceRouter.address,
-    abi: marketplaceRouter.abi,
-    functionName: "feeBps",
-    args: [],
-  })) as bigint;
+  let feeBps: bigint;
+  try {
+    feeBps = (await publicClient.readContract({
+      address: marketplaceRouter.address,
+      abi: marketplaceRouter.abi,
+      functionName: "feeBps",
+      args: [],
+    })) as bigint;
+  } catch (err: any) {
+    console.error("[execute] Failed to read feeBps:", err?.message);
+    return NextResponse.json({ error: "Failed to read platform fee" }, { status: 500 });
+  }
 
   // Compute fee and total amount using high‑precision integer arithmetic
-  const platformFee = (agent.price * feeBps) / 10000n; // feeBps expressed in bps (1 % = 100 bps)
+  const platformFee = (agent.price * feeBps) / 10000n; // feeBps expressed in bps (1 % = 100 bps)
   const totalAmount = agent.price + platformFee;
 
-  // Build the 402 challenge payload – EIP‑3009 styled data for signTypedData
-  // Retrieve USDC contract address from external contracts configuration
-  const { USDC } = externalContracts[publicClient.chain.id] || {};
+  // Build the 402 challenge payload — EIP-3009 typed data for the client to sign
+  const extContracts = (externalContracts as any)[publicClient.chain.id];
+  if (!extContracts) return NextResponse.json({ error: "Contracts not deployed on this network" }, { status: 503 });
+  const { USDC } = extContracts;
 
   // Generate a random nonce (32‑byte hex) – in production this should come from the contract
   const nonce = "0x" + randomBytes(32).toString("hex");
@@ -146,8 +333,8 @@ export async function POST(request: Request) {
     agentId,
     // Include the original user request that will be sent to the AI agent after payment
     request: userRequest,
-    token: USDC?.address || "0x", // USDC address on the active network
-    amount: totalAmount.toString(), // raw USDC amount (6 decimals)
+    token: USDC.address, // USDC address on the active network
+    amount: totalAmount.toString(), // raw USDC amount (6 decimals)
     fee: platformFee.toString(),
     spender: marketplaceRouter.address,
     nonce,
@@ -155,6 +342,6 @@ export async function POST(request: Request) {
     chainId: publicClient.chain.id,
   };
 
-  // Respond with HTTP 402 indicating payment required
+  // Respond with HTTP 402 indicating payment required
   return NextResponse.json(challengePayload, { status: 402 });
 }

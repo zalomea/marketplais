@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x6247D3a5c8244775A5F1abE67EA308CB60f8699f",
+      address: "0x91325b25af5BE0f57ae15F0131ED72E2DB0ce861",
       abi: [
         {
           inputs: [
@@ -336,6 +336,64 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+          ],
+          name: "getAgentFullDetails",
+          outputs: [
+            {
+              components: [
+                {
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "agentId",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "payToAgentWallet",
+                      type: "bool",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "active",
+                      type: "bool",
+                    },
+                  ],
+                  internalType: "struct IAgentMarketplace.Agent",
+                  name: "agent",
+                  type: "tuple",
+                },
+                {
+                  internalType: "address",
+                  name: "owner",
+                  type: "address",
+                },
+                {
+                  internalType: "string",
+                  name: "uri",
+                  type: "string",
+                },
+              ],
+              internalType: "struct IAgentMarketplace.AgentFullDetails",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
               name: "page",
               type: "uint256",
             },
@@ -345,32 +403,49 @@ const deployedContracts = {
               type: "uint256",
             },
           ],
-          name: "getAgentsPaginated",
+          name: "getAgentsFullPaginated",
           outputs: [
             {
               components: [
                 {
-                  internalType: "uint256",
-                  name: "agentId",
-                  type: "uint256",
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "agentId",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "payToAgentWallet",
+                      type: "bool",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "active",
+                      type: "bool",
+                    },
+                  ],
+                  internalType: "struct IAgentMarketplace.Agent",
+                  name: "agent",
+                  type: "tuple",
                 },
                 {
-                  internalType: "uint256",
-                  name: "price",
-                  type: "uint256",
+                  internalType: "address",
+                  name: "owner",
+                  type: "address",
                 },
                 {
-                  internalType: "bool",
-                  name: "payToAgentWallet",
-                  type: "bool",
-                },
-                {
-                  internalType: "bool",
-                  name: "active",
-                  type: "bool",
+                  internalType: "string",
+                  name: "uri",
+                  type: "string",
                 },
               ],
-              internalType: "struct IAgentMarketplace.Agent[]",
+              internalType: "struct IAgentMarketplace.AgentFullDetails[]",
               name: "",
               type: "tuple[]",
             },
@@ -587,13 +662,15 @@ const deployedContracts = {
       ],
       inheritedFunctions: {
         getAgent: "contracts/interfaces/IAgentMarketplace.sol",
+        getAgentFullDetails: "contracts/interfaces/IAgentMarketplace.sol",
+        getAgentsFullPaginated: "contracts/interfaces/IAgentMarketplace.sol",
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 46731099,
+      deployedOnBlock: 47118354,
     },
     MarketplaceRouter: {
-      address: "0xDe1b1e66c7c5f83c29F8a3132dBb30a0453d7389",
+      address: "0x7eba36323e2cD3971bB5A8566287240d477ed1f5",
       abi: [
         {
           inputs: [
@@ -1098,10 +1175,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46731127,
+      deployedOnBlock: 47118356,
     },
     USDCFaucet: {
-      address: "0x2Af09DB6897159Bac32943188bC1BC3Af22908AB",
+      address: "0x24d8Aa88E9B8b32A6891593d02f79687b46AF154",
       abi: [
         {
           inputs: [
@@ -1159,7 +1236,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46731035,
+      deployedOnBlock: 47118351,
     },
   },
 } as const;

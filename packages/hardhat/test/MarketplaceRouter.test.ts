@@ -224,6 +224,58 @@ describe("MarketplaceRouter", function () {
     });
   });
 
+  // ─── AgentMarketplace register(uint256,uint256,bool) overload ───────────────
+
+  describe("AgentMarketplace register(uint256,uint256,bool)", function () {
+    it("Should register an existing owned agent", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://ExistingAgent");
+      await mockRegistry.connect(agentOwner).register("ipfs://ExistingAgent");
+
+      const tx = await agentMarketplace
+        .connect(agentOwner)
+        ["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, true);
+
+      await expect(tx)
+        .to.emit(agentMarketplace, "AgentRegistered")
+        .withArgs(existingAgentId, agentOwner.address, AGENT_PRICE, true);
+
+      const agent = await agentMarketplace.getAgent(existingAgentId);
+      expect(agent.agentId).to.equal(existingAgentId);
+      expect(agent.price).to.equal(AGENT_PRICE);
+      expect(agent.payToAgentWallet).to.equal(true);
+      expect(agent.active).to.equal(true);
+      expect(await mockRegistry.ownerOf(existingAgentId)).to.equal(agentOwner.address);
+    });
+
+    it("Should reject registration when caller does not own the existing agent", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://OwnedByAgentOwner");
+      await mockRegistry.connect(agentOwner).register("ipfs://OwnedByAgentOwner");
+
+      await expect(
+        agentMarketplace.connect(client)["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, false),
+      ).to.be.revertedWithCustomError(agentMarketplace, "NotOwnerOfAgent");
+    });
+
+    it("Should reject registration with zero price", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://ZeroPriceAgent");
+      await mockRegistry.connect(agentOwner).register("ipfs://ZeroPriceAgent");
+
+      await expect(
+        agentMarketplace.connect(agentOwner)["register(uint256,uint256,bool)"](0n, existingAgentId, false),
+      ).to.be.revertedWithCustomError(agentMarketplace, "ZeroPrice");
+    });
+
+    it("Should reject duplicate registration for an active agent", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://DuplicateAgent");
+      await mockRegistry.connect(agentOwner).register("ipfs://DuplicateAgent");
+      await agentMarketplace.connect(agentOwner)["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, false);
+
+      await expect(
+        agentMarketplace.connect(agentOwner)["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, false),
+      ).to.be.revertedWithCustomError(agentMarketplace, "AlreadyActive");
+    });
+  });
+
   // ─── Deployment State ────────────────────────────────────────────────────────
 
   describe("Deployment state", function () {

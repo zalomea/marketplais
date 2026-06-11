@@ -6,6 +6,7 @@ import {
   buildAgentMetadata,
   extractAgentNameFromUri,
   extractSeededAgentNames,
+  isInvalidPageError,
   resolveDefaultAgentOwner,
 } from "../utils/defaultAgents";
 
@@ -144,6 +145,40 @@ describe("defaultAgents helpers", () => {
     it("returns an empty set when no URI carries decodable metadata", () => {
       const names = extractSeededAgentNames([IPFS_URI, MALFORMED_BASE64_URI, EMPTY_JSON_URI]);
       expect(names.size).to.equal(0);
+    });
+  });
+
+  describe("isInvalidPageError", () => {
+    it("matches when the node decoded the custom error name into the message", () => {
+      const error = new Error("VM Exception while processing transaction: reverted with custom error 'InvalidPage()'");
+      expect(isInvalidPageError(error)).to.equal(true);
+    });
+
+    it("matches the undecoded CI shape where only the selector appears in the message", () => {
+      const error = new Error(
+        "VM Exception while processing transaction: reverted with an unrecognized custom error (return data: 0x9ee31996)",
+      );
+      expect(isInvalidPageError(error)).to.equal(true);
+    });
+
+    it("matches when the selector arrives as revert data on the error object", () => {
+      const error = Object.assign(new Error("execution reverted"), { data: "0x9ee31996" });
+      expect(isInvalidPageError(error)).to.equal(true);
+    });
+
+    it("matches when the revert data is nested in a wrapped provider error", () => {
+      const error = Object.assign(new Error("could not coalesce error"), {
+        error: { data: "0x9ee31996" },
+      });
+      expect(isInvalidPageError(error)).to.equal(true);
+    });
+
+    it("rejects unrelated errors and foreign selectors", () => {
+      expect(isInvalidPageError(new Error("connect ECONNREFUSED 127.0.0.1:8545"))).to.equal(false);
+      expect(isInvalidPageError(Object.assign(new Error("execution reverted"), { data: "0xdeadbeef" }))).to.equal(
+        false,
+      );
+      expect(isInvalidPageError("not even an error")).to.equal(false);
     });
   });
 

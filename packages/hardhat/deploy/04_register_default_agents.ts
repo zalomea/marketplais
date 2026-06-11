@@ -5,6 +5,7 @@ import {
   DEFAULT_AGENT_PRICES,
   buildAgentMetadata,
   extractAgentNameFromUri,
+  isInvalidPageError,
   resolveDefaultAgentOwner,
 } from "../utils/defaultAgents";
 
@@ -68,8 +69,10 @@ const registerDefaultAgents: DeployFunction = async function (hre: HardhatRuntim
     // Only an InvalidPage revert means "empty marketplace — nothing seeded yet".
     // Any other failure (RPC error, wrong address) must abort: treating it as
     // empty would re-register the core agents and create duplicates.
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes("InvalidPage")) {
+    // Detection is selector-based: the node only decodes the error name when it
+    // holds compiled artifacts, which is not guaranteed (e.g. CI starts the
+    // chain before compiling).
+    if (!isInvalidPageError(error)) {
       throw error;
     }
   }

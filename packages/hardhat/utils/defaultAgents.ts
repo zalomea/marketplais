@@ -1,4 +1,4 @@
-import { ZeroAddress, getAddress, isAddress, parseUnits } from "ethers";
+import { ZeroAddress, getAddress, id, isAddress, parseUnits } from "ethers";
 
 const OWNER_ENV_VAR = "DEFAULT_AGENT_OWNER_ADDRESS";
 const EIP_8004_REGISTRATION_TYPE = "https://eips.ethereum.org/EIPS/eip-8004#registration-v1";
@@ -60,6 +60,43 @@ export function buildAgentMetadata(name: DefaultAgentName, baseUrl: string): str
     supportedTrust: ["reputation"],
   };
   return `${BASE64_DATA_URI_PREFIX}${Buffer.from(JSON.stringify(metadata), "utf8").toString("base64")}`;
+}
+
+// 4-byte selector of AgentMarketplace's InvalidPage() custom error (0x9ee31996).
+const INVALID_PAGE_SELECTOR = id("InvalidPage()").slice(0, 10);
+
+/**
+ * Detects an `InvalidPage()` revert from `getAgentsFullPaginated` regardless of
+ * whether the node could decode the error name. The decoded name only appears
+ * when the node holds compiled artifacts (NOT the case in CI, where the chain
+ * starts before compilation), so we also match the raw 4-byte selector in the
+ * message and in the revert data of the error or its wrapped causes.
+ */
+export function isInvalidPageError(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const {
+      message,
+      data,
+      error: inner,
+      cause,
+    } = current as {
+      message?: unknown;
+      data?: unknown;
+      error?: unknown;
+      cause?: unknown;
+    };
+    if (typeof message === "string" && (message.includes("InvalidPage") || message.includes(INVALID_PAGE_SELECTOR))) {
+      return true;
+    }
+    if (typeof data === "string" && data.startsWith(INVALID_PAGE_SELECTOR)) {
+      return true;
+    }
+    current = inner ?? cause;
+  }
+  return false;
 }
 
 /**

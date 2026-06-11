@@ -745,7 +745,7 @@ describe("MarketplaceRouter", function () {
         router
           .connect(owner)
           .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
-      ).to.be.reverted;
+      ).to.be.revertedWith(/FiatTokenV2: invalid signature/);
     });
 
     it("Should revert with InvalidAuthorization if signature length is not 65 bytes", async function () {
@@ -775,7 +775,7 @@ describe("MarketplaceRouter", function () {
         router
           .connect(owner)
           .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
-      ).to.be.reverted;
+      ).to.be.revertedWith(/FiatTokenV2: invalid signature/);
     });
 
     it("Should revert if the authorization has expired", async function () {
@@ -790,7 +790,7 @@ describe("MarketplaceRouter", function () {
         router
           .connect(owner)
           .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, expiredUntil, nonce, sig),
-      ).to.be.reverted;
+      ).to.be.revertedWith(/FiatTokenV2: authorization is expired/);
     });
   });
 

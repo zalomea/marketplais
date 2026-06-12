@@ -1,7 +1,14 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Contract, Signature } from "ethers";
+import { Signature } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import {
+  AgentMarketplace,
+  IUSDC,
+  MarketplaceRouter,
+  MockIdentityRegistry,
+  MockReputationRegistry,
+} from "../typechain-types";
 
 // ─── Network constants (Base mainnet fork) ────────────────────────────────────
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -73,11 +80,11 @@ async function buildTransferAuthorization(
 // ─── Test suite ───────────────────────────────────────────────────────────────
 
 describe("MarketplaceRouter", function () {
-  let router: Contract;
-  let agentMarketplace: Contract;
-  let mockRegistry: Contract;
-  let mockReputation: Contract;
-  let usdc: Contract;
+  let router: MarketplaceRouter;
+  let agentMarketplace: AgentMarketplace;
+  let mockRegistry: MockIdentityRegistry;
+  let mockReputation: MockReputationRegistry;
+  let usdc: IUSDC;
 
   // Router deployer — only address allowed to call processAgentPaymentAndReputation
   let owner: SignerWithAddress;
@@ -132,7 +139,9 @@ describe("MarketplaceRouter", function () {
     await agentMarketplace.waitForDeployment();
 
     // Register an agent with 100 USDC price and payToAgentWallet=false (pay to owner address)
-    const tx = await agentMarketplace.connect(agentOwner).register(AGENT_PRICE, AGENT_URI, false);
+    const tx = await agentMarketplace
+      .connect(agentOwner)
+      ["register(uint256,string,bool)"](AGENT_PRICE, AGENT_URI, false);
     const receipt = await tx.wait();
     const event = receipt?.logs
       .map((log: any) => {
@@ -212,6 +221,58 @@ describe("MarketplaceRouter", function () {
       const agent = await agentMarketplace.getAgent(agentId);
       expect(agent.price).to.equal(AGENT_PRICE);
       expect(agent.active).to.equal(true);
+    });
+  });
+
+  // ─── AgentMarketplace register(uint256,uint256,bool) overload ───────────────
+
+  describe("AgentMarketplace register(uint256,uint256,bool)", function () {
+    it("Should register an existing owned agent", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://ExistingAgent");
+      await mockRegistry.connect(agentOwner).register("ipfs://ExistingAgent");
+
+      const tx = await agentMarketplace
+        .connect(agentOwner)
+        ["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, true);
+
+      await expect(tx)
+        .to.emit(agentMarketplace, "AgentRegistered")
+        .withArgs(existingAgentId, agentOwner.address, AGENT_PRICE, true);
+
+      const agent = await agentMarketplace.getAgent(existingAgentId);
+      expect(agent.agentId).to.equal(existingAgentId);
+      expect(agent.price).to.equal(AGENT_PRICE);
+      expect(agent.payToAgentWallet).to.equal(true);
+      expect(agent.active).to.equal(true);
+      expect(await mockRegistry.ownerOf(existingAgentId)).to.equal(agentOwner.address);
+    });
+
+    it("Should reject registration when caller does not own the existing agent", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://OwnedByAgentOwner");
+      await mockRegistry.connect(agentOwner).register("ipfs://OwnedByAgentOwner");
+
+      await expect(
+        agentMarketplace.connect(client)["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, false),
+      ).to.be.revertedWithCustomError(agentMarketplace, "NotOwnerOfAgent");
+    });
+
+    it("Should reject registration with zero price", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://ZeroPriceAgent");
+      await mockRegistry.connect(agentOwner).register("ipfs://ZeroPriceAgent");
+
+      await expect(
+        agentMarketplace.connect(agentOwner)["register(uint256,uint256,bool)"](0n, existingAgentId, false),
+      ).to.be.revertedWithCustomError(agentMarketplace, "ZeroPrice");
+    });
+
+    it("Should reject duplicate registration for an active agent", async function () {
+      const existingAgentId = await mockRegistry.connect(agentOwner).register.staticCall("ipfs://DuplicateAgent");
+      await mockRegistry.connect(agentOwner).register("ipfs://DuplicateAgent");
+      await agentMarketplace.connect(agentOwner)["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, false);
+
+      await expect(
+        agentMarketplace.connect(agentOwner)["register(uint256,uint256,bool)"](AGENT_PRICE, existingAgentId, false),
+      ).to.be.revertedWithCustomError(agentMarketplace, "AlreadyActive");
     });
   });
 
@@ -303,7 +364,9 @@ describe("MarketplaceRouter", function () {
       const [, , , , secondAgentOwner] = await ethers.getSigners();
 
       // Register a second agent to verify balances are tracked per agentId
-      const tx = await agentMarketplace.connect(secondAgentOwner).register(AGENT_PRICE, AGENT_URI, false);
+      const tx = await agentMarketplace
+        .connect(secondAgentOwner)
+        ["register(uint256,string,bool)"](AGENT_PRICE, AGENT_URI, false);
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -339,7 +402,9 @@ describe("MarketplaceRouter", function () {
       const lowPrice = 1n;
       const lowAgentUri = "ipfs://LowPriceAgent";
 
-      const tx = await agentMarketplace.connect(agentOwner).register(lowPrice, lowAgentUri, false);
+      const tx = await agentMarketplace
+        .connect(agentOwner)
+        ["register(uint256,string,bool)"](lowPrice, lowAgentUri, false);
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -389,7 +454,9 @@ describe("MarketplaceRouter", function () {
       const [, , , , dedicatedWallet] = await ethers.getSigners();
 
       // Register a second agent configured to receive payments at a dedicated wallet address
-      const tx = await agentMarketplace.connect(agentOwner).register(AGENT_PRICE, AGENT_URI, true);
+      const tx = await agentMarketplace
+        .connect(agentOwner)
+        ["register(uint256,string,bool)"](AGENT_PRICE, AGENT_URI, true);
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -452,7 +519,9 @@ describe("MarketplaceRouter", function () {
       const [, , , , secondAgentOwner] = await ethers.getSigners();
 
       // Register a second agent so we can verify fee accumulation across multiple payments
-      const tx = await agentMarketplace.connect(secondAgentOwner).register(AGENT_PRICE, AGENT_URI, false);
+      const tx = await agentMarketplace
+        .connect(secondAgentOwner)
+        ["register(uint256,string,bool)"](AGENT_PRICE, AGENT_URI, false);
       const receipt = await tx.wait();
       const event = receipt?.logs
         .map((log: any) => {
@@ -676,7 +745,7 @@ describe("MarketplaceRouter", function () {
         router
           .connect(owner)
           .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
-      ).to.be.reverted;
+      ).to.be.revertedWith(/FiatTokenV2: invalid signature/);
     });
 
     it("Should revert with InvalidAuthorization if signature length is not 65 bytes", async function () {
@@ -706,7 +775,7 @@ describe("MarketplaceRouter", function () {
         router
           .connect(owner)
           .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
-      ).to.be.reverted;
+      ).to.be.revertedWith(/FiatTokenV2: invalid signature/);
     });
 
     it("Should revert if the authorization has expired", async function () {
@@ -721,7 +790,7 @@ describe("MarketplaceRouter", function () {
         router
           .connect(owner)
           .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, expiredUntil, nonce, sig),
-      ).to.be.reverted;
+      ).to.be.revertedWith(/FiatTokenV2: authorization is expired/);
     });
   });
 
@@ -851,7 +920,13 @@ describe("MarketplaceRouter", function () {
     it("Should revert with FeeTooHigh if feeBps exceeds 1000 at deploy", async function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       await expect(
-        RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, 1001n, treasury.address),
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          1001n,
+          treasury.address,
+        ),
       ).to.be.revertedWithCustomError(router, "FeeTooHigh");
     });
 
@@ -859,6 +934,7 @@ describe("MarketplaceRouter", function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       const routerAtLimit = await RouterFactory.deploy(
         await agentMarketplace.getAddress(),
+        await mockReputation.getAddress(),
         USDC_ADDRESS,
         1000n,
         treasury.address,
@@ -871,6 +947,7 @@ describe("MarketplaceRouter", function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       const routerZeroFee = await RouterFactory.deploy(
         await agentMarketplace.getAddress(),
+        await mockReputation.getAddress(),
         USDC_ADDRESS,
         0n,
         treasury.address,
@@ -882,7 +959,13 @@ describe("MarketplaceRouter", function () {
     it("Should revert with ZeroAddress if treasury is address(0)", async function () {
       const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
       await expect(
-        RouterFactory.deploy(await agentMarketplace.getAddress(), USDC_ADDRESS, FEE_BPS, ethers.ZeroAddress),
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          FEE_BPS,
+          ethers.ZeroAddress,
+        ),
       ).to.be.revertedWithCustomError(router, "ZeroAddress");
     });
   });

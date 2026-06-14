@@ -60,6 +60,8 @@ const config: HardhatUserConfig = {
         url: "https://mainnet.base.org",
       },
       chainId: 31337,
+      gas: 15000000,
+      blockGasLimit: 15000000,
     },
     mainnet: {
       url: "https://mainnet.rpc.buidlguidl.com",

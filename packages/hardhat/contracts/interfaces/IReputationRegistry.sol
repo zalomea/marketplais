@@ -23,6 +23,22 @@ interface IReputationRegistry {
         string endpoint
     );
 
+    /**
+     * @notice Emitted when a client revokes their previously given feedback [3].
+     */
+    event FeedbackRevoked(uint256 indexed agentId, address indexed client, uint256 feedbackIndex);
+
+    /**
+     * @notice Emitted when a response is appended to an existing feedback entry [3].
+     */
+    event ResponseAppended(
+        uint256 indexed agentId,
+        address indexed client,
+        uint256 feedbackIndex,
+        address responder,
+        string responseURI
+    );
+
     // --- Core Functions ---
 
     /**
@@ -48,7 +64,48 @@ interface IReputationRegistry {
         bytes32 feedbackHash
     ) external;
 
-    // --- Read & Aggregation Functions ---
+    /**
+     * @notice Allows a client to revoke their feedback [3].
+     * @param agentId The identifier of the agent.
+     * @param feedbackIndex The index of the feedback to revoke.
+     */
+    function revokeFeedback(uint256 agentId, uint256 feedbackIndex) external;
+
+    /**
+     * @notice Appends a response (e.g., from the agent or a third party) to feedback [3].
+     * @param agentId The identifier of the agent.
+     * @param client The address of the original feedback provider.
+     * @param feedbackIndex The index of the feedback entry.
+     * @param responseURI URI for the response context.
+     * @param responseHash Hash of the response content.
+     */
+    function appendResponse(
+        uint256 agentId,
+        address client,
+        uint256 feedbackIndex,
+        string calldata responseURI,
+        bytes32 responseHash
+    ) external;
+
+    // --- Read & Aggregation Functions [2] ---
+
+    /**
+     * @notice Retrieves a specific feedback entry.
+     */
+    function readFeedback(
+        uint256 agentId,
+        address client,
+        uint256 feedbackIndex
+    ) external view returns (
+        int128 value,
+        uint8 valueDecimals,
+        string memory tag1,
+        string memory tag2,
+        string memory endpoint,
+        string memory feedbackURI,
+        bytes32 feedbackHash,
+        bool revoked
+    );
 
     /**
      * @notice Returns all feedback for an agent, filtered by clients and tags.

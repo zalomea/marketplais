@@ -1,7 +1,6 @@
 import * as dotenv from "dotenv";
-import path from "path";
-// Load shared root .env (two levels up from packages/hardhat)
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// Load packages/hardhat/.env (default dotenv behavior)
+dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x91325b25af5BE0f57ae15F0131ED72E2DB0ce861",
+      address: "0x4B55a493E79eb7cd03ef1D3Ed447FAE1dd40c064",
       abi: [
         {
           inputs: [
@@ -667,10 +667,10 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 47118354,
+      deployedOnBlock: 47247520,
     },
     MarketplaceRouter: {
-      address: "0x7eba36323e2cD3971bB5A8566287240d477ed1f5",
+      address: "0xc0204Ef6dA59FBeF16370fcB7ed4c7cFa77720A1",
       abi: [
         {
           inputs: [
@@ -736,6 +736,16 @@ const deployedContracts = {
         {
           inputs: [],
           name: "NotOwner",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "PaymentAlreadyProcessed",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "PaymentNotLocked",
           type: "error",
         },
         {
@@ -835,6 +845,93 @@ const deployedContracts = {
             },
           ],
           name: "OwnerTransferred",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentFinalized",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentLocked",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentRefunded",
           type: "event",
         },
         {
@@ -954,6 +1051,96 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+          ],
+          name: "finalizePayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "validUntil",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "signature",
+              type: "bytes",
+            },
+          ],
+          name: "lockPayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "lockedPayments",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "active",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "owner",
           outputs: [
@@ -1001,37 +1188,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "client",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "agentId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "validUntil",
-              type: "uint256",
-            },
-            {
               internalType: "bytes32",
               name: "nonce",
               type: "bytes32",
             },
-            {
-              internalType: "bytes",
-              name: "signature",
-              type: "bytes",
-            },
           ],
-          name: "processAgentPaymentAndReputation",
+          name: "refundPayment",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -1175,10 +1337,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47118356,
+      deployedOnBlock: 47247522,
     },
     USDCFaucet: {
-      address: "0x24d8Aa88E9B8b32A6891593d02f79687b46AF154",
+      address: "0xcd697d0f43c7c32C0eFc2EBF81787F3B17071c2b",
       abi: [
         {
           inputs: [
@@ -1236,7 +1398,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47118351,
+      deployedOnBlock: 47247517,
     },
   },
 } as const;

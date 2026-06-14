@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useAgentReputation } from "~~/hooks/useAgentReputation";
 
 interface AgentCardProps {
@@ -119,6 +120,9 @@ export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps
           </button>
 
           <div className="card-actions justify-end">
+            <Link href={`/agents/execute/${agentId.toString()}`} className="btn btn-primary btn-sm">
+              Execute
+            </Link>
             <div className={`badge ${active ? "badge-success" : "badge-error"}`}>{active ? "Active" : "Inactive"}</div>
           </div>
         </div>

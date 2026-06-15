@@ -159,7 +159,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (agentOwner == address(0)) revert ZeroAddress();
 
         uint256 totalAgents = allAgentIds.length;
-        uint256 ownerAgentCount = 0;
+        uint256 ownerAgentCount;
 
         for (uint256 i = 0; i < totalAgents; i++) {
             if (identityRegistry.ownerOf(allAgentIds[i]) == agentOwner) {

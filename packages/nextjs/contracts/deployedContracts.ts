@@ -730,7 +730,7 @@ const deployedContracts = {
       deployedOnBlock: 47247201,
     },
     MarketplaceRouter: {
-      address: "0x0C2672Fcec56ee1E1B4C16fE7bCa530Cfa4C1B3C",
+      address: "0xc0204Ef6dA59FBeF16370fcB7ed4c7cFa77720A1",
       abi: [
         {
           inputs: [

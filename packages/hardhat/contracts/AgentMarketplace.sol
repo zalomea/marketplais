@@ -154,11 +154,12 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         return res;
     }
 
+    // slither-disable-next-line calls-loop
     function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {
         if (agentOwner == address(0)) revert ZeroAddress();
 
         uint256 totalAgents = allAgentIds.length;
-        uint256 ownerAgentCount;
+        uint256 ownerAgentCount = 0;
 
         for (uint256 i = 0; i < totalAgents; i++) {
             if (identityRegistry.ownerOf(allAgentIds[i]) == agentOwner) {
@@ -167,7 +168,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         }
 
         AgentFullDetails[] memory res = new AgentFullDetails[](ownerAgentCount);
-        uint256 resultIndex;
+        uint256 resultIndex = 0;
 
         for (uint256 i = 0; i < totalAgents; i++) {
             uint256 agentId = allAgentIds[i];

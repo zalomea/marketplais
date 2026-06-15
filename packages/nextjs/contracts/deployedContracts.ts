@@ -800,6 +800,16 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "PaymentAlreadyProcessed",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "PaymentNotLocked",
+          type: "error",
+        },
+        {
+          inputs: [],
           name: "SameFeeBps",
           type: "error",
         },
@@ -895,6 +905,93 @@ const deployedContracts = {
             },
           ],
           name: "OwnerTransferred",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentFinalized",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentLocked",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentRefunded",
           type: "event",
         },
         {
@@ -1014,6 +1111,96 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+          ],
+          name: "finalizePayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "validUntil",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "signature",
+              type: "bytes",
+            },
+          ],
+          name: "lockPayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "lockedPayments",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "active",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "owner",
           outputs: [
@@ -1061,37 +1248,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "client",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "agentId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "validUntil",
-              type: "uint256",
-            },
-            {
               internalType: "bytes32",
               name: "nonce",
               type: "bytes32",
             },
-            {
-              internalType: "bytes",
-              name: "signature",
-              type: "bytes",
-            },
           ],
-          name: "processAgentPaymentAndReputation",
+          name: "refundPayment",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",

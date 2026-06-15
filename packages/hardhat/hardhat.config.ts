@@ -31,9 +31,9 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            // https://docs.soliditylang.org/en/latest/using-the-compiler.html#optimizer-options
             runs: 200,
           },
+          viaIR: true,
         },
       },
     ],
@@ -60,6 +60,8 @@ const config: HardhatUserConfig = {
         blockNumber: 47247176,
       },
       chainId: 31337,
+      gas: 15000000,
+      blockGasLimit: 15000000,
     },
     mainnet: {
       url: "https://mainnet.rpc.buidlguidl.com",

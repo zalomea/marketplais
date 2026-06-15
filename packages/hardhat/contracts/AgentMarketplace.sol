@@ -168,7 +168,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         }
 
         AgentFullDetails[] memory res = new AgentFullDetails[](ownerAgentCount);
-        uint256 resultIndex = 0;
+        uint256 resultIndex;
 
         for (uint256 i = 0; i < totalAgents; i++) {
             uint256 agentId = allAgentIds[i];

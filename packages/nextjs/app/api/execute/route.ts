@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { WaitForTransactionReceiptTimeoutError, isAddress } from "viem";
+import { isAddress } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
 import externalContracts from "~~/contracts/externalContracts";
 import { getRelayerWalletClient, publicClient } from "~~/services/web3/viemClient";
@@ -180,20 +180,19 @@ export async function POST(request: Request) {
     }
 
     // security policy violation is 422 — 502 would imply a retryable network error
-    if (!agentEndpoint.startsWith("https://")) {
+    const isDev = process.env.NODE_ENV === "development";
+    if (!isDev && !agentEndpoint.startsWith("https://")) {
       return NextResponse.json({ error: "Agent endpoint must use https" }, { status: 422 });
     }
 
-    // Step 4 — Relayer settles on-chain before the agent is called (pay-first model).
-    // broadcast and confirmation are split so timeout vs revert return different status codes.
+    // Step 4 — Relayer locks payment on-chain (Escrow).
     let txHash: `0x${string}`;
     try {
       const relayerClient = getRelayerWalletClient();
       txHash = await relayerClient.writeContract({
         address: marketplaceRouter.address,
         abi: marketplaceRouter.abi,
-        functionName: "processAgentPaymentAndReputation",
-        // explicit chain guards against publicClient/relayerClient divergence
+        functionName: "lockPayment",
         chain: publicClient.chain,
         args: [
           clientAddress as `0x${string}`,
@@ -204,34 +203,15 @@ export async function POST(request: Request) {
           signature as `0x${string}`,
         ],
       });
+      await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
     } catch (err: any) {
-      console.error("[execute] Payment broadcast failed:", err?.message);
-      return NextResponse.json({ error: "Payment broadcast failed" }, { status: 500 });
+      console.error("[execute] Payment lock failed:", err?.message);
+      return NextResponse.json({ error: "Payment lock failed" }, { status: 500 });
     }
 
-    // wait for the tx to be mined; timeout prevents indefinite hanging on chain congestion
-    let receipt;
-    try {
-      receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
-    } catch (err: any) {
-      if (err instanceof WaitForTransactionReceiptTimeoutError) {
-        console.error("[execute] Payment confirmation timeout:", err?.message);
-        return NextResponse.json(
-          { error: "Payment confirmation timeout — transaction may still settle" },
-          { status: 504 },
-        );
-      }
-      console.error("[execute] Payment confirmation failed:", err?.message);
-      return NextResponse.json({ error: "Payment confirmation failed" }, { status: 500 });
-    }
-
-    if (receipt.status !== "success") {
-      // txHash lets the client inspect the revert on a block explorer
-      return NextResponse.json({ error: "Payment settlement reverted on-chain", txHash }, { status: 500 });
-    }
-
-    // Step 5 — forward prompt to the agent; payment already settled.
+    // Step 5 — Forward prompt to the agent; funds are locked in escrow.
     let agentResponseData: unknown;
+    let agentSucceeded = false;
     try {
       const agentResponse = await fetch(agentEndpoint, {
         method: "POST",
@@ -242,16 +222,38 @@ export async function POST(request: Request) {
 
       if (!agentResponse.ok) {
         console.error("[execute] Agent returned non-200:", agentResponse.status);
-        return NextResponse.json({ error: "Agent execution failed" }, { status: 502 });
+      } else {
+        agentResponseData = await agentResponse.json();
+        agentSucceeded = true;
       }
-
-      agentResponseData = await agentResponse.json();
     } catch (err: any) {
       console.error("[execute] Failed to reach agent:", err?.message);
-      return NextResponse.json({ error: "Agent unreachable" }, { status: 502 });
     }
 
-    return NextResponse.json(agentResponseData, { status: 200 });
+    // Step 6 — Finalize or Refund based on agent execution result.
+    try {
+      const relayerClient = getRelayerWalletClient();
+      const functionName = agentSucceeded ? "finalizePayment" : "refundPayment";
+
+      const txHashFinal = await relayerClient.writeContract({
+        address: marketplaceRouter.address,
+        abi: marketplaceRouter.abi,
+        functionName,
+        chain: publicClient.chain,
+        args: [nonce],
+      });
+      await publicClient.waitForTransactionReceipt({ hash: txHashFinal, timeout: 30_000 });
+    } catch (err: any) {
+      console.error(`[execute] Finalization/Refund (${agentSucceeded ? "finalize" : "refund"}) failed:`, err?.message);
+      // Even if finalization fails, we report the agent's outcome if it was successful,
+      // but warn about trapped funds/refund.
+    }
+
+    if (agentSucceeded) {
+      return NextResponse.json(agentResponseData, { status: 200 });
+    } else {
+      return NextResponse.json({ error: "Agent execution failed, payment refunded (if possible)" }, { status: 502 });
+    }
   }
 
   // Resolve contract addresses for the active network

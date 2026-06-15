@@ -154,6 +154,32 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         return res;
     }
 
+    function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {
+        if (agentOwner == address(0)) revert ZeroAddress();
+
+        uint256 totalAgents = allAgentIds.length;
+        uint256 ownerAgentCount;
+
+        for (uint256 i = 0; i < totalAgents; i++) {
+            if (identityRegistry.ownerOf(allAgentIds[i]) == agentOwner) {
+                ownerAgentCount++;
+            }
+        }
+
+        AgentFullDetails[] memory res = new AgentFullDetails[](ownerAgentCount);
+        uint256 resultIndex;
+
+        for (uint256 i = 0; i < totalAgents; i++) {
+            uint256 agentId = allAgentIds[i];
+            if (identityRegistry.ownerOf(agentId) == agentOwner) {
+                res[resultIndex] = getAgentFullDetails(agentId);
+                resultIndex++;
+            }
+        }
+
+        return res;
+    }
+
     //To transfer ownership of the marketplace there is a two-step verification. First the actual owner approves a new address and then this new//
     //address has to call acceptOwnership. this prevents commiting mistakes, and brings extra security in a crticial process. //
 

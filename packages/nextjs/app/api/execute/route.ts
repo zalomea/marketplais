@@ -203,7 +203,11 @@ export async function POST(request: Request) {
           signature as `0x${string}`,
         ],
       });
-      await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
+      // a mined-but-reverted lock does not throw — guard against silently serving the agent unpaid
+      const lockReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
+      if (lockReceipt.status !== "success") {
+        return NextResponse.json({ error: "Payment lock reverted", txHash }, { status: 502 });
+      }
     } catch (err: any) {
       console.error("[execute] Payment lock failed:", err?.message);
       return NextResponse.json({ error: "Payment lock failed" }, { status: 500 });

@@ -1397,7 +1397,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247203,
+      deployedOnBlock: 47247522,
     },
     USDCFaucet: {
       address: "0x8ffd9d94EEee8E44CA274e9b8C7a2e9580c1a8a3",

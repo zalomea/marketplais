@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { parseUnits } from "viem";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
@@ -78,9 +79,12 @@ export default function AddAgentPage() {
 
     setPendingNew(true);
     try {
+      // Use parseUnits to handle 6 decimals for USDC
+      const priceInUnits = parseUnits(price, 6);
+
       const result = await writeContractAsync({
         functionName: "register",
-        args: [BigInt(price), agentURI, false],
+        args: [priceInUnits, agentURI, false],
       });
       notification.success("Agent registered! tx: " + result);
       // Reset form fields after success
@@ -112,9 +116,12 @@ export default function AddAgentPage() {
 
     setPendingExisting(true);
     try {
+      // Use parseUnits to handle 6 decimals for USDC
+      const priceInUnits = parseUnits(priceExisting, 6);
+
       const result = await writeContractAsync({
         functionName: "register",
-        args: [BigInt(priceExisting), BigInt(agentID), false],
+        args: [priceInUnits, BigInt(agentID), false],
       });
       notification.success("Existing agent registered! tx: " + result);
       // Reset form fields after success

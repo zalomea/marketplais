@@ -240,9 +240,9 @@ describe("SafeWithdrawFees", function () {
     const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
     const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
-    await router
-      .connect(safeSigner)
-      .processAgentPaymentAndReputation(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+    await router.connect(safeSigner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+
+    await router.connect(safeSigner).finalizePayment(nonce);
   }
 
   // Safe "propose" step: computes the SafeTx hash and records approveHash() from each owner

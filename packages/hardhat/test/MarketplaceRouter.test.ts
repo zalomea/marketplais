@@ -227,6 +227,54 @@ describe("MarketplaceRouter", function () {
       await router.connect(owner).withdrawFees();
       expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBefore + PLATFORM_FEE);
     });
+
+    // Regression test for escrow leak
+    it("Should not sweep locked funds in escrow and should allow refund after withdrawFees call", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+
+      await expect(router.connect(owner).withdrawFees()).to.be.revertedWithCustomError(router, "NoFeesToWithdraw");
+
+      const clientBefore = await usdc.balanceOf(client.address);
+      await router.connect(owner).refundPayment(nonce);
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+    });
+
+    // Mixed state: withdrawable fee surplus must coexist with a still-locked payment without touching escrow
+    it("Should withdraw only fee surplus while another payment is still locked in escrow", async function () {
+      // Payment A: lock and finalize so its fee becomes withdrawable surplus (totalLocked back to 0)
+      const nonceA = ethers.hexlify(ethers.randomBytes(32));
+      const validUntilA = (await getBlockTimestamp()) + 86400;
+      const sigA = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntilA, nonceA);
+      const rawSigA = ethers.concat([sigA.r, sigA.s, ethers.toBeHex(sigA.v, 1)]);
+      await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntilA, nonceA, rawSigA);
+      await router.connect(owner).finalizePayment(nonceA);
+
+      // Payment B: lock but do NOT finalize, so it stays escrowed
+      const nonceB = ethers.hexlify(ethers.randomBytes(32));
+      const validUntilB = (await getBlockTimestamp()) + 86400;
+      const sigB = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntilB, nonceB);
+      const rawSigB = ethers.concat([sigB.r, sigB.s, ethers.toBeHex(sigB.v, 1)]);
+      await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntilB, nonceB, rawSigB);
+
+      expect(await router.totalLocked()).to.equal(TOTAL_PAYMENT);
+
+      // withdrawFees must release only the fee surplus (TOTAL_PAYMENT - AGENT_PRICE), not B's escrow nor A's earnings
+      const expectedFee = TOTAL_PAYMENT - AGENT_PRICE;
+      const treasuryBefore = await usdc.balanceOf(treasury.address);
+      await router.connect(owner).withdrawFees();
+      expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBefore + expectedFee);
+
+      // B's escrow is intact: refund returns the full amount and clears totalLocked
+      const clientBefore = await usdc.balanceOf(client.address);
+      await router.connect(owner).refundPayment(nonceB);
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+      expect(await router.totalLocked()).to.equal(0n);
+    });
   });
 
   describe("Ownership and Config", function () {
@@ -242,6 +290,271 @@ describe("MarketplaceRouter", function () {
       await ethers.provider.send("evm_mine", []);
       await router.connect(newOwner).acceptOwnership();
       expect(await router.owner()).to.equal(newOwner.address);
+    });
+  });
+
+  // ─── Payment Flow reverts and boundaries ────────────────────────────────────
+  describe("Payment Flow (lockPayment + finalizePayment) — reverts and boundaries", function () {
+    // Reverts with NotOwner when lockPayment is called by a non-relayer
+    it("Should revert lockPayment with NotOwner when called by a non-relayer", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await expect(
+        router.connect(client).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    // Reverts with NotOwner when finalizePayment is called by a non-relayer
+    it("Should revert finalizePayment with NotOwner when called by a non-relayer", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      await expect(router.connect(client).finalizePayment(nonce)).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    // Reverts with NotOwner when refundPayment is called by a non-relayer
+    it("Should revert refundPayment with NotOwner when called by a non-relayer", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      await expect(router.connect(client).refundPayment(nonce)).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    // Reverts with PaymentAlreadyProcessed when the same nonce is locked twice
+    it("Should revert lockPayment with PaymentAlreadyProcessed when the same nonce is locked twice", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+
+      await expect(
+        router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "PaymentAlreadyProcessed");
+    });
+
+    // Reverts with InsufficientAmount when amount < price + fee
+    it("Should revert lockPayment with InsufficientAmount when amount < price + fee", async function () {
+      const belowAmount = TOTAL_PAYMENT - 1n;
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, belowAmount, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await expect(
+        router.connect(owner).lockPayment(client.address, agentId, belowAmount, validUntil, nonce, sig),
+      ).to.be.revertedWithCustomError(router, "InsufficientAmount");
+    });
+
+    // Reverts with InvalidAuthorization when the signature is not 65 bytes
+    it("Should revert lockPayment with InvalidAuthorization when the signature is not 65 bytes", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const invalidSig = ethers.hexlify(ethers.randomBytes(64));
+
+      await expect(
+        router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, invalidSig),
+      ).to.be.revertedWithCustomError(router, "InvalidAuthorization");
+    });
+
+    // Reverts with PaymentNotLocked for an unknown nonce
+    it("Should revert finalizePayment with PaymentNotLocked for an unknown nonce", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      await expect(router.connect(owner).finalizePayment(nonce)).to.be.revertedWithCustomError(
+        router,
+        "PaymentNotLocked",
+      );
+    });
+
+    // Reverts with PaymentNotLocked for an unknown nonce
+    it("Should revert refundPayment with PaymentNotLocked for an unknown nonce", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      await expect(router.connect(owner).refundPayment(nonce)).to.be.revertedWithCustomError(
+        router,
+        "PaymentNotLocked",
+      );
+    });
+
+    // Reverts with PaymentNotLocked if called twice (already finalized)
+    it("Should revert finalizePayment with PaymentNotLocked if called twice", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await router.connect(owner).finalizePayment(nonce);
+
+      await expect(router.connect(owner).finalizePayment(nonce)).to.be.revertedWithCustomError(
+        router,
+        "PaymentNotLocked",
+      );
+    });
+  });
+
+  // ─── withdrawFees reverts ───────────────────────────────────────────────────
+  describe("withdrawFees() — reverts", function () {
+    // Reverts with NotOwner for a non-owner
+    it("Should revert withdrawFees with NotOwner for a non-owner", async function () {
+      await expect(router.connect(client).withdrawFees()).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+  });
+
+  // ─── Ownership, Config, and Constructor reverts and events ──────────────────
+  describe("Ownership, Config, and Constructor — reverts and events", function () {
+    // Reverts with NotOwner for a non-owner on updateFeeBps
+    it("Should revert updateFeeBps with NotOwner for a non-owner", async function () {
+      await expect(router.connect(client).updateFeeBps(500n)).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    // Reverts with FeeTooHigh if fee exceeds 1000 bps
+    it("Should revert updateFeeBps with FeeTooHigh if fee exceeds 1000 bps", async function () {
+      await expect(router.connect(owner).updateFeeBps(1001n)).to.be.revertedWithCustomError(router, "FeeTooHigh");
+    });
+
+    // Reverts with SameFeeBps if new fee equals current fee
+    it("Should revert updateFeeBps with SameFeeBps if new fee equals current fee", async function () {
+      await expect(router.connect(owner).updateFeeBps(FEE_BPS)).to.be.revertedWithCustomError(router, "SameFeeBps");
+    });
+
+    // Emits FeeBpsUpdated when feeBps is successfully updated
+    it("Should emit FeeBpsUpdated when feeBps is successfully updated", async function () {
+      const tx = await router.connect(owner).updateFeeBps(500n);
+      const receipt = await tx.wait();
+      const block = await ethers.provider.getBlock(receipt!.blockNumber);
+      await expect(tx).to.emit(router, "FeeBpsUpdated").withArgs(FEE_BPS, 500n, block!.timestamp);
+    });
+
+    // Reverts with NotOwner for a non-owner on transferOwnership
+    it("Should revert transferOwnership with NotOwner for a non-owner", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await expect(router.connect(client).transferOwnership(newOwner.address)).to.be.revertedWithCustomError(
+        router,
+        "NotOwner",
+      );
+    });
+
+    // Reverts with SameOwner if new owner is current owner
+    it("Should revert transferOwnership with SameOwner if new owner is current owner", async function () {
+      await expect(router.connect(owner).transferOwnership(owner.address)).to.be.revertedWithCustomError(
+        router,
+        "SameOwner",
+      );
+    });
+
+    // Sets pendingOwner after a valid transferOwnership call
+    it("Should set pendingOwner after a valid transferOwnership call", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+      expect(await router.pendingOwner()).to.equal(newOwner.address);
+    });
+
+    // Reverts with NotOwner if caller is not the pending owner on acceptOwnership
+    it("Should revert acceptOwnership with NotOwner if caller is not the pending owner", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+      await expect(router.connect(client).acceptOwnership()).to.be.revertedWithCustomError(router, "NotOwner");
+    });
+
+    // Reverts with WaitingPeriodNotOver if acceptOwnership is called before 7 days
+    it("Should revert acceptOwnership with WaitingPeriodNotOver if called before 7 days", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+      await expect(router.connect(newOwner).acceptOwnership()).to.be.revertedWithCustomError(
+        router,
+        "WaitingPeriodNotOver",
+      );
+    });
+
+    // Emits OwnerTransferred when acceptOwnership is successful
+    it("Should emit OwnerTransferred when acceptOwnership is successful", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      await router.connect(owner).transferOwnership(newOwner.address);
+      await ethers.provider.send("evm_increaseTime", [7 * 24 * 60 * 60]);
+      await ethers.provider.send("evm_mine", []);
+      const tx = await router.connect(newOwner).acceptOwnership();
+      const receipt = await tx.wait();
+      const block = await ethers.provider.getBlock(receipt!.blockNumber);
+      await expect(tx).to.emit(router, "OwnerTransferred").withArgs(owner.address, newOwner.address, block!.timestamp);
+    });
+
+    // Reverts with NotOwner for a non-owner on changeTreasury
+    it("Should revert changeTreasury with NotOwner for a non-owner", async function () {
+      const [, , , , , newTreasury] = await ethers.getSigners();
+      await expect(router.connect(client).changeTreasury(newTreasury.address)).to.be.revertedWithCustomError(
+        router,
+        "NotOwner",
+      );
+    });
+
+    // Reverts with ZeroAddress if new treasury is address(0)
+    it("Should revert changeTreasury with ZeroAddress if new treasury is address(0)", async function () {
+      await expect(router.connect(owner).changeTreasury(ethers.ZeroAddress)).to.be.revertedWithCustomError(
+        router,
+        "ZeroAddress",
+      );
+    });
+
+    // Updates the treasury successfully and verifies it in state
+    it("Should update the treasury successfully and verify it in state", async function () {
+      const [, , , , , newTreasury] = await ethers.getSigners();
+      await router.connect(owner).changeTreasury(newTreasury.address);
+      expect(await router.treasury()).to.equal(newTreasury.address);
+    });
+
+    // Reverts constructor with ZeroAddress if treasury is address(0)
+    it("Should revert constructor with ZeroAddress if treasury is address(0)", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      await expect(
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          FEE_BPS,
+          ethers.ZeroAddress,
+        ),
+      ).to.be.revertedWithCustomError(router, "ZeroAddress");
+    });
+
+    // Reverts constructor with ZeroAddress if marketplace is address(0)
+    it("Should revert constructor with ZeroAddress if marketplace is address(0)", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      await expect(
+        RouterFactory.deploy(
+          ethers.ZeroAddress,
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          FEE_BPS,
+          treasury.address,
+        ),
+      ).to.be.revertedWithCustomError(router, "ZeroAddress");
+    });
+
+    // Reverts constructor with ZeroAddress if token is address(0)
+    it("Should revert constructor with ZeroAddress if token is address(0)", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      await expect(
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          ethers.ZeroAddress,
+          FEE_BPS,
+          treasury.address,
+        ),
+      ).to.be.revertedWithCustomError(router, "ZeroAddress");
+    });
+
+    // Reverts constructor with FeeTooHigh if feeBps exceeds 1000
+    it("Should revert constructor with FeeTooHigh if feeBps exceeds 1000", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      await expect(
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          await mockReputation.getAddress(),
+          USDC_ADDRESS,
+          1001n,
+          treasury.address,
+        ),
+      ).to.be.revertedWithCustomError(router, "FeeTooHigh");
     });
   });
 });

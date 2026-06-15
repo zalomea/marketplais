@@ -21,6 +21,8 @@ contract MarketplaceRouter {
 
     mapping(uint256 => uint256) public agentBalances;
     uint256 public totalAgentLiabilities;
+    // USDC held in escrow, not yet assigned to agents or fees
+    uint256 public totalLocked;
     mapping(bytes32 => bool) public proccessesNonces;
 
     error AgentNotActive();
@@ -81,9 +83,9 @@ contract MarketplaceRouter {
     function withdrawFees() external onlyOwner {
         uint256 currentBalance = token.balanceOf(address(this));
 
-        if (currentBalance <= totalAgentLiabilities) revert NoFeesToWithdraw();
+        if (currentBalance <= totalAgentLiabilities + totalLocked) revert NoFeesToWithdraw();
 
-        uint256 available = currentBalance - totalAgentLiabilities;
+        uint256 available = currentBalance - totalAgentLiabilities - totalLocked;
 
         emit FeesWithdrawn(available, block.timestamp);
         
@@ -175,6 +177,7 @@ contract MarketplaceRouter {
             agentEarnings: agentEarnings,
             active: true
         });
+        totalLocked += amount;
         proccessesNonces[nonce] = true; 
         if (signature.length != 65) revert InvalidAuthorization();
         bytes32 r;
@@ -195,8 +198,10 @@ contract MarketplaceRouter {
         if (!payment.active) revert PaymentNotLocked();
         uint256 agentId = payment.agentId;
         uint256 agentEarnings = payment.agentEarnings;
+        uint256 totalAmount = payment.totalAmount;
         payment.active = false;
         delete lockedPayments[nonce];
+        totalLocked -= totalAmount;
         agentBalances[agentId] += agentEarnings;
         totalAgentLiabilities += agentEarnings;
         emit PaymentFinalized(nonce, agentId, agentEarnings);
@@ -220,6 +225,7 @@ contract MarketplaceRouter {
         uint256 agentId = payment.agentId;
         payment.active = false;
         delete lockedPayments[nonce];
+        totalLocked -= amount;
         emit PaymentRefunded(nonce, client, amount);
         bool success = token.transfer(client, amount);
         if (!success) revert TransferFailed();

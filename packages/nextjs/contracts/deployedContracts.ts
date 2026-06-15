@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x082254a081E7EAD92344d420aE7A1D8c49b7C58d",
+      address: "0x577a9751F14C24961d65bAa566ba86174b181516",
       abi: [
         {
           inputs: [
@@ -154,6 +154,31 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "AgentTransferred",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "address",
               name: "oldOwner",
               type: "address",
@@ -236,6 +261,11 @@ const deployedContracts = {
           name: "agents",
           outputs: [
             {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
               internalType: "uint256",
               name: "agentId",
               type: "uint256",
@@ -304,6 +334,11 @@ const deployedContracts = {
             {
               components: [
                 {
+                  internalType: "address",
+                  name: "owner",
+                  type: "address",
+                },
+                {
                   internalType: "uint256",
                   name: "agentId",
                   type: "uint256",
@@ -346,6 +381,11 @@ const deployedContracts = {
               components: [
                 {
                   components: [
+                    {
+                      internalType: "address",
+                      name: "owner",
+                      type: "address",
+                    },
                     {
                       internalType: "uint256",
                       name: "agentId",
@@ -394,55 +434,16 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "agentOwner",
+              name: "_owner",
               type: "address",
             },
           ],
           name: "getAgentsByOwner",
           outputs: [
             {
-              components: [
-                {
-                  components: [
-                    {
-                      internalType: "uint256",
-                      name: "agentId",
-                      type: "uint256",
-                    },
-                    {
-                      internalType: "uint256",
-                      name: "price",
-                      type: "uint256",
-                    },
-                    {
-                      internalType: "bool",
-                      name: "payToAgentWallet",
-                      type: "bool",
-                    },
-                    {
-                      internalType: "bool",
-                      name: "active",
-                      type: "bool",
-                    },
-                  ],
-                  internalType: "struct IAgentMarketplace.Agent",
-                  name: "agent",
-                  type: "tuple",
-                },
-                {
-                  internalType: "address",
-                  name: "owner",
-                  type: "address",
-                },
-                {
-                  internalType: "string",
-                  name: "uri",
-                  type: "string",
-                },
-              ],
-              internalType: "struct IAgentMarketplace.AgentFullDetails[]",
+              internalType: "uint256[]",
               name: "",
-              type: "tuple[]",
+              type: "uint256[]",
             },
           ],
           stateMutability: "view",
@@ -467,6 +468,11 @@ const deployedContracts = {
               components: [
                 {
                   components: [
+                    {
+                      internalType: "address",
+                      name: "owner",
+                      type: "address",
+                    },
                     {
                       internalType: "uint256",
                       name: "agentId",
@@ -676,6 +682,37 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+          ],
+          name: "syncAgentOwnership",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "newOwner",
+              type: "address",
+            },
+          ],
+          name: "transferAgent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "address",
               name: "newOwner",
               type: "address",
@@ -724,13 +761,12 @@ const deployedContracts = {
         getAgentsByOwner: "contracts/interfaces/IAgentMarketplace.sol",
         getAgentsFullPaginated: "contracts/interfaces/IAgentMarketplace.sol",
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
-        onERC721Received:
-          "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
+        onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 47247201,
+      deployedOnBlock: 47247246,
     },
     MarketplaceRouter: {
-      address: "0xc0204Ef6dA59FBeF16370fcB7ed4c7cFa77720A1",
+      address: "0xccDca54e3Ef7259130F7fc19691aF0204BcE15AD",
       abi: [
         {
           inputs: [
@@ -1410,10 +1446,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247522,
+      deployedOnBlock: 47247248,
     },
     USDCFaucet: {
-      address: "0xcd697d0f43c7c32C0eFc2EBF81787F3B17071c2b",
+      address: "0x11F259fafA9AfDD449612B67724b3e79f8307e2C",
       abi: [
         {
           inputs: [
@@ -1471,7 +1507,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247187,
+      deployedOnBlock: 47247214,
     },
   },
 } as const;

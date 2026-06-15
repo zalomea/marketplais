@@ -5,6 +5,7 @@ import {IIdentityRegistry} from "./IIdentityRegistry.sol";
 
 interface IAgentMarketplace {
     struct Agent {
+        address owner;
         uint256 agentId;
         uint256 price;
         bool payToAgentWallet; 
@@ -20,6 +21,6 @@ interface IAgentMarketplace {
     function getAgent(uint256) external view returns (Agent memory);
     function getAgentFullDetails(uint256) external view returns (AgentFullDetails memory);
     function getAgentsFullPaginated(uint256 page, uint256 count) external view returns (AgentFullDetails[] memory);
-    function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory);
+    function getAgentsByOwner(address agentOwner) external view returns (uint256[] memory);
     function identityRegistry() external view returns (IIdentityRegistry);
 }

@@ -233,6 +233,12 @@ export default function AddAgentPage() {
 
     const jsonString = JSON.stringify(agentObj, null, 2);
     setAgentJSON(jsonString);
+
+    // Auto-generate Base64 URI
+    const base64 = btoa(jsonString);
+    const base64URI = `data:application/json;base64,${base64}`;
+    setAgentURI(base64URI);
+
     setShowWizard(false);
     setWizard({
       step: "basic",

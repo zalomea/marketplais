@@ -19,7 +19,7 @@ const AgentsPage: NextPage = () => {
       {isLoading ? (
         <span className="loading loading-spinner loading-lg"></span>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl px-4">
           {agentDetails?.map(details => (
             <AgentCard
               key={details.agent.agentId.toString()}

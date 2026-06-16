@@ -154,6 +154,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         return res;
     }
 
+    // slither-disable-next-line calls-loop
     function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {
         if (agentOwner == address(0)) revert ZeroAddress();
 

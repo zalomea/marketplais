@@ -2,17 +2,15 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Signature } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import {
-  AgentMarketplace,
-  IUSDC,
-  MarketplaceRouter,
-  MockIdentityRegistry,
-  MockReputationRegistry,
-} from "../typechain-types";
+import { AgentMarketplace, IUSDC, MarketplaceRouter, IIdentityRegistry, IReputationRegistry } from "../typechain-types";
 
 // ─── Network constants (Base mainnet fork) ────────────────────────────────────
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const WHALE_ADDRESS = "0x8da91A6298eA5d1A8Bc985e99798fd0A0f05701a";
+
+const IDENTITY_REGISTRY_ADDRESS = process.env.IDENTITY_REGISTRY_ADDRESS ?? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
+const REPUTATION_REGISTRY_ADDRESS =
+  process.env.REPUTATION_REGISTRY_ADDRESS ?? "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63";
 
 // ─── Contract parameters ──────────────────────────────────────────────────────
 
@@ -73,8 +71,8 @@ async function buildTransferAuthorization(
 describe("MarketplaceRouter", function () {
   let router: MarketplaceRouter;
   let agentMarketplace: AgentMarketplace;
-  let mockRegistry: MockIdentityRegistry;
-  let mockReputation: MockReputationRegistry;
+  let iIdentityRegistry: IIdentityRegistry;
+  let iReputationRegistry: IReputationRegistry;
   let usdc: IUSDC;
 
   let owner: SignerWithAddress;
@@ -96,16 +94,13 @@ describe("MarketplaceRouter", function () {
     await usdc.connect(whaleSigner).transfer(client.address, ethers.parseUnits("1000", 6), { gasLimit: 1000000 });
     await ethers.provider.send("hardhat_stopImpersonatingAccount", [WHALE_ADDRESS]);
 
-    const MockRegistryFactory = await ethers.getContractFactory("MockIdentityRegistry");
-    mockRegistry = await MockRegistryFactory.deploy({ gasLimit: 5000000 });
-    await mockRegistry.waitForDeployment();
-
-    const MockReputationFactory = await ethers.getContractFactory("MockReputationRegistry");
-    mockReputation = await MockReputationFactory.deploy({ gasLimit: 5000000 });
-    await mockReputation.waitForDeployment();
+    iIdentityRegistry = await ethers.getContractAt("IIdentityRegistry", IDENTITY_REGISTRY_ADDRESS);
+    iReputationRegistry = await ethers.getContractAt("IReputationRegistry", REPUTATION_REGISTRY_ADDRESS);
 
     const AgentMarketplaceFactory = await ethers.getContractFactory("AgentMarketplace");
-    agentMarketplace = await AgentMarketplaceFactory.deploy(await mockRegistry.getAddress(), { gasLimit: 10000000 });
+    agentMarketplace = await AgentMarketplaceFactory.deploy(await iIdentityRegistry.getAddress(), {
+      gasLimit: 10000000,
+    });
     await agentMarketplace.waitForDeployment();
 
     const tx = await agentMarketplace
@@ -126,7 +121,7 @@ describe("MarketplaceRouter", function () {
     const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
     router = await RouterFactory.deploy(
       await agentMarketplace.getAddress(),
-      await mockReputation.getAddress(),
+      await iReputationRegistry.getAddress(),
       USDC_ADDRESS,
       FEE_BPS,
       treasury.address,
@@ -507,7 +502,7 @@ describe("MarketplaceRouter", function () {
       await expect(
         RouterFactory.deploy(
           await agentMarketplace.getAddress(),
-          await mockReputation.getAddress(),
+          await iReputationRegistry.getAddress(),
           USDC_ADDRESS,
           FEE_BPS,
           ethers.ZeroAddress,
@@ -521,7 +516,7 @@ describe("MarketplaceRouter", function () {
       await expect(
         RouterFactory.deploy(
           ethers.ZeroAddress,
-          await mockReputation.getAddress(),
+          await iReputationRegistry.getAddress(),
           USDC_ADDRESS,
           FEE_BPS,
           treasury.address,
@@ -535,7 +530,7 @@ describe("MarketplaceRouter", function () {
       await expect(
         RouterFactory.deploy(
           await agentMarketplace.getAddress(),
-          await mockReputation.getAddress(),
+          await iReputationRegistry.getAddress(),
           ethers.ZeroAddress,
           FEE_BPS,
           treasury.address,
@@ -549,7 +544,7 @@ describe("MarketplaceRouter", function () {
       await expect(
         RouterFactory.deploy(
           await agentMarketplace.getAddress(),
-          await mockReputation.getAddress(),
+          await iReputationRegistry.getAddress(),
           USDC_ADDRESS,
           1001n,
           treasury.address,

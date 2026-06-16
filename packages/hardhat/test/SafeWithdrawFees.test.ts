@@ -1,11 +1,16 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Contract, Signature } from "ethers";
+import { Signature } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { IIdentityRegistry, IReputationRegistry, MarketplaceRouter, AgentMarketplace, IUSDC } from "../typechain-types";
 
 // ─── Network constants (Base mainnet fork) ────────────────────────────────────
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const WHALE_ADDRESS = "0x8da91A6298eA5d1A8Bc985e99798fd0A0f05701a";
+
+const IDENTITY_REGISTRY_ADDRESS = process.env.IDENTITY_REGISTRY_ADDRESS ?? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
+const REPUTATION_REGISTRY_ADDRESS =
+  process.env.REPUTATION_REGISTRY_ADDRESS ?? "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63";
 // Canonical Safe v1.3.0 contracts already on the Base fork (Create2) — no extra dependency
 const SAFE_SINGLETON_ADDRESS = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552";
 const SAFE_PROXY_FACTORY_ADDRESS = "0xa6b71e26c5e0845f74c812102ca7114b6a896ab2";
@@ -80,12 +85,12 @@ function buildPreValidatedSignatures(signers: SignerWithAddress[]): string {
 // ─── Test suite ───────────────────────────────────────────────────────────────
 // Issue #39: withdrawFees() is gated behind a Safe 2-of-3 acting as owner AND treasury
 describe("SafeWithdrawFees", function () {
-  let router: Contract;
-  let agentMarketplace: Contract;
-  let mockRegistry: Contract;
-  let mockReputation: Contract;
-  let usdc: Contract;
-  let safe: Contract;
+  let router: MarketplaceRouter;
+  let agentMarketplace: AgentMarketplace;
+  let iIdentityRegistry: IIdentityRegistry;
+  let iReputationRegistry: IReputationRegistry;
+  let usdc: IUSDC;
+  let safe: any;
   let safeAddress: string;
   // Impersonated Safe signer — deploys the router and calls deployer-restricted functions
   let safeSigner: SignerWithAddress;
@@ -130,19 +135,12 @@ describe("SafeWithdrawFees", function () {
     // Stop impersonation immediately after the transfer to keep the environment clean
     await ethers.provider.send("hardhat_stopImpersonatingAccount", [WHALE_ADDRESS]);
 
-    // Deploy the mock identity registry to avoid Base mainnet ERC-8004 dependencies
-    const MockRegistryFactory = await ethers.getContractFactory("MockIdentityRegistry");
-    mockRegistry = await MockRegistryFactory.deploy();
-    await mockRegistry.waitForDeployment();
-
-    // Deploy the mock reputation registry to avoid Base mainnet ERC-8004 dependencies
-    const MockReputationFactory = await ethers.getContractFactory("MockReputationRegistry");
-    mockReputation = await MockReputationFactory.deploy();
-    await mockReputation.waitForDeployment();
+    iIdentityRegistry = await ethers.getContractAt("IIdentityRegistry", IDENTITY_REGISTRY_ADDRESS);
+    iReputationRegistry = await ethers.getContractAt("IReputationRegistry", REPUTATION_REGISTRY_ADDRESS);
 
     // Deploy AgentMarketplace pointing to the mock registry
     const AgentMarketplaceFactory = await ethers.getContractFactory("AgentMarketplace");
-    agentMarketplace = await AgentMarketplaceFactory.deploy(await mockRegistry.getAddress());
+    agentMarketplace = await AgentMarketplaceFactory.deploy(await iIdentityRegistry.getAddress());
     await agentMarketplace.waitForDeployment();
 
     // Register an agent with 100 USDC price and payToAgentWallet=false (pay to owner address)
@@ -151,14 +149,14 @@ describe("SafeWithdrawFees", function () {
       ["register(uint256,string,bool)"](AGENT_PRICE, AGENT_URI, false);
     const receipt = await tx.wait();
     const event = receipt?.logs
-      .map(log => {
+      .map((log: any) => {
         try {
           return agentMarketplace.interface.parseLog(log);
         } catch {
           return null;
         }
       })
-      .find(parsedLog => parsedLog?.name === "AgentRegistered");
+      .find((parsedLog: any) => parsedLog?.name === "AgentRegistered");
     agentId = event?.args.agentId;
 
     // Constructor sets owner = msg.sender, so deploy FROM the Safe to make it owner from genesis
@@ -168,7 +166,7 @@ describe("SafeWithdrawFees", function () {
     const RouterFactory = await ethers.getContractFactory("MarketplaceRouter", safeSigner);
     router = await RouterFactory.deploy(
       await agentMarketplace.getAddress(),
-      await mockReputation.getAddress(),
+      await iReputationRegistry.getAddress(),
       USDC_ADDRESS,
       FEE_BPS,
       // treasury: fees withdrawn via withdrawFees() land in the Safe itself
@@ -216,14 +214,14 @@ describe("SafeWithdrawFees", function () {
     const tx = await factory.createProxyWithNonce(SAFE_SINGLETON_ADDRESS, initializer, Date.now());
     const receipt = await tx.wait();
     const event = receipt?.logs
-      .map(log => {
+      .map((log: any) => {
         try {
           return factory.interface.parseLog(log);
         } catch {
           return null;
         }
       })
-      .find(parsedLog => parsedLog?.name === "ProxyCreation");
+      .find((parsedLog: any) => parsedLog?.name === "ProxyCreation");
 
     return event?.args.proxy;
   }

@@ -136,10 +136,9 @@ const registerDefaultAgents: DeployFunction = async function (hre: HardhatRuntim
 
     for (const { name, agentId } of registeredAgentIds) {
       console.log(`📦 Transferring agent "${name}" (id ${agentId}) to ${owner}...`);
-      const gas = await identityRegistry.safeTransferFrom.estimateGas(deployer, owner, agentId);
-      await (
-        await identityRegistry.safeTransferFrom(deployer, owner, agentId, { gasLimit: (gas * 120n) / 100n })
-      ).wait();
+      const fn = identityRegistry.getFunction("safeTransferFrom(address,address,uint256)");
+      const gas = await fn.estimateGas(deployer, owner, agentId);
+      await (await fn(deployer, owner, agentId, { gasLimit: (gas * 120n) / 100n })).wait();
       console.log(`✅ Agent "${name}" transferred to ${owner}`);
     }
   }

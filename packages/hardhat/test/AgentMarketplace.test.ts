@@ -1,21 +1,21 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { AgentMarketplace, MockIdentityRegistry } from "../typechain-types";
+import { AgentMarketplace, IIdentityRegistry } from "../typechain-types";
+
+const IDENTITY_REGISTRY_ADDRESS = process.env.IDENTITY_REGISTRY_ADDRESS ?? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
 
 describe("AgentMarketplace", function () {
   const AGENT_PRICE = ethers.parseUnits("1", 6);
   const UPDATED_PRICE = ethers.parseUnits("2", 6);
 
   let agentMarketplace: AgentMarketplace;
-  let mockRegistry: MockIdentityRegistry;
+  let iIdentityRegistry: IIdentityRegistry;
 
   beforeEach(async function () {
-    const MockRegistryFactory = await ethers.getContractFactory("MockIdentityRegistry");
-    mockRegistry = await MockRegistryFactory.deploy();
-    await mockRegistry.waitForDeployment();
+    iIdentityRegistry = await ethers.getContractAt("IIdentityRegistry", IDENTITY_REGISTRY_ADDRESS);
 
     const AgentMarketplaceFactory = await ethers.getContractFactory("AgentMarketplace");
-    agentMarketplace = await AgentMarketplaceFactory.deploy(await mockRegistry.getAddress());
+    agentMarketplace = await AgentMarketplaceFactory.deploy(await iIdentityRegistry.getAddress());
     await agentMarketplace.waitForDeployment();
   });
 

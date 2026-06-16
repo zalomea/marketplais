@@ -99,7 +99,7 @@ describe("defaultAgents helpers", () => {
       expect(metadata.active).to.equal(true);
       expect(metadata.services).to.deep.include({
         name: "web",
-        endpoint: "http://localhost:3000/api/agents/analyze",
+        endpoint: "http://localhost:3000/api/demoagents/analyze",
       });
     });
 
@@ -108,7 +108,7 @@ describe("defaultAgents helpers", () => {
       expect(metadata.name).to.equal("summarize");
       expect(metadata.services).to.deep.include({
         name: "web",
-        endpoint: "http://localhost:3000/api/agents/summarize",
+        endpoint: "http://localhost:3000/api/demoagents/summarize",
       });
     });
 
@@ -121,7 +121,7 @@ describe("defaultAgents helpers", () => {
 
     it("does not produce a double slash when the base URL has a trailing slash", () => {
       const metadata = decodeMetadata(buildAgentMetadata("analyze", "http://localhost:3000/"));
-      expect(metadata.services[0].endpoint).to.equal("http://localhost:3000/api/agents/analyze");
+      expect(metadata.services[0].endpoint).to.equal("http://localhost:3000/api/demoagents/analyze");
     });
   });
 

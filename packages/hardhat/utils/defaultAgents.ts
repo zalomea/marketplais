@@ -52,7 +52,7 @@ export function buildAgentMetadata(name: DefaultAgentName, baseUrl: string): str
     type: EIP_8004_REGISTRATION_TYPE,
     name,
     description: AGENT_DESCRIPTIONS[name],
-    services: [{ name: "web", endpoint: `${normalizedBaseUrl}/api/agents/${name}` }],
+    services: [{ name: "web", endpoint: `${normalizedBaseUrl}/api/demoagents/${name}` }],
     x402Support: false,
     active: true,
     // agentId is only known after registration; kept empty at build time.

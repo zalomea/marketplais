@@ -135,8 +135,14 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         emit AgentTransferred(agentId, marketplaceRecordedOwner, currentOwner);
     }
 
-    function getAgentsByOwner(address agentOwner) external view returns (uint256[] memory) {
-        return _ownerAgents[agentOwner].values();
+    /// @notice Returns the list of agents owned by a specific address.
+    function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {
+        uint256[] memory agentIds = _ownerAgents[agentOwner].values();
+        AgentFullDetails[] memory details = new AgentFullDetails[](agentIds.length);
+        for (uint256 i = 0; i < agentIds.length; i++) {
+            details[i] = getAgentFullDetails(agentIds[i]);
+        }
+        return details;
     }
 
     // slither-disable-end reentrancy-benign,reentrancy-events

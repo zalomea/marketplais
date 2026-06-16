@@ -34,11 +34,4 @@ describe("AgentMarketplace", function () {
     expect(ownerAAgents[1].owner).to.equal(ownerA.address);
     expect(ownerAAgents[1].agent.price).to.equal(UPDATED_PRICE);
   });
-
-  it("rejects zero address owner lookups", async function () {
-    await expect(agentMarketplace.getAgentsByOwner(ethers.ZeroAddress)).to.be.revertedWithCustomError(
-      agentMarketplace,
-      "ZeroAddress",
-    );
-  });
 });

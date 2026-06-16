@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { formatUnits, parseUnits } from "viem";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { useAgentReputation } from "~~/hooks/useAgentReputation";
+import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
 interface AgentCardProps {
   agentId: bigint;
@@ -9,6 +12,7 @@ interface AgentCardProps {
   owner: string;
   uri: string;
   active: boolean;
+  showActions?: boolean;
 }
 
 interface AgentMetadata {
@@ -17,19 +21,82 @@ interface AgentMetadata {
   image: string;
 }
 
-// Renders a row of 5 stars filled proportionally to the score (assumes 0–5 scale)
 const StarRating = ({ score }: { score: number }) => {
   const stars = Math.round(score);
   return <span className="text-warning">{Array.from({ length: 5 }, (_, i) => (i < stars ? "★" : "☆")).join("")}</span>;
 };
 
-export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps) => {
+export const AgentCard = ({ agentId, price, owner, uri, active, showActions = false }: AgentCardProps) => {
   const { score, count, feedbacks, isLoading: isLoadingReputation } = useAgentReputation(agentId);
   const [metadata, setMetadata] = useState<AgentMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [metadataError, setMetadataError] = useState(false);
+  const [priceInput, setPriceInput] = useState("");
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
-  const modalId = `reviews-modal-${agentId.toString()}`;
+  const { data: balance, refetch: refetchBalance } = useScaffoldReadContract({
+    contractName: "MarketplaceRouter",
+    functionName: "agentBalances",
+    args: [agentId],
+  });
+
+  const { writeContractAsync: marketplaceRouter } = useScaffoldWriteContract({ contractName: "MarketplaceRouter" });
+  const { writeContractAsync: agentMarketplace } = useScaffoldWriteContract({ contractName: "AgentMarketplace" });
+
+  const handleWithdraw = async () => {
+    setPendingAction(`withdraw-${agentId}`);
+    try {
+      await marketplaceRouter({
+        functionName: "withdrawAgentEarnings",
+        args: [agentId],
+      });
+      notification.success("Earnings withdrawn");
+      await refetchBalance();
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const updatePrice = async () => {
+    if (!priceInput || Number(priceInput) <= 0) {
+      notification.error("Please enter a valid price");
+      return;
+    }
+    setPendingAction(`price-${agentId}`);
+    try {
+      await agentMarketplace({
+        functionName: "updatePrice",
+        args: [agentId, parseUnits(priceInput, 6)],
+      });
+      notification.success("Agent price updated");
+      (document.getElementById(manageModalId) as HTMLDialogElement)?.close();
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const toggleStatus = async () => {
+    setPendingAction(`status-${agentId}`);
+    try {
+      await agentMarketplace({
+        functionName: active ? "deactivateAgent" : "reactivateAgent",
+        args: [agentId],
+      });
+      notification.success("Agent status updated");
+      (document.getElementById(manageModalId) as HTMLDialogElement)?.close();
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const reviewsModalId = `reviews-modal-${agentId.toString()}`;
+  const manageModalId = `manage-modal-${agentId.toString()}`;
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -56,12 +123,9 @@ export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps
 
         if (jsonContent) {
           try {
-            const parsed = JSON.parse(jsonContent);
-            setMetadata(parsed);
-          } catch (parseError) {
+            setMetadata(JSON.parse(jsonContent));
+          } catch {
             console.warn("CRITICAL: Failed to parse JSON metadata for AgentId", agentId.toString());
-            console.warn("Raw JSON Content (truncated):", jsonContent.substring(0, 100) + "...");
-            console.warn("Parsing Error:", parseError);
             setMetadataError(true);
           }
         } else if (uri !== "") {
@@ -81,7 +145,7 @@ export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps
 
   return (
     <>
-      <div className="card w-96 bg-base-100 shadow-xl">
+      <div className="card w-full bg-base-100 shadow-xl">
         <figure className="h-48 overflow-hidden relative">
           {metadata?.image ? (
             <Image src={metadata.image} alt={metadata.name || "Agent"} fill className="object-cover" />
@@ -91,93 +155,116 @@ export const AgentCard = ({ agentId, price, owner, uri, active }: AgentCardProps
             </div>
           )}
         </figure>
-        <div className="card-body">
-          <h2 className="card-title">{isLoading ? "Loading..." : metadata?.name || `Agent #${agentId.toString()}`}</h2>
-          {metadataError && <p className="text-error text-sm">Failed to load metadata</p>}
-          <p>{isLoading ? "..." : metadata?.description || "No description provided."}</p>
-          <p className="text-sm opacity-70">Price: {price.toString()}</p>
-          <p className="text-sm opacity-70">
+        <div className="card-body gap-1 p-4">
+          <h2 className="card-title text-lg">
+            {isLoading ? "Loading..." : metadata?.name || `Agent #${agentId.toString()}`}
+          </h2>
+          {metadataError && <p className="text-error text-xs">Failed to load metadata</p>}
+          <p className="text-sm">{isLoading ? "..." : metadata?.description || "No description provided."}</p>
+          <p className="text-xs opacity-70">Price: {formatUnits(price, 6)} USDC</p>
+          <p className="text-xs opacity-70">
             Owner: {owner.slice(0, 6)}...{owner.slice(-4)}
           </p>
 
-          {/* Reputation summary — click to open detailed reviews modal */}
           <button
-            className="flex items-center gap-1 text-sm w-fit hover:opacity-70 transition-opacity"
-            onClick={() => (document.getElementById(modalId) as HTMLDialogElement)?.showModal()}
+            className="flex items-center gap-1 text-xs w-fit hover:opacity-70 transition-opacity my-1"
+            onClick={() => (document.getElementById(reviewsModalId) as HTMLDialogElement)?.showModal()}
             disabled={isLoadingReputation}
           >
             {isLoadingReputation ? (
               <span className="loading loading-dots loading-xs"></span>
             ) : score !== null ? (
               <>
-                <span className="text-warning font-medium">{score.toFixed(1)}</span>
-                <StarRating score={score} />
-                <span className="opacity-50">({count})</span>
+                <span className="text-warning">{score.toFixed(1)}</span>
+                <StarRating score={score} />({count})
               </>
             ) : (
-              <span className="opacity-40 text-xs">No reviews yet</span>
+              <span className="opacity-40">No reviews</span>
             )}
           </button>
 
-          <div className="card-actions justify-end">
-            <Link href={`/agents/execute/${agentId.toString()}`} className="btn btn-primary btn-sm">
-              Execute
-            </Link>
-            <div className={`badge ${active ? "badge-success" : "badge-error"}`}>{active ? "Active" : "Inactive"}</div>
+          <div className="card-actions justify-end mt-2 items-center">
+            {showActions ? (
+              <>
+                <p className="text-xs font-bold text-success">
+                  Balance: {balance !== undefined ? formatUnits(balance, 6) : "0"} USDC
+                </p>
+                <button className="btn btn-primary btn-xs" onClick={handleWithdraw} disabled={!!pendingAction}>
+                  {pendingAction === `withdraw-${agentId}` ? "..." : "Withdraw"}
+                </button>
+                <button
+                  className="btn btn-secondary btn-xs"
+                  onClick={() => (document.getElementById(manageModalId) as HTMLDialogElement)?.showModal()}
+                >
+                  Manage
+                </button>
+              </>
+            ) : (
+              <Link href={`/agents/execute/${agentId.toString()}`} className="btn btn-primary btn-sm">
+                Execute
+              </Link>
+            )}
+            <div className={`badge badge-xs ${active ? "badge-success" : "badge-error"}`}>
+              {active ? "Active" : "Inactive"}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Reviews modal — shown when user clicks on the rating */}
-      <dialog id={modalId} className="modal">
+      {/* Manage Modal */}
+      <dialog id={manageModalId} className="modal">
+        <div className="modal-box">
+          <form method="dialog">
+            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+          </form>
+          <h3 className="font-bold text-lg mb-4">Manage Agent #{agentId.toString()}</h3>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={priceInput}
+                onChange={e => setPriceInput(e.target.value)}
+                placeholder="New price (USDC)"
+                className="input input-bordered input-sm w-full"
+              />
+              <button className="btn btn-primary btn-sm" onClick={updatePrice} disabled={!!pendingAction}>
+                {pendingAction === `price-${agentId}` ? "Updating..." : "Update Price"}
+              </button>
+            </div>
+            <button
+              className={`btn btn-sm w-full ${active ? "btn-warning" : "btn-success"}`}
+              onClick={toggleStatus}
+              disabled={!!pendingAction}
+            >
+              {pendingAction === `status-${agentId}` ? "Updating..." : active ? "Deactivate Agent" : "Reactivate Agent"}
+            </button>
+          </div>
+        </div>
+      </dialog>
+
+      {/* Reviews modal */}
+      <dialog id={reviewsModalId} className="modal">
         <div className="modal-box w-11/12 max-w-lg">
           <form method="dialog">
             <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
           </form>
-
           <h3 className="font-bold text-lg mb-1">{metadata?.name || `Agent #${agentId.toString()}`}</h3>
-
-          {/* Overall score header */}
-          {score !== null && (
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-base-300">
-              <span className="text-5xl font-bold">{score.toFixed(1)}</span>
-              <div>
-                <StarRating score={score} />
-                <p className="text-sm opacity-60 mt-1">
-                  {count} {count === 1 ? "review" : "reviews"}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Individual reviews list */}
           <div className="flex flex-col gap-4 max-h-80 overflow-y-auto">
             {feedbacks.length === 0 ? (
               <p className="text-sm opacity-50 text-center py-4">No reviews yet</p>
             ) : (
-              feedbacks.map((feedback, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs opacity-60 font-mono">
-                      {feedback.client.slice(0, 6)}...{feedback.client.slice(-4)}
-                    </span>
-                    <StarRating score={feedback.score} />
+              feedbacks.map((f, i) => (
+                <div key={i} className="flex flex-col gap-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="opacity-60 font-mono">{f.client.slice(0, 6)}...</span>
+                    <StarRating score={Number(f.score)} />
                   </div>
-                  {(feedback.tag1 || feedback.tag2) && (
-                    <div className="flex gap-1">
-                      {feedback.tag1 && <span className="badge badge-ghost badge-sm">{feedback.tag1}</span>}
-                      {feedback.tag2 && <span className="badge badge-ghost badge-sm">{feedback.tag2}</span>}
-                    </div>
-                  )}
                   <div className="divider my-0"></div>
                 </div>
               ))
             )}
           </div>
         </div>
-        <form method="dialog" className="modal-backdrop">
-          <button>close</button>
-        </form>
       </dialog>
     </>
   );

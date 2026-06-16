@@ -5,6 +5,7 @@ import {IIdentityRegistry} from "./IIdentityRegistry.sol";
 
 interface IAgentMarketplace {
     struct Agent {
+        address owner;
         uint256 agentId;
         uint256 price;
         bool payToAgentWallet; 

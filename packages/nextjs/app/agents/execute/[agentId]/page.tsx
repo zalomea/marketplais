@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import type { NextPage } from "next";
 import { formatUnits } from "viem";
 import { useAccount, useSignTypedData } from "wagmi";
-import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldEventHistory, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 const AgentExecutePage: NextPage = () => {
   const { agentId } = useParams();
@@ -21,6 +21,19 @@ const AgentExecutePage: NextPage = () => {
     functionName: "getAgentFullDetails",
     args: [parsedAgentId ?? undefined] as const,
   });
+
+  // Fetch Event History for Agent Activity
+  const { data: finalizedEvents } = useScaffoldEventHistory({
+    contractName: "MarketplaceRouter",
+    eventName: "PaymentFinalized",
+    filters: { agentId: parsedAgentId || 0n },
+    blockData: true,
+  });
+
+  // Filter and merge events
+  const allEvents = [...(finalizedEvents || []).map(e => ({ ...e, type: "Finalized" }))]
+    .sort((a, b) => Number(b.blockNumber - a.blockNumber))
+    .slice(0, 5);
 
   const [metadata, setMetadata] = useState<{ name: string; description: string } | null>(null);
 
@@ -186,6 +199,31 @@ const AgentExecutePage: NextPage = () => {
           {response}
         </div>
       )}
+
+      {/* Recent Activity Section */}
+      <div className="mt-8 p-4 bg-base-100 shadow rounded w-full max-w-lg">
+        <h3 className="font-bold mb-4">Recent Agent Activity</h3>
+        {allEvents.length > 0 ? (
+          <table className="table table-xs">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Block</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allEvents.map((event, i) => (
+                <tr key={i}>
+                  <td>{event.type}</td>
+                  <td>{event.blockNumber.toString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-sm opacity-50 text-center py-4">No recent activity.</p>
+        )}
+      </div>
     </div>
   );
 };

@@ -13,7 +13,10 @@ const AgentsPage: NextPage = () => {
     args: [BigInt(1), BigInt(pageSize)],
   });
 
-  const totalCount = agentDetails?.length ?? 0;
+  const activeAgents = agentDetails?.filter(details => details.agent.active) ?? [];
+  const inactiveAgents = agentDetails?.filter(details => !details.agent.active) ?? [];
+  const activeCount = activeAgents.length;
+  const inactiveCount = inactiveAgents.length;
 
   return (
     <div className="w-full mx-auto max-w-7xl px-6 lg:px-8 py-10">
@@ -25,11 +28,15 @@ const AgentsPage: NextPage = () => {
         <div className="flex items-end justify-between gap-4">
           <h1 className="font-mono text-xl font-bold text-slate-900 uppercase tracking-tight">Registered Agents</h1>
           {!isLoading && (
-            <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>
-                {totalCount} agent{totalCount !== 1 ? "s" : ""} active
-              </span>
+            <div className="flex items-center gap-4 font-mono text-[10px] text-slate-500">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{activeCount} active</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                <span>{inactiveCount} inactive</span>
+              </div>
             </div>
           )}
         </div>
@@ -40,7 +47,7 @@ const AgentsPage: NextPage = () => {
         <div className="flex justify-center py-20">
           <span className="loading loading-spinner loading-lg opacity-40" />
         </div>
-      ) : totalCount === 0 ? (
+      ) : agentDetails?.length === 0 ? (
         <div className="border border-slate-200 bg-slate-50 p-12 text-center">
           <p className="font-mono text-xs text-slate-400 uppercase tracking-wider">
             [ No agents registered in the marketplace ]

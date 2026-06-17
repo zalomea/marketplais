@@ -138,19 +138,14 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (page == 0) revert InvalidPage();
         if (count == 0) return new AgentFullDetails[](0);
 
-        uint256 totalAgentsCount = allAgentIds.length;
-        if (totalAgentsCount == 0) {
-            return new AgentFullDetails[](0);
-        }
+        uint256 agentCount = allAgentIds.length;
         uint256 startIndex = (page - 1) * count;
 
-        if (startIndex >= totalAgentsCount) {
-            return new AgentFullDetails[](0);
-        }
+        if (startIndex >= agentCount) revert InvalidPage();
 
         uint256 endIndex = startIndex + count;
-        if (endIndex > totalAgentsCount) {
-            endIndex = totalAgentsCount;
+        if (endIndex > agentCount) {
+            endIndex = agentCount;
         }
 
         uint256 actualCount = endIndex - startIndex;
@@ -167,10 +162,10 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {
         if (agentOwner == address(0)) revert ZeroAddress();
 
-        uint256 allAgentsCount = allAgentIds.length;
+        uint256 agentCount = allAgentIds.length;
         uint256 ownerAgentCount = 0;
 
-        for (uint256 i = 0; i < allAgentsCount; i++) {
+        for (uint256 i = 0; i < agentCount; i++) {
             if (identityRegistry.ownerOf(allAgentIds[i]) == agentOwner) {
                 ownerAgentCount++;
             }
@@ -179,7 +174,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         AgentFullDetails[] memory res = new AgentFullDetails[](ownerAgentCount);
         uint256 resultIndex = 0;
 
-        for (uint256 i = 0; i < allAgentsCount; i++) {
+        for (uint256 i = 0; i < agentCount; i++) {
             uint256 agentId = allAgentIds[i];
             if (identityRegistry.ownerOf(agentId) == agentOwner) {
                 res[resultIndex] = getAgentFullDetails(agentId);

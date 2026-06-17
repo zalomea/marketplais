@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { NextPage } from "next";
 import { formatUnits } from "viem";
 import { useAccount, useSignTypedData } from "wagmi";
+import AgentAvatar from "~~/components/AgentAvatar";
 import { useScaffoldEventHistory, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 const AgentExecutePage: NextPage = () => {
@@ -22,7 +23,7 @@ const AgentExecutePage: NextPage = () => {
     args: [parsedAgentId ?? undefined] as const,
   });
 
-  // Fetch Event History for Agent Activity
+  // Fetch Event History for Agent Activity (PaymentFinalized)
   const { data: finalizedEvents } = useScaffoldEventHistory({
     contractName: "MarketplaceRouter",
     eventName: "PaymentFinalized",
@@ -30,7 +31,6 @@ const AgentExecutePage: NextPage = () => {
     blockData: true,
   });
 
-  // Filter and merge events
   const allEvents = [...(finalizedEvents || []).map(e => ({ ...e, type: "Finalized" }))]
     .sort((a, b) => Number(b.blockNumber - a.blockNumber))
     .slice(0, 5);
@@ -156,74 +156,135 @@ const AgentExecutePage: NextPage = () => {
     }
   };
 
+  const name = metadata?.name || `Agent #${agentId}`;
+
   return (
-    <div className="flex items-center flex-col pt-10">
+    <div className="mx-auto max-w-3xl px-6 lg:px-8 py-10">
       {isLoadingDetails ? (
-        <span className="loading loading-spinner loading-lg"></span>
+        <div className="flex justify-center py-20">
+          <span className="loading loading-spinner loading-lg opacity-40" />
+        </div>
       ) : !agentDetails ? (
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Agent not found</h1>
-          <p className="mb-8">The agent you are looking for does not exist.</p>
-          <Link href="/agents" className="btn btn-primary">
-            Back to Agents
+        /* Empty / Not found state */
+        <div className="border border-slate-200 bg-slate-50 p-12 text-center border-t-2 border-t-slate-900">
+          <p className="font-mono text-sm font-bold text-slate-700 uppercase tracking-tight mb-2">Agent not found</p>
+          <p className="text-xs text-slate-400 mb-6">The agent you are looking for does not exist.</p>
+          <Link
+            href="/agents"
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white font-mono text-xs uppercase tracking-wider px-5 py-2.5 transition-colors"
+          >
+            ← Back to Agents
           </Link>
         </div>
       ) : (
-        <>
-          <h1 className="text-4xl font-bold mb-2">{metadata?.name || `Agent #${agentId}`}</h1>
-          <p className="mb-8 opacity-70 max-w-lg text-center">{metadata?.description || "No description available"}</p>
-          <p className="mb-8 font-mono text-sm">
-            Price: {agentDetails?.agent.price ? formatUnits(agentDetails.agent.price, 6) : "0"} USDC
-          </p>
-        </>
-      )}
+        <div className="space-y-8">
+          {/* Technical page header */}
+          <div className="border border-slate-200 bg-white border-t-2 border-t-slate-900">
+            <div className="bg-slate-950 px-6 py-3">
+              <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase">
+                Console // EXECUTE_AGENT_{String(agentId).padStart(3, "0")}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 px-6 py-6 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex-1 space-y-2 text-center sm:text-left">
+                <h1 className="font-mono text-xl font-bold text-slate-900 uppercase tracking-tight">{name}</h1>
+                <p className="text-xs text-slate-500 leading-5 max-w-md">
+                  {metadata?.description || "No description available"}
+                </p>
+              </div>
+              <div className="shrink-0 flex items-center justify-center p-4 border border-slate-200 bg-white">
+                <AgentAvatar agentId={BigInt(agentId as string)} size={72} />
+              </div>
+            </div>
+            {/* Metadata parameters */}
+            <div className="px-6 py-4 grid grid-cols-2 gap-4 font-mono text-[10px] text-slate-500">
+              <div>
+                <span className="uppercase tracking-wider block text-[9px] text-slate-400">Rate / Call</span>
+                <span className="text-slate-800 font-semibold text-xs mt-0.5 block">
+                  {agentDetails?.agent.price ? formatUnits(agentDetails.agent.price, 6) : "0"} USDC
+                </span>
+              </div>
+              <div>
+                <span className="uppercase tracking-wider block text-[9px] text-slate-400">Attestation</span>
+                <span className="text-emerald-600 font-bold text-xs mt-0.5 block">EIP-3009 VERIFIED</span>
+              </div>
+            </div>
+          </div>
 
-      {!isLoadingDetails && agentDetails && (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-lg">
-          <textarea
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="Enter your prompt here..."
-            className="textarea textarea-bordered h-32"
-            required
-          />
-          <button type="submit" className="btn btn-primary" disabled={isLoading || !connectedAddress}>
-            {isLoading ? "Executing..." : !connectedAddress ? "Connect Wallet" : "Execute"}
-          </button>
-        </form>
-      )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">Prompt Payload</label>
+              <textarea
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                placeholder="Enter prompt parameters or payload instruction..."
+                className="w-full font-mono text-sm text-slate-800 bg-white border border-slate-200 px-3 py-2.5 focus:outline-none focus:border-[#0ea5a5] transition-colors placeholder:text-slate-300 resize-none"
+                rows={5}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading || !connectedAddress}
+              className="w-full font-mono text-xs uppercase tracking-wider bg-[#0ea5a5] hover:bg-[#0d9494] text-white py-3 transition-colors disabled:opacity-40"
+            >
+              {isLoading ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : !connectedAddress ? (
+                "Connect Wallet to Execute"
+              ) : (
+                "Authorize & Execute ▸"
+              )}
+            </button>
+          </form>
 
-      {response && (
-        <div className="mt-8 p-4 bg-base-200 rounded w-full max-w-lg whitespace-pre-wrap">
-          <h2 className="font-bold">Response:</h2>
-          {response}
+          {/* Response payload */}
+          {response && (
+            <div className="border border-slate-200">
+              <div className="bg-slate-950 px-4 py-2 flex items-center justify-between">
+                <span className="font-mono text-[9px] tracking-[0.2em] text-slate-400 uppercase">
+                  Response // Payload_Output
+                </span>
+              </div>
+              <pre className="font-mono text-[11px] text-slate-700 bg-slate-50 p-4 overflow-auto max-h-80 leading-relaxed border-t border-slate-100">
+                {response}
+              </pre>
+            </div>
+          )}
+
+          {/* Recent Activity Log */}
+          <div className="border border-slate-200">
+            <div className="bg-slate-900 px-4 py-2 flex items-center justify-between">
+              <span className="font-mono text-[9px] tracking-[0.2em] text-slate-400 uppercase">
+                Activity // Execution_Log
+              </span>
+            </div>
+            {allEvents.length > 0 ? (
+              <table className="w-full text-left bg-white font-mono text-[10px]">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="px-4 py-2 font-normal text-slate-400 uppercase tracking-wider">Event</th>
+                    <th className="px-4 py-2 font-normal text-slate-400 uppercase tracking-wider text-right">Block</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allEvents.map((event, i) => (
+                    <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-2 font-semibold text-emerald-600">✓ {event.type}</td>
+                      <td className="px-4 py-2 text-slate-500 text-right">{event.blockNumber.toString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="font-mono text-[10px] text-slate-400 uppercase tracking-wider text-center py-6">
+                No recent executions
+              </p>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Recent Activity Section */}
-      <div className="mt-8 p-4 bg-base-100 shadow rounded w-full max-w-lg">
-        <h3 className="font-bold mb-4">Recent Agent Activity</h3>
-        {allEvents.length > 0 ? (
-          <table className="table table-xs">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Block</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allEvents.map((event, i) => (
-                <tr key={i}>
-                  <td>{event.type}</td>
-                  <td>{event.blockNumber.toString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-sm opacity-50 text-center py-4">No recent activity.</p>
-        )}
-      </div>
     </div>
   );
 };

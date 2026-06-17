@@ -237,7 +237,7 @@ export default function AddAgentPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-3xl px-6 lg:px-8 py-10">
+    <div className="mx-auto max-w-7xl px-6 lg:px-8 py-10">
       {/* Page header */}
       <div className="mb-8 border border-slate-200 bg-white border-t-2 border-t-slate-900">
         <div className="bg-slate-950 px-6 py-3">

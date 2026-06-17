@@ -16,7 +16,7 @@ const AgentsPage: NextPage = () => {
   const totalCount = agentDetails?.length ?? 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-6 lg:px-8 py-10">
+    <div className="w-full mx-auto max-w-7xl px-6 lg:px-8 py-10">
       {/* Page header */}
       <div className="mb-8 border border-slate-200 bg-white p-6 border-t-2 border-t-slate-900">
         <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase mb-1">

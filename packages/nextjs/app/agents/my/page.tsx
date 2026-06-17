@@ -18,15 +18,13 @@ const MyAgentsPage: NextPage = () => {
   const shortAddress = connectedAddress ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}` : null;
 
   return (
-    <div className="mx-auto max-w-7xl px-6 lg:px-8 py-10">
+    <div className="w-full mx-auto max-w-7xl px-6 lg:px-8 py-10">
       {/* Page header */}
-      <div className="mb-8 border border-slate-200 bg-white border-t-2 border-t-slate-900">
-        <div className="bg-slate-950 px-6 py-3">
-          <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase">
-            My Agents // {shortAddress ?? "Not connected"}
-          </p>
-        </div>
-        <div className="flex items-end justify-between gap-4 px-6 py-5">
+      <div className="mb-8 border border-slate-200 bg-white p-6 border-t-2 border-t-slate-900">
+        <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase mb-1">
+          My Agents // {shortAddress ?? "Not connected"}
+        </p>
+        <div className="flex items-end justify-between gap-4">
           <h1 className="font-mono text-xl font-bold text-slate-900 uppercase tracking-tight">Agent Management</h1>
           {isConnected && !isLoading && (
             <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">

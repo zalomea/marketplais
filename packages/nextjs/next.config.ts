@@ -1,9 +1,4 @@
-import * as dotenv from "dotenv";
 import type { NextConfig } from "next";
-import path from "path";
-
-// Load shared root .env (two levels up from packages/nextjs)
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -19,12 +14,6 @@ const nextConfig: NextConfig = {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     return config;
   },
-  // Expose selected environment variables to the client
-  env: {
-    NEXT_PUBLIC_USDC_ADDRESS: process.env.NEXT_PUBLIC_USDC_ADDRESS,
-    NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS: process.env.NEXT_PUBLIC_IDENTITY_REGISTRY_ADDRESS,
-    NEXT_PUBLIC_MARKETPLACE_FEE_BPS: process.env.NEXT_PUBLIC_MARKETPLACE_FEE_BPS,
-  },
 };
 
 const isIpfs = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
@@ -34,6 +23,19 @@ if (isIpfs) {
   nextConfig.trailingSlash = true;
   nextConfig.images = {
     unoptimized: true,
+  };
+} else {
+  nextConfig.images = {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+      {
+        protocol: "http",
+        hostname: "**",
+      },
+    ],
   };
 }
 

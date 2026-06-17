@@ -1,7 +1,6 @@
 import * as dotenv from "dotenv";
-import path from "path";
-// Load shared root .env (two levels up from packages/hardhat)
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// Load packages/hardhat/.env (default dotenv behavior)
+dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
@@ -32,9 +31,9 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            // https://docs.soliditylang.org/en/latest/using-the-compiler.html#optimizer-options
             runs: 200,
           },
+          viaIR: true,
         },
       },
     ],
@@ -58,8 +57,11 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: "https://mainnet.base.org",
+        blockNumber: 47247176,
       },
       chainId: 31337,
+      gas: 15000000,
+      blockGasLimit: 15000000,
     },
     mainnet: {
       url: "https://mainnet.rpc.buidlguidl.com",

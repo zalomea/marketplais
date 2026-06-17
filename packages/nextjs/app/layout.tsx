@@ -8,8 +8,8 @@ import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 export const dynamic = "force-dynamic";
 
 export const metadata = getMetadata({
-  title: "MarketplAIs App",
-  description: "Decentralized Autonomous AI Agent Marketplace",
+  title: "MarketplAIs",
+  description: "A decentralized marketplace for autonomous AI agents",
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {

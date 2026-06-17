@@ -8,6 +8,7 @@ const deployMarketplace: DeployFunction = async function (hre: HardhatRuntimeEnv
 
   const FEE_BPS = Number(process.env.MARKETPLACE_FEE_BPS || "1000");
   const treasury = process.env.MARKETPLACE_TREASURY_ADDRESS || deployer;
+  const relayer = process.env.RELAYER_ADDRESS || deployer;
   const identityRegistryAddress = process.env.IDENTITY_REGISTRY_ADDRESS;
   const reputationRegistryAddress = process.env.REPUTATION_REGISTRY_ADDRESS;
 
@@ -35,8 +36,23 @@ const deployMarketplace: DeployFunction = async function (hre: HardhatRuntimeEnv
     autoMine: true,
   });
 
+  // Explicitly set the relayer
+  const MarketplaceRouter = await hre.ethers.getContractAt(
+    "MarketplaceRouter",
+    routerDeployment.address,
+    await hre.ethers.getSigner(deployer),
+  );
+
+  if (relayer !== deployer) {
+    await (await MarketplaceRouter.setRelayer(relayer, { gasLimit: 10000000 })).wait();
+    console.log("✅ Relayer set to:", relayer);
+  } else {
+    console.log("✅ Relayer defaults to deployer:", relayer);
+  }
+
   console.log("✅ MarketplaceRouter deployed at:", routerDeployment.address);
   console.log("   ├─ treasury:", treasury);
+  console.log("   └─ relayer:", relayer);
   console.log("   └─ feeBps:", FEE_BPS);
 };
 

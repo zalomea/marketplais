@@ -4,29 +4,35 @@ import { useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
-interface Agent {
+interface AgentData {
   agentId: bigint;
   price: bigint;
   payToAgentWallet: boolean;
   active: boolean;
 }
 
+interface AgentFullDetails {
+  agent: AgentData;
+  owner: string;
+  uri: string;
+}
+
 export const ViewAgents = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agents, setAgents] = useState<AgentFullDetails[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const { data: agentsData, isLoading: agentsLoading } = useScaffoldReadContract({
     contractName: "AgentMarketplace",
-    functionName: "getAgentsPaginated",
+    functionName: "getAgentsFullPaginated",
     args: [BigInt(page), BigInt(pageSize)],
     watch: true,
   });
 
   useEffect(() => {
     if (agentsData && Array.isArray(agentsData)) {
-      setAgents(agentsData as Agent[]);
+      setAgents(agentsData as AgentFullDetails[]);
       setIsLoading(false);
     }
   }, [agentsData]);
@@ -83,7 +89,7 @@ export const ViewAgents = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {agents.map(agent => (
+          {agents.map(({ agent }) => (
             <div
               key={agent.agentId.toString()}
               className="bg-slate-50 border border-slate-200 border-t-2 border-t-slate-800 rounded-none p-5 shadow-sm hover:shadow transition flex flex-col justify-between"

@@ -20,8 +20,16 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/marketplace",
   },
   {
-    label: "Sell Agent",
-    href: "/publish",
+    label: "Agents",
+    href: "/agents",
+  },
+  {
+    label: "Add Agent",
+    href: "/agents/add",
+  },
+  {
+    label: "My Agents",
+    href: "/agents/my",
   },
   {
     label: "Debug Contracts",

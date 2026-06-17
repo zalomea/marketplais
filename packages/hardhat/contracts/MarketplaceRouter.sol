@@ -11,17 +11,19 @@ contract MarketplaceRouter {
     IAgentMarketplace public immutable agentMarketplace;
     IReputationRegistry public immutable reputationRegistry;
     IUSDC public immutable token;
-    address public relayer; // Relayer address for payment processing
+    address public relayer; 
 
-    uint256 public feeBps; //will be the fee amount in basis points , meaning 1% = 100 or 15% = 1500//
-    uint256 public constant WAITING_PERIOD = 7 days; // Waiting period to transfer ownership.
+    uint256 public feeBps;
+    uint256 public constant WAITING_PERIOD = 7 days;
     address public pendingOwner;
-    uint256 public waitOwnerUntil; // Timestamp from which the pending owner can accept ownership.
-    address public treasury; // The address that will hold the funds. By using a different one we decentralize the power of the contract so if someone manages to take control of the owner he doesn´t steal the funds. //
+    uint256 public waitOwnerUntil;
+    address public treasury;
 
-    mapping(uint256 => uint256) public agentBalances; // This is to keep track of the balance of each agent, this way we can make sure that the agent has enough balance to cover the payments and fees. //
-    uint256 public totalAgentLiabilities; // Tracks global debt owed to agents. Fee withdrawal sweeps the entire contract balance minus this liability, preventing trapped funds while securing agent earnings.
-    mapping(bytes32 => bool) public proccessesNonces; // This is to keep track of the nonces that have been proccessed, this way we can prevent replay attacks.
+    mapping(uint256 => uint256) public agentBalances;
+    uint256 public totalAgentLiabilities;
+    // USDC held in escrow, not yet assigned to agents or fees
+    uint256 public totalLocked;
+    mapping(bytes32 => bool) public proccessesNonces;
 
     error AgentNotActive();
     error NotOwner();
@@ -36,12 +38,17 @@ contract MarketplaceRouter {
     error WaitingPeriodNotOver();
     error InvalidAuthorization();
     error AgentNotFoundInMarketplace();
+    error PaymentAlreadyProcessed();
+    error PaymentNotLocked();
 
     event PaymentRouted(address indexed client, uint256 indexed agentId, uint256 amount);
     event FeesWithdrawn(uint256 tokenAmount, uint256 time);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);
     event RelayerUpdated(address indexed newRelayer);
+    event PaymentLocked(bytes32 indexed nonce, address indexed client, uint256 indexed agentId, uint256 totalAmount, uint256 agentEarnings);
+    event PaymentFinalized(bytes32 indexed nonce, uint256 indexed agentId, uint256 agentEarnings);
+    event PaymentRefunded(bytes32 indexed nonce, address indexed client, uint256 totalAmount);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -63,27 +70,25 @@ contract MarketplaceRouter {
         if (_treasury == address(0)) revert ZeroAddress();
         if (_agentMarketplace == address(0)) revert ZeroAddress();
         if (_token == address(0)) revert ZeroAddress();
-        //the max fee percentage alloweed is 10%
         if (_feeBps > 1000) revert FeeTooHigh();
         treasury = _treasury;
         agentMarketplace = IAgentMarketplace(_agentMarketplace);
         reputationRegistry = IReputationRegistry(_reputationRegistry);
         token = IUSDC(_token);
-        //it is possible for the deployer to use 0 fees
         feeBps = _feeBps;
         owner = msg.sender;
-        relayer = msg.sender; // Initialize relayer to owner
+        relayer = msg.sender;
     }
 
     function withdrawFees() external onlyOwner {
-        // Calculate the available balance to sweep to the treasury.
-        // This is the total contract balance minus the total amount owed to agents.
-        uint256 available = token.balanceOf(address(this)) - totalAgentLiabilities;
-        // slither-disable-next-line incorrect-equality
-        if (available == 0) revert NoFeesToWithdraw();
+        uint256 currentBalance = token.balanceOf(address(this));
+
+        if (currentBalance <= totalAgentLiabilities + totalLocked) revert NoFeesToWithdraw();
+
+        uint256 available = currentBalance - totalAgentLiabilities - totalLocked;
 
         emit FeesWithdrawn(available, block.timestamp);
-
+        
         bool success = token.transfer(treasury, available);
         if (!success) revert TransferFailed();
     }
@@ -92,25 +97,18 @@ contract MarketplaceRouter {
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (agentBalances[agentId] == 0) revert NoFeesToWithdraw();
-
         uint256 amountToTransfer = agentBalances[agentId];
         address receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).ownerOf(agentId);
-
         if (agent.payToAgentWallet) {
             receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).getAgentWallet(agentId);
         }
         if (receipient == address(0)) revert ZeroAddress();
-
-        agentBalances[agentId] = 0; // Set the agent balance to 0 before the transfer to prevent reentrancy attacks.
-        totalAgentLiabilities -= amountToTransfer; // Deduct from global liabilities as the agent has withdrawn their earnings.
+        agentBalances[agentId] = 0;
+        totalAgentLiabilities -= amountToTransfer;
         emit FeesWithdrawn(amountToTransfer, block.timestamp);
-
         bool success = token.transfer(receipient, amountToTransfer);
         if (!success) revert TransferFailed();
     }
-
-    //To transfer ownership of the marketplace there is a two-step verification. First the actual owner approves a new address and then this new//
-    //address has to call acceptOwnership. this prevents commiting mistakes, and brings extra security in a crticial process. //
 
     function transferOwnership(address newOwner) external onlyOwner {
         if (newOwner == owner) revert SameOwner();
@@ -122,6 +120,7 @@ contract MarketplaceRouter {
         if (msg.sender != pendingOwner) revert NotOwner();
         // slither-disable-next-line timestamp
         if (block.timestamp < waitOwnerUntil) revert WaitingPeriodNotOver();
+        
         emit OwnerTransferred(owner, pendingOwner, block.timestamp);
         owner = pendingOwner;
         pendingOwner = address(0);
@@ -138,14 +137,24 @@ contract MarketplaceRouter {
         emit FeeBpsUpdated(feeBps, newFeeBps, block.timestamp);
         feeBps = newFeeBps;
     }
-
+    
     function setRelayer(address newRelayer) external onlyOwner {
         if (newRelayer == address(0)) revert ZeroAddress();
         emit RelayerUpdated(newRelayer);
         relayer = newRelayer;
     }
 
-    function processAgentPaymentAndReputation(
+    struct LockedPayment {
+        uint256 agentId;
+        address client;
+        uint256 totalAmount;
+        uint256 agentEarnings;
+        bool active;
+    }
+
+    mapping(bytes32 => LockedPayment) public lockedPayments;
+
+    function lockPayment(
         address client,
         uint256 agentId,
         uint256 amount,
@@ -153,46 +162,82 @@ contract MarketplaceRouter {
         bytes32 nonce,
         bytes calldata signature
     ) external onlyRelayer {
-        if (proccessesNonces[nonce]) revert TransferFailed(); // This is to prevent replay attacks; if the nonce has been processed, it cannot be used again.
+        if (lockedPayments[nonce].active || proccessesNonces[nonce]) revert PaymentAlreadyProcessed();
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (!agent.active) revert AgentNotActive();
-        // Exact amount matching (price + fee) is validated off-chain by the backend facilitator.
-        // Contract only enforces that the agent's base price is fully covered.
-        if (amount < agent.price) revert InsufficientAmount(); // The amount sent by the client has to be at least the price of the agent.
-        proccessesNonces[nonce] = true; // Mark the nonce as processed to prevent replay attacks.
-
+        uint256 agentEarnings = agent.price;
+        uint256 platformFee = (agentEarnings * feeBps) / 10000;
+        uint256 expectedTotal = agentEarnings + platformFee;
+        if (amount < expectedTotal) revert InsufficientAmount();
+        lockedPayments[nonce] = LockedPayment({
+            agentId: agentId,
+            client: client,
+            totalAmount: amount,
+            agentEarnings: agentEarnings,
+            active: true
+        });
+        totalLocked += amount;
+        proccessesNonces[nonce] = true; 
         if (signature.length != 65) revert InvalidAuthorization();
         bytes32 r;
         bytes32 s;
         uint8 v;
         // slither-disable-next-line assembly
         assembly {
-            // r toma los primeros 32 bytes de los datos (posición inicial: offset)
             r := calldataload(signature.offset)
-
-            // s toma los siguientes 32 bytes (offset + 32)
             s := calldataload(add(signature.offset, 32))
-
-            // v toma el primer byte (índice 0) de la palabra que empieza en offset + 64
             v := byte(0, calldataload(add(signature.offset, 64)))
         }
-
-        agentBalances[agentId] += agent.price;
-        totalAgentLiabilities += agent.price; // Add agent's price to total liabilities.
-        emit PaymentRouted(client, agentId, amount);
-
+        emit PaymentLocked(nonce, client, agentId, amount, agentEarnings);
         IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
+    }
 
+    function finalizePayment(bytes32 nonce) external onlyRelayer {
+        LockedPayment storage payment = lockedPayments[nonce];
+        if (!payment.active) revert PaymentNotLocked();
+        uint256 agentId = payment.agentId;
+        uint256 agentEarnings = payment.agentEarnings;
+        uint256 totalAmount = payment.totalAmount;
+        payment.active = false;
+        delete lockedPayments[nonce];
+        totalLocked -= totalAmount;
+        agentBalances[agentId] += agentEarnings;
+        totalAgentLiabilities += agentEarnings;
+        emit PaymentFinalized(nonce, agentId, agentEarnings);
         reputationRegistry.giveFeedback(
             agentId,
-            int128(1), // value
-            uint8(0), // valueDecimals
-            "EXECUTION_PROOF", // tag1
-            "x402_PAYMENT", // tag2
-            "", // endpoint (optional)
-            "", // feedbackURI (optional)
-            bytes32(0) // feedbackHash
+            int128(1),
+            uint8(0),
+            "execution_success",
+            "x402_payment",
+            "",
+            "",
+            bytes32(0)
+        );
+    }
+
+    function refundPayment(bytes32 nonce) external onlyRelayer {
+        LockedPayment storage payment = lockedPayments[nonce];
+        if (!payment.active) revert PaymentNotLocked();
+        uint256 amount = payment.totalAmount;
+        address client = payment.client;
+        uint256 agentId = payment.agentId;
+        payment.active = false;
+        delete lockedPayments[nonce];
+        totalLocked -= amount;
+        emit PaymentRefunded(nonce, client, amount);
+        bool success = token.transfer(client, amount);
+        if (!success) revert TransferFailed();
+        reputationRegistry.giveFeedback(
+            agentId,
+            int128(0),
+            uint8(0),
+            "execution_failed",
+            "x402_payment",
+            "",
+            "",
+            bytes32(0)
         );
     }
 }

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0xbA10024DB8f96cA3F35fB40815B8800305e44654",
+      address: "0x082254a081E7EAD92344d420aE7A1D8c49b7C58d",
       abi: [
         {
           inputs: [
@@ -279,6 +279,19 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "totalAgents",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "uint256",
@@ -336,6 +349,122 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+          ],
+          name: "getAgentFullDetails",
+          outputs: [
+            {
+              components: [
+                {
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "agentId",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "payToAgentWallet",
+                      type: "bool",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "active",
+                      type: "bool",
+                    },
+                  ],
+                  internalType: "struct IAgentMarketplace.Agent",
+                  name: "agent",
+                  type: "tuple",
+                },
+                {
+                  internalType: "address",
+                  name: "owner",
+                  type: "address",
+                },
+                {
+                  internalType: "string",
+                  name: "uri",
+                  type: "string",
+                },
+              ],
+              internalType: "struct IAgentMarketplace.AgentFullDetails",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "agentOwner",
+              type: "address",
+            },
+          ],
+          name: "getAgentsByOwner",
+          outputs: [
+            {
+              components: [
+                {
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "agentId",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "payToAgentWallet",
+                      type: "bool",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "active",
+                      type: "bool",
+                    },
+                  ],
+                  internalType: "struct IAgentMarketplace.Agent",
+                  name: "agent",
+                  type: "tuple",
+                },
+                {
+                  internalType: "address",
+                  name: "owner",
+                  type: "address",
+                },
+                {
+                  internalType: "string",
+                  name: "uri",
+                  type: "string",
+                },
+              ],
+              internalType: "struct IAgentMarketplace.AgentFullDetails[]",
+              name: "",
+              type: "tuple[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
               name: "page",
               type: "uint256",
             },
@@ -345,32 +474,49 @@ const deployedContracts = {
               type: "uint256",
             },
           ],
-          name: "getAgentsPaginated",
+          name: "getAgentsFullPaginated",
           outputs: [
             {
               components: [
                 {
-                  internalType: "uint256",
-                  name: "agentId",
-                  type: "uint256",
+                  components: [
+                    {
+                      internalType: "uint256",
+                      name: "agentId",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "payToAgentWallet",
+                      type: "bool",
+                    },
+                    {
+                      internalType: "bool",
+                      name: "active",
+                      type: "bool",
+                    },
+                  ],
+                  internalType: "struct IAgentMarketplace.Agent",
+                  name: "agent",
+                  type: "tuple",
                 },
                 {
-                  internalType: "uint256",
-                  name: "price",
-                  type: "uint256",
+                  internalType: "address",
+                  name: "owner",
+                  type: "address",
                 },
                 {
-                  internalType: "bool",
-                  name: "payToAgentWallet",
-                  type: "bool",
-                },
-                {
-                  internalType: "bool",
-                  name: "active",
-                  type: "bool",
+                  internalType: "string",
+                  name: "uri",
+                  type: "string",
                 },
               ],
-              internalType: "struct IAgentMarketplace.Agent[]",
+              internalType: "struct IAgentMarketplace.AgentFullDetails[]",
               name: "",
               type: "tuple[]",
             },
@@ -541,19 +687,6 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "totalAgents",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
           inputs: [
             {
               internalType: "address",
@@ -600,14 +733,16 @@ const deployedContracts = {
       ],
       inheritedFunctions: {
         getAgent: "contracts/interfaces/IAgentMarketplace.sol",
+        getAgentFullDetails: "contracts/interfaces/IAgentMarketplace.sol",
+        getAgentsByOwner: "contracts/interfaces/IAgentMarketplace.sol",
+        getAgentsFullPaginated: "contracts/interfaces/IAgentMarketplace.sol",
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
-        totalAgents: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 46883664,
+      deployedOnBlock: 47247201,
     },
     MarketplaceRouter: {
-      address: "0xD6Bc9D300162993Fbc441C495F931F93B3b428EA",
+      address: "0xc0204Ef6dA59FBeF16370fcB7ed4c7cFa77720A1",
       abi: [
         {
           inputs: [
@@ -673,6 +808,16 @@ const deployedContracts = {
         {
           inputs: [],
           name: "NotOwner",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "PaymentAlreadyProcessed",
+          type: "error",
+        },
+        {
+          inputs: [],
+          name: "PaymentNotLocked",
           type: "error",
         },
         {
@@ -772,6 +917,93 @@ const deployedContracts = {
             },
           ],
           name: "OwnerTransferred",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentFinalized",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentLocked",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentRefunded",
           type: "event",
         },
         {
@@ -891,6 +1123,96 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+          ],
+          name: "finalizePayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "validUntil",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "signature",
+              type: "bytes",
+            },
+          ],
+          name: "lockPayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "lockedPayments",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "client",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "totalAmount",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "agentEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "active",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "owner",
           outputs: [
@@ -938,37 +1260,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "client",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "agentId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "validUntil",
-              type: "uint256",
-            },
-            {
               internalType: "bytes32",
               name: "nonce",
               type: "bytes32",
             },
-            {
-              internalType: "bytes",
-              name: "signature",
-              type: "bytes",
-            },
           ],
-          name: "processAgentPaymentAndReputation",
+          name: "refundPayment",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -1028,6 +1325,19 @@ const deployedContracts = {
         {
           inputs: [],
           name: "totalAgentLiabilities",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalLocked",
           outputs: [
             {
               internalType: "uint256",
@@ -1112,10 +1422,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46883666,
+      deployedOnBlock: 47247522,
     },
     USDCFaucet: {
-      address: "0xc61c13AaDf0EaBcb2d8f6D60018c2699Ea8F9747",
+      address: "0xcd697d0f43c7c32C0eFc2EBF81787F3B17071c2b",
       abi: [
         {
           inputs: [
@@ -1173,7 +1483,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 46883661,
+      deployedOnBlock: 47247187,
     },
   },
 } as const;

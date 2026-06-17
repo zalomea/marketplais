@@ -35,3 +35,5 @@ dist
 
 # local environment variables
 .env
+packages/hardhat/.env
+packages/nextjs/.env.local

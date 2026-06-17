@@ -2,250 +2,265 @@
 
 This file provides guidance to coding agents working in this repository.
 
-## Project Overview
+## Project
 
-Scaffold-ETH 2 (SE-2) is a starter kit for building dApps on Ethereum. It comes in **two flavors** based on the Solidity framework:
+**AI Agent Marketplace** built on Scaffold-ETH 2 (**Hardhat flavor only** — no `packages/foundry` exists here).
 
-- **Hardhat flavor**: Uses `packages/hardhat` with hardhat-deploy plugin
-- **Foundry flavor**: Uses `packages/foundry` with Forge scripts
-
-Both flavors share the same frontend package:
-
-- **packages/nextjs**: React frontend (Next.js App Router, not Pages Router, RainbowKit, Wagmi, Viem, TypeScript, Tailwind CSS with DaisyUI)
-
-### Detecting Which Flavor You're Using
-
-Check which package exists in the repository:
-
-- If `packages/hardhat` exists → **Hardhat flavor** (follow Hardhat instructions)
-- If `packages/foundry` exists → **Foundry flavor** (follow Foundry instructions)
+Clients pay USDC via EIP-3009 `TransferWithAuthorization` to execute AI agents. A server-side relayer locks funds in escrow, forwards the prompt to the agent's HTTP endpoint, then finalizes or refunds on-chain. Agent identity uses an external ERC-721 `IdentityRegistry`; reputation is tracked in `ReputationRegistry`. Both external registries are deployed on **Base mainnet** and are **already available on the local fork** at their mainnet addresses.
 
 ## Common Commands
 
-Commands work the same for both flavors unless noted otherwise:
-
 ```bash
-# Development workflow (run each in separate terminal)
-yarn chain          # Start local blockchain (Hardhat or Anvil)
-yarn deploy         # Deploy contracts to local network
-yarn start          # Start Next.js frontend at http://localhost:3000
+# Development workflow (each in a separate terminal)
+yarn chain          # Fork Base mainnet locally (hardhat node)
+yarn deploy         # Deploy contracts (requires .env — see below)
+yarn start          # Next.js frontend at http://localhost:3000
 
 # Code quality
 yarn lint           # Lint both packages
 yarn format         # Format both packages
 
-# Building
-yarn next:build     # Build frontend
-yarn compile        # Compile Solidity contracts
+# Testing
+yarn test           # = yarn hardhat:test (runs with REPORT_GAS=true)
 
-# Contract verification (works for both)
+# Building / verification
+yarn next:build     # Build frontend
+yarn compile        # Compile Solidity
 yarn verify --network <network>
 
-# Account management (works for both)
+# Account management
 yarn generate            # Generate new deployer account
 yarn account:import      # Import existing private key
 yarn account             # View current account info
 
 # Deploy to live network
-yarn deploy --network <network>   # e.g., sepolia, mainnet, base
+yarn deploy --network base    # or sepolia, mainnet, etc.
 
-yarn vercel:yolo --prod # for deployment of frontend
+yarn vercel:yolo --prod  # Deploy frontend to Vercel
 ```
 
 ## Architecture
 
-### Smart Contract Development
+### Local Network — Base Mainnet Fork
 
-#### Hardhat Flavor
+`hardhat.config.ts` forks Base mainnet at block 47247176. The fork brings in:
 
-- Contracts: `packages/hardhat/contracts/`
-- Deployment scripts: `packages/hardhat/deploy/` (uses hardhat-deploy plugin)
-- Tests: `packages/hardhat/test/`
-- Config: `packages/hardhat/hardhat.config.ts`
-- Deploying specific contract:
-  - If the deploy script has:
-    ```typescript
-    // In packages/hardhat/deploy/01_deploy_my_contract.ts
-    deployMyContract.tags = ["MyContract"];
-    ```
-  - `yarn deploy --tags MyContract`
-  - **Gas limit in deploy scripts**: Manual post-deploy calls (e.g. `transferOwnership`, `grantRole`, `initialize`) can silently inherit `blockGasLimit` as their gas cap, causing failures. **Fix at the call site, not in `hardhat.config.ts`:**
-    ```typescript
-    // Preferred: estimateGas + 20% margin
-    const gas = await myContract.myMethod.estimateGas(arg1, arg2);
-    await myContract.myMethod(arg1, arg2, { gasLimit: (gas * 120n) / 100n });
+| Contract | Address |
+|---|---|
+| IdentityRegistry (UUPS ERC-721) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ReputationRegistry (UUPS) | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+| USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 
-    // Or: explicit limit for simple admin calls
-    await myContract.transferOwnership(newOwner, { gasLimit: 100_000 });
-    ```
+`01_deploy_faucet.ts` impersonates a USDC whale and seeds the Faucet with 1M USDC on localhost only.
 
-#### Foundry Flavor
+### Smart Contracts
 
-- Contracts: `packages/foundry/contracts/`
-- Deployment scripts: `packages/foundry/script/` (uses custom deployment strategy)
-  - Example: `packages/foundry/script/Deploy.s.sol` and `packages/foundry/script/DeployYourContract.s.sol`
-- Tests: `packages/foundry/test/`
-- Config: `packages/foundry/foundry.toml`
-- Deploying a specific contract:
-  - Create a separate deployment script and run `yarn deploy --file DeployYourContract.s.sol`
+All in `packages/hardhat/contracts/`:
 
-#### Both Flavors
+| File | Contract | Deploy Tag |
+|---|---|---|
+| `AgentMarketplace.sol` | AgentMarketplace | `AgentMarketplace` |
+| `MarketplaceRouter.sol` | MarketplaceRouter | `MarketplaceRouter` |
+| `USDCFaucet.sol` | USDCFaucet | `USDCFaucet` |
+| `interfaces/` | IIdentityRegistry, IAgentMarketplace, IReputationRegistry, IUSDC | (not deployed) |
 
-- After `yarn deploy`, ABIs are auto-generated to `packages/nextjs/contracts/deployedContracts.ts`
+**AgentMarketplace** — register/deactivate/reactivate agents; delegates identity to IdentityRegistry.  
+**MarketplaceRouter** — escrow logic (`lockPayment` / `finalizePayment` / `refundPayment`); has a `relayer` role and a `feeBps` (max 1000 = 10%).  
+Both contracts use two-step ownership transfer with a **7-day waiting period**.
 
-### Frontend Contract Interaction
+### Deploy Scripts (ordered)
 
-**Correct interact hook names (use these):**
+```
+00_mine_blocks.ts       # Local setup only
+01_deploy_faucet.ts     # Tags: USDCFaucet — funds faucet on localhost
+02_deploy_marketplace.ts # Tags: AgentMarketplace, MarketplaceRouter
+03_fund_relayer.ts      # Tags: FundRelayer — funds relayer 1 ETH on localhost
+04_register_default_agents.ts # Tags: DefaultAgents — seeds "analyze" + "summarize" agents
+```
 
-- `useScaffoldReadContract` - NOT ~~useScaffoldContractRead~~
-- `useScaffoldWriteContract` - NOT ~~useScaffoldContractWrite~~
+Deploy specific tag: `yarn deploy --tags AgentMarketplace`  
+`DefaultAgents` **skips auto-registration on production networks** (mainnet, base, arbitrum, etc.) — core agents must be registered manually there.
 
-Contract data is read from two files in `packages/nextjs/contracts/`:
+### Required Environment Variables
 
-- `deployedContracts.ts`: Auto-generated from deployments
-- `externalContracts.ts`: Manually added external contracts
+**`packages/hardhat/.env`** (create from scratch — no template):
 
-#### Reading Contract Data
+```bash
+# REQUIRED for 02_deploy_marketplace.ts — throws without these
+IDENTITY_REGISTRY_ADDRESS=0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+REPUTATION_REGISTRY_ADDRESS=0x8004BAa17C55a88189AE136b182e5fdA19dE9b63
+
+# Optional
+MARKETPLACE_FEE_BPS=1000              # default: 1000 (10%)
+MARKETPLACE_TREASURY_ADDRESS=         # default: deployer
+RELAYER_ADDRESS=                      # default: deployer
+DEFAULT_AGENT_OWNER_ADDRESS=          # default: deployer keeps ownership
+AGENT_SERVICE_BASE_URL=               # default: http://localhost:3000
+ALCHEMY_API_KEY=
+ETHERSCAN_V2_API_KEY=
+```
+
+**`packages/nextjs/.env.local`**:
+
+```bash
+# REQUIRED: the relayer that locks/finalizes payments server-side
+RELAYER_PRIVATE_KEY=0x<64-hex-chars>  # Must be 0x-prefixed 32-byte hex
+
+# Optional
+RPC_URL=                              # Override server-side RPC
+NEXT_PUBLIC_RPC_URL=                  # For localhost hardhat network
+NEXT_PUBLIC_ALCHEMY_API_KEY=
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=
+```
+
+### Gas Limit Gotcha in Deploy Scripts
+
+Post-deploy calls (`transferOwnership`, `grantRole`, `setRelayer`) can silently inherit `blockGasLimit` and fail. Fix at the call site:
 
 ```typescript
-const { data: totalCounter } = useScaffoldReadContract({
-  contractName: "YourContract",
-  functionName: "userGreetingCounter",
-  args: ["0xd8da6bf26964af9d7eed9e03e53415d37aa96045"],
-});
+// Preferred: estimateGas + 20% margin
+const gas = await myContract.myMethod.estimateGas(arg1, arg2);
+await myContract.myMethod(arg1, arg2, { gasLimit: (gas * 120n) / 100n });
 ```
 
-#### Writing to Contracts
+### Payment Flow (execute API)
+
+`POST /api/execute` is a two-phase route:
+
+1. **Phase 1** (no payment headers) → returns HTTP 402 with EIP-3009 typed data params for the client to sign.
+2. **Phase 2** (headers: `x-payment-signature`, `x-payment-nonce`, `x-payment-deadline`, `x-payment-from`) → relayer locks USDC escrow, calls agent endpoint, then calls `finalizePayment` (success) or `refundPayment` (failure).
+
+Agent metadata is EIP-8004 compliant — a `data:application/json;base64,…` token URI with a `services[].web.endpoint` field.  
+On localhost the agent endpoint (`http://…`) is allowed; in production it must be `https://`.
+
+## Frontend Structure
+
+Pages (`packages/nextjs/app/`):
+
+| Route | Purpose |
+|---|---|
+| `/` | Home |
+| `/agents` | Browse marketplace |
+| `/agents/add` | Register new agent |
+| `/agents/execute` | Execute an agent |
+| `/agents/my` | My agents |
+| `/blockexplorer` | Block explorer |
+| `/debug` | Debug contracts |
+
+API routes:
+- `POST /api/execute` — payment-gated agent execution (see above)
+- `POST /api/agents/analyze` — built-in analyze agent
+- `POST /api/agents/summarize` — built-in summarize agent
+
+Server-side viem client: `packages/nextjs/services/web3/viemClient.ts`  
+- `publicClient` — read-only, targets first network in `scaffold.config.ts`
+- `getRelayerWalletClient()` — factory (reads `RELAYER_PRIVATE_KEY` fresh each call)
+
+### Contract Interaction Hooks
 
 ```typescript
-const { writeContractAsync, isPending } = useScaffoldWriteContract({
-  contractName: "YourContract",
+// Read
+const { data } = useScaffoldReadContract({
+  contractName: "AgentMarketplace",
+  functionName: "getAgent",
+  args: [BigInt(agentId)],
 });
 
-await writeContractAsync({
-  functionName: "setGreeting",
-  args: [newGreeting],
-  value: parseEther("0.01"), // for payable functions
-});
-```
-
-#### Reading Events
-
-```typescript
-const { data: events, isLoading } = useScaffoldEventHistory({
-  contractName: "YourContract",
-  eventName: "GreetingChange",
-  watch: true,
-  fromBlock: 31231n,
-  blockData: true,
+// Write
+const { writeContractAsync } = useScaffoldWriteContract({
+  contractName: "AgentMarketplace",
 });
 ```
 
-SE-2 also provides other hooks to interact with blockchain data: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useScaffoldContract`, `useTransactor`.
+Correct hook names (do NOT use the old names):
+- `useScaffoldReadContract` — NOT ~~useScaffoldContractRead~~
+- `useScaffoldWriteContract` — NOT ~~useScaffoldContractWrite~~
 
-**IMPORTANT: Always use hooks from `packages/nextjs/hooks/scaffold-eth` for contract interactions. Always refer to the hook names as they exist in the codebase.**
+Contract artifacts:
+- `packages/nextjs/contracts/deployedContracts.ts` — auto-generated on `yarn deploy`
+- `packages/nextjs/contracts/externalContracts.ts` — IdentityRegistry, ReputationRegistry, USDC (manually maintained; chains 31337 and 8453 share the same addresses)
 
-### UI Components
+### UI & Styling
 
-**Always use `@scaffold-ui/components` library for web3 UI components:**
+Use **DaisyUI classes** and SE-2's web3 components from `packages/nextjs/components/scaffold-eth`:
 
-- `Address`: Display ETH addresses with ENS resolution, blockie avatars, and explorer links
-- `AddressInput`: Input field with address validation and ENS resolution
-- `Balance`: Show ETH balance in ether and USD
-- `EtherInput`: Number input with ETH/USD conversion toggle
-- `IntegerInput`: Integer-only input with wei conversion
+- `Address` — display addresses with ENS + explorer links
+- `AddressInput` — address input with validation
+- `Balance`, `EtherInput`, `IntegerInput`
 
-### Notifications & Error Handling
+Use `notification` from `~~/utils/scaffold-eth` for success/error toasts.  
+Use `~~` path alias for all Next.js imports: `import { useTargetNetwork } from "~~/hooks/scaffold-eth"`.
 
-Use `notification` from `~~/utils/scaffold-eth` for success/error/warning feedback and `getParsedError` for readable error messages.
+## Code Style
 
-### Styling
+| Style | Category |
+|---|---|
+| `UpperCamelCase` | Components, types, enums |
+| `lowerCamelCase` | Variables, functions, hooks |
+| `CONSTANT_CASE` | Constants, global variables |
+| `snake_case` | Hardhat deploy file names |
 
-**Use DaisyUI classes** for building frontend components.
+- Use `type` over `interface`; no `T` prefix (`Address` not `TAddress`)
+- Avoid explicit types where TypeScript infers
 
-```tsx
-// ✅ Good - using DaisyUI classes
-<button className="btn btn-primary">Connect</button>
-<div className="card bg-base-100 shadow-xl">...</div>
+## Network Configuration
 
-// ❌ Avoid - raw Tailwind when DaisyUI has a component
-<button className="px-4 py-2 bg-blue-500 text-white rounded">Connect</button>
-```
+- Local target: `chains.hardhat` (in `packages/nextjs/scaffold.config.ts`)
+- Add live networks in `packages/hardhat/hardhat.config.ts` (already includes base, sepolia, arbitrum, etc.)
+- Add networks in `packages/nextjs/scaffold.config.ts` before deploying to testnet/mainnet; decrease `pollingInterval` for L2 chains
 
-### Configure Target Network before deploying to testnet / mainnet.
+## Known Bugs & Technical Debt
 
-#### Hardhat
+These issues were confirmed by adversarial code review on 2026-06-16. **Do not reintroduce them, and fix before touching the affected file.**
 
-Add networks in `packages/hardhat/hardhat.config.ts` if not present.
+### CRITICAL — unfixed
 
-#### Foundry
+**C1 · Escrow trap** (`packages/hardhat/contracts/MarketplaceRouter.sol` L208, L232)  
+`finalizePayment` and `refundPayment` both call `reputationRegistry.giveFeedback()` **unguarded**. If the real Base `ReputationRegistry` reverts for any reason, neither exit can execute — funds are **permanently trapped**. Fix: wrap the `giveFeedback` call in `try/catch` (reputation is non-critical to settlement).
 
-Add RPC endpoints in `packages/foundry/foundry.toml` if not present.
+**C2 · Payment bypass** (`packages/nextjs/app/api/agents/analyze/route.ts`)  
+The analyze route is an **unauthenticated Groq LLM proxy** — anyone can POST directly without going through the x402 escrow flow, burning `GROQ_API_KEY` quota for free. There is no shared secret between the relayer and the agent backend. Fix: verify a relayer-signed token on every request before calling Groq.
 
-#### NextJs
+**C3 · Summarize stub** (`packages/nextjs/app/api/agents/summarize/route.ts`)  
+Returns a hardcoded "Lorem ipsum summarized" string but is **registered as a paid default agent** (0.01 USDC). Users pay real money for fake output.
 
-Add networks in `packages/nextjs/scaffold.config.ts` if not present. This file also contains configuration for polling interval, API keys. Remember to decrease the polling interval for L2 chains.
+### HIGH — unfixed
 
-## Code Style Guide
+**H1 · USDC display bug** (`packages/nextjs/components/AgentCard.tsx` L98)  
+`price.toString()` renders raw micro-USDC — users see `"20000"` instead of `"0.02"`. Use `formatUnits(price, 6)`. The execute page and `my/page.tsx` already format correctly; only the browse grid (`/agents`) is broken.
 
-### Identifiers
+**H2 · Reputation scale mismatch** (`packages/hardhat/contracts/MarketplaceRouter.sol` L210–211)  
+Router writes `value=1` (success) or `value=0` (failure) with `valueDecimals=0`. The `StarRating` component in `AgentCard` assumes a 0–5 scale, so every successful agent displays **1.0 ★ out of 5** permanently.
 
-| Style            | Category                                                                                                               |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `UpperCamelCase` | class / interface / type / enum / decorator / type parameters / component functions in TSX / JSXElement type parameter |
-| `lowerCamelCase` | variable / parameter / function / property / module alias                                                              |
-| `CONSTANT_CASE`  | constant / enum / global variables                                                                                     |
-| `snake_case`     | for hardhat deploy files and foundry script files                                                                      |
+**H3 · `getAgentWallet` revert risk** (`packages/hardhat/contracts/MarketplaceRouter.sol` `withdrawAgentEarnings`)  
+When `payToAgentWallet=true`, `withdrawAgentEarnings` calls `identityRegistry.getAgentWallet(agentId)`. If the registry reverts (agent wallet not set), the entire withdrawal reverts and agent earnings are frozen.
 
-### Import Paths
+### LOW / hygiene — unfixed
 
-Use the `~~` path alias for imports in the nextjs package:
-
-```tsx
-import { useTargetNetwork } from "~~/hooks/scaffold-eth";
-```
-
-### Creating Pages
-
-```tsx
-import type { NextPage } from "next";
-
-const Home: NextPage = () => {
-  return <div>Home</div>;
-};
-
-export default Home;
-```
-
-### TypeScript Conventions
-
-- Use `type` over `interface` for custom types
-- Types use `UpperCamelCase` without `T` prefix (use `Address` not `TAddress`)
-- Avoid explicit typing when TypeScript can infer the type
-
-### Comments
-
-Make comments that add information. Avoid redundant JSDoc for simple functions.
+- `onlyRelayer` modifier reverts with `NotOwner()` (MarketplaceRouter.sol L59) — wrong error, should be `NotRelayer()`.
+- Dead code in `MarketplaceRouter`: event `PaymentRouted` (L44) never emitted; error `ZeroPrice` (L32) never used.
+- `execute/route.ts` L290–298 handles `AgentInactive` / `InvalidAgentId` / `PriceNotSet` — these errors don't exist in `AgentMarketplace.sol`.
+- `FaucetUSDCButton.tsx` calls `useScaffoldWriteContract("USDCFaucet")` (deprecated string form). Use `{ contractName: "USDCFaucet" }`.
+- `AgentMarketplace.getAgentsByOwner` (L158–182) is an **unbounded O(n) double loop** with one external `ownerOf` call per agent. Will not scale with many agents.
+- Typo: `proccessesNonces` (double `c`) in `MarketplaceRouter.sol` L26.
+- `02_deploy_marketplace.ts` has USDC address hardcoded to Base mainnet regardless of network; `setRelayer` uses a magic `gasLimit: 10000000` instead of `estimateGas + 20%` (script 04 does it right — follow that pattern).
 
 ## Documentation
 
-Use **Context7 MCP** tools to fetch up-to-date documentation for any library (Wagmi, Viem, RainbowKit, DaisyUI, Hardhat, Next.js, etc.). Context7 is configured as an MCP server and provides access to indexed documentation with code examples.
+Use **Context7 MCP** tools to fetch up-to-date docs for Wagmi, Viem, RainbowKit, DaisyUI, Hardhat, Next.js, etc.
 
 ## Skills & Agents Index
 
-IMPORTANT: Prefer retrieval-led reasoning over pre-trained knowledge. Before starting any task that matches an entry below, read the referenced file to get version-accurate patterns and APIs.
+Read `.agents/skills/<name>/SKILL.md` before implementing tasks that match:
 
-**Skills** (read `.agents/skills/<name>/SKILL.md` before implementing):
+- **openzeppelin** — OZ Contracts (tokens, access control, security primitives)
+- **erc-721** — NFT pitfalls: `_safeMint` reentrancy, on-chain SVG, IPFS base URI
+- **eip-5792** — batch transactions, wallet_sendCalls, ERC-7677
+- **ponder** — blockchain event indexing, GraphQL
+- **siwe** — Sign-In with Ethereum, EIP-4361 sessions
+- **x402** — HTTP 402 payment-gated routes, micropayments
+- **drizzle-neon** — Drizzle ORM, Neon PostgreSQL, off-chain storage
+- **subgraph** — The Graph subgraph, blockchain event indexing
 
-- **openzeppelin** — OpenZeppelin Contracts integration, library-first development, pattern discovery from installed source. Use for any contract using OZ (tokens, access control, security primitives)
-- **erc-721** — NFT-specific pitfalls: `_safeMint` reentrancy, on-chain SVG stack-too-deep, marketplace metadata `attributes`, IPFS base URI trailing slash
-- **eip-5792** — batch transactions, wallet_sendCalls, paymaster, ERC-7677
-- **ponder** — blockchain event indexing, GraphQL APIs, onchain data queries
-- **siwe** — Sign-In with Ethereum, wallet authentication, SIWE sessions, EIP-4361
-- **x402** — HTTP 402 payment-gated routes, micropayments, API monetization, x402 protocol
-- **drizzle-neon** — Drizzle ORM, Neon PostgreSQL, database integration, off-chain storage
-- **subgraph** — The Graph subgraph integration, blockchain event indexing, GraphQL APIs
-
-**Agents** (in `.agents/agents/`):
-
-- **grumpy-carlos-code-reviewer** — code reviews, SE-2 patterns, Solidity + TypeScript quality
+Agents in `.agents/agents/`:
+- **grumpy-carlos-code-reviewer** — SE-2 patterns, Solidity + TypeScript quality

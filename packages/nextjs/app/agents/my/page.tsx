@@ -13,19 +13,44 @@ const MyAgentsPage: NextPage = () => {
     contractName: "AgentMarketplace",
     functionName: "getAgentsByOwner",
     args: [connectedAddress],
-  });
+  }) as { data: any[] | undefined; isLoading: boolean };
+
+  const shortAddress = connectedAddress ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}` : null;
 
   return (
-    <div className="flex items-center flex-col pt-10">
-      <h1 className="text-4xl font-bold mb-8">My Agents</h1>
+    <div className="mx-auto max-w-7xl px-6 lg:px-8 py-10">
+      {/* Page header */}
+      <div className="mb-8 border border-slate-200 bg-white border-t-2 border-t-slate-900">
+        <div className="bg-slate-950 px-6 py-3">
+          <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase">
+            My Agents // {shortAddress ?? "Not connected"}
+          </p>
+        </div>
+        <div className="flex items-end justify-between gap-4 px-6 py-5">
+          <h1 className="font-mono text-xl font-bold text-slate-900 uppercase tracking-tight">Agent Management</h1>
+          {isConnected && !isLoading && (
+            <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0ea5a5]" />
+              <span>{agentDetails?.length ?? 0} owned</span>
+            </div>
+          )}
+        </div>
+      </div>
 
-      {!isConnected && <p>Please connect your wallet.</p>}
-
-      {isLoading ? (
-        <span className="loading loading-spinner loading-lg"></span>
+      {/* States */}
+      {!isConnected ? (
+        <div className="border border-slate-200 bg-slate-50 p-12 text-center">
+          <p className="font-mono text-xs text-slate-400 uppercase tracking-wider">
+            [ Connect your wallet to view your agents ]
+          </p>
+        </div>
+      ) : isLoading ? (
+        <div className="flex justify-center py-20">
+          <span className="loading loading-spinner loading-lg opacity-40" />
+        </div>
       ) : agentDetails && agentDetails.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl px-4">
-          {agentDetails?.map(details => (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {agentDetails.map(details => (
             <AgentCard
               key={details.agent.agentId.toString()}
               agentId={details.agent.agentId}
@@ -38,11 +63,15 @@ const MyAgentsPage: NextPage = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center mt-10">
-          <h2 className="text-2xl font-semibold mb-4">No agents found</h2>
-          <p className="mb-6 opacity-70">You haven&apos;t registered any agents yet.</p>
-          <Link href="/agents/add" className="btn btn-primary">
-            Register your first agent
+        /* Empty state (from main #93) — restyled to the new system */
+        <div className="border border-slate-200 bg-slate-50 p-12 text-center">
+          <p className="font-mono text-sm font-bold text-slate-700 uppercase tracking-tight mb-2">No agents found</p>
+          <p className="text-xs text-slate-400 mb-6">You haven&apos;t registered any agents yet.</p>
+          <Link
+            href="/agents/add"
+            className="inline-flex items-center gap-2 bg-[#0ea5a5] hover:bg-[#0d9494] text-white font-mono text-xs uppercase tracking-wider px-5 py-2.5 transition-colors"
+          >
+            Register your first agent ▸
           </Link>
         </div>
       )}

@@ -1,10 +1,19 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { formatUnits, parseUnits } from "viem";
+import AgentAvatar from "~~/components/AgentAvatar";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { useAgentReputation } from "~~/hooks/useAgentReputation";
 import { getParsedError, notification } from "~~/utils/scaffold-eth";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface AgentMetadata {
+  name: string;
+  description: string;
+}
 
 interface AgentCardProps {
   agentId: bigint;
@@ -12,44 +21,81 @@ interface AgentCardProps {
   owner: string;
   uri: string;
   active: boolean;
+  /** When true, renders the management strip (balance, withdraw, manage) instead of Execute. */
   showActions?: boolean;
 }
 
-interface AgentMetadata {
-  name: string;
-  description: string;
-  image: string;
-}
+// ─── Execution stats (success/fail — NOT a 0-5 star rating) ────────────────────
 
-const StarRating = ({ score }: { score: number }) => {
-  const stars = Math.round(score);
-  return <span className="text-warning">{Array.from({ length: 5 }, (_, i) => (i < stars ? "★" : "☆")).join("")}</span>;
+const ExecutionStats = ({
+  score,
+  count,
+  onClick,
+  loading,
+}: {
+  score: number | null;
+  count: number;
+  onClick: () => void;
+  loading: boolean;
+}) => {
+  if (loading) return <div className="h-4 w-20 bg-slate-100 animate-pulse" />;
+
+  if (score === null || count === 0) {
+    return <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider">No executions yet</span>;
+  }
+
+  const successCount = Math.round(score * count);
+  const failCount = count - successCount;
+  const pct = Math.round(score * 100);
+
+  return (
+    <button className="flex flex-col gap-1.5 w-full text-left group" onClick={onClick}>
+      <div className="flex items-center justify-between font-mono text-[10px] text-slate-500 uppercase tracking-wider">
+        <span>
+          <span className="text-emerald-600 font-bold">✓ {successCount}</span>
+          {failCount > 0 && <span className="text-red-500 font-bold ml-2">✗ {failCount}</span>}
+          <span className="ml-2 opacity-60">· {count} runs</span>
+        </span>
+        <span className="group-hover:text-slate-700 transition-colors">{pct}%</span>
+      </div>
+      <div className="w-full h-0.5 bg-slate-100">
+        <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+      </div>
+    </button>
+  );
 };
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export const AgentCard = ({ agentId, price, owner, uri, active, showActions = false }: AgentCardProps) => {
   const { score, count, feedbacks, isLoading: isLoadingReputation } = useAgentReputation(agentId);
   const [metadata, setMetadata] = useState<AgentMetadata | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMeta, setIsLoadingMeta] = useState(true);
   const [metadataError, setMetadataError] = useState(false);
+
+  // Management state (self-contained, only used when showActions=true)
   const [priceInput, setPriceInput] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
+  const agentIdStr = agentId.toString();
+  const executionsModalId = `executions-modal-${agentIdStr}`;
+  const manageModalId = `manage-modal-${agentIdStr}`;
+
+  // Withdrawable earnings held in the router for this agent (from main #90)
   const { data: balance, refetch: refetchBalance } = useScaffoldReadContract({
     contractName: "MarketplaceRouter",
     functionName: "agentBalances",
     args: [agentId],
+    query: { enabled: showActions },
   });
 
   const { writeContractAsync: marketplaceRouter } = useScaffoldWriteContract({ contractName: "MarketplaceRouter" });
   const { writeContractAsync: agentMarketplace } = useScaffoldWriteContract({ contractName: "AgentMarketplace" });
 
   const handleWithdraw = async () => {
-    setPendingAction(`withdraw-${agentId}`);
+    setPendingAction(`withdraw-${agentIdStr}`);
     try {
-      await marketplaceRouter({
-        functionName: "withdrawAgentEarnings",
-        args: [agentId],
-      });
+      await marketplaceRouter({ functionName: "withdrawAgentEarnings", args: [agentId] });
       notification.success("Earnings withdrawn");
       await refetchBalance();
     } catch (err) {
@@ -64,12 +110,9 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
       notification.error("Please enter a valid price");
       return;
     }
-    setPendingAction(`price-${agentId}`);
+    setPendingAction(`price-${agentIdStr}`);
     try {
-      await agentMarketplace({
-        functionName: "updatePrice",
-        args: [agentId, parseUnits(priceInput, 6)],
-      });
+      await agentMarketplace({ functionName: "updatePrice", args: [agentId, parseUnits(priceInput, 6)] });
       notification.success("Agent price updated");
       (document.getElementById(manageModalId) as HTMLDialogElement)?.close();
     } catch (err) {
@@ -80,7 +123,7 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
   };
 
   const toggleStatus = async () => {
-    setPendingAction(`status-${agentId}`);
+    setPendingAction(`status-${agentIdStr}`);
     try {
       await agentMarketplace({
         functionName: active ? "deactivateAgent" : "reactivateAgent",
@@ -95,176 +138,279 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
     }
   };
 
-  const reviewsModalId = `reviews-modal-${agentId.toString()}`;
-  const manageModalId = `manage-modal-${agentId.toString()}`;
-
+  // Decode EIP-8004 token URI
   useEffect(() => {
     const fetchMetadata = async () => {
-      setIsLoading(true);
+      setIsLoadingMeta(true);
       setMetadataError(false);
       try {
-        let jsonContent: string = "";
-
+        let json = "";
         if (uri.startsWith("data:application/json;base64,")) {
-          jsonContent = atob(uri.split(",")[1]);
+          json = atob(uri.split(",")[1]);
         } else if (uri.startsWith("data:application/json,")) {
-          jsonContent = decodeURIComponent(uri.split(",")[1]);
+          json = decodeURIComponent(uri.split(",")[1]);
         } else if (uri.startsWith("http")) {
-          const response = await fetch(uri);
-          jsonContent = await response.text();
+          json = await fetch(uri).then(r => r.text());
         } else {
           try {
-            jsonContent = atob(uri);
+            json = atob(uri);
           } catch {
-            console.error("Unknown URI format");
             setMetadataError(true);
           }
         }
-
-        if (jsonContent) {
+        if (json) {
           try {
-            setMetadata(JSON.parse(jsonContent));
+            setMetadata(JSON.parse(json));
           } catch {
-            console.warn("CRITICAL: Failed to parse JSON metadata for AgentId", agentId.toString());
             setMetadataError(true);
           }
         } else if (uri !== "") {
-          console.warn("Empty JSON content for AgentId", agentId.toString());
           setMetadataError(true);
         }
-      } catch (error) {
-        console.error("Error fetching or parsing metadata:", error);
+      } catch {
         setMetadataError(true);
       } finally {
-        setIsLoading(false);
+        setIsLoadingMeta(false);
       }
     };
-
     fetchMetadata();
   }, [uri, agentId]);
 
+  const name = isLoadingMeta ? null : metadata?.name || `Agent #${agentIdStr}`;
+  const description = isLoadingMeta ? null : metadata?.description || null;
+  const successCount = score !== null && count > 0 ? Math.round(score * count) : 0;
+  const pct = score !== null ? Math.round(score * 100) : 0;
+  const busy = pendingAction !== null;
+
   return (
     <>
-      <div className="card w-full bg-base-100 shadow-xl">
-        <figure className="h-48 overflow-hidden relative">
-          {metadata?.image ? (
-            <Image src={metadata.image} alt={metadata.name || "Agent"} fill className="object-cover" />
-          ) : (
-            <div className="w-full h-full bg-base-300 flex items-center justify-center">
-              {metadataError ? "Error loading image" : "No Image"}
-            </div>
-          )}
-        </figure>
-        <div className="card-body gap-1 p-4">
-          <h2 className="card-title text-lg">
-            {isLoading ? "Loading..." : metadata?.name || `Agent #${agentId.toString()}`}
-          </h2>
-          {metadataError && <p className="text-error text-xs">Failed to load metadata</p>}
-          <p className="text-sm">{isLoading ? "..." : metadata?.description || "No description provided."}</p>
-          <p className="text-xs opacity-70">Price: {formatUnits(price, 6)} USDC</p>
-          <p className="text-xs opacity-70">
-            Owner: {owner.slice(0, 6)}...{owner.slice(-4)}
-          </p>
-
-          <button
-            className="flex items-center gap-1 text-xs w-fit hover:opacity-70 transition-opacity my-1"
-            onClick={() => (document.getElementById(reviewsModalId) as HTMLDialogElement)?.showModal()}
-            disabled={isLoadingReputation}
+      {/* ── Card ──────────────────────────────────────────────── */}
+      <div className="flex flex-col border border-slate-200 bg-white hover:border-[#0ea5a5] transition-colors duration-200 group">
+        {/* Header band */}
+        <div className="flex items-center justify-between bg-slate-950 px-4 py-2.5">
+          <span className="font-mono text-[9px] tracking-[0.2em] text-slate-400 uppercase">
+            Agent_ID // {agentIdStr.padStart(3, "0")}
+          </span>
+          <span
+            className={`flex items-center gap-1.5 font-mono text-[9px] tracking-wider uppercase ${active ? "text-emerald-400" : "text-slate-500"}`}
           >
-            {isLoadingReputation ? (
-              <span className="loading loading-dots loading-xs"></span>
-            ) : score !== null ? (
-              <>
-                <span className="text-warning">{score.toFixed(1)}</span>
-                <StarRating score={score} />({count})
-              </>
-            ) : (
-              <span className="opacity-40">No reviews</span>
-            )}
-          </button>
+            <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+            {active ? "Active" : "Inactive"}
+          </span>
+        </div>
 
-          <div className="card-actions justify-end mt-2 items-center">
+        {/* Avatar zone */}
+        <div className="flex items-center justify-center py-6 bg-slate-50 border-b border-slate-100">
+          <AgentAvatar agentId={agentId} size={88} />
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-col gap-4 px-5 py-5 flex-1">
+          {/* Name + description */}
+          <div>
+            <h2 className="font-mono text-sm font-bold text-slate-900 uppercase tracking-tight">
+              {isLoadingMeta ? <span className="inline-block h-4 w-24 bg-slate-100 animate-pulse" /> : name}
+            </h2>
+            {description && <p className="mt-1.5 text-xs leading-5 text-slate-500">{description}</p>}
+            {metadataError && <p className="mt-1 text-[10px] text-red-400 font-mono">Failed to load metadata</p>}
+          </div>
+
+          {/* Data rows */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <div className="flex items-center justify-between font-mono text-[10px] text-slate-500">
+              <span className="uppercase tracking-wider">Price</span>
+              <span className="text-slate-800 font-semibold">{formatUnits(price, 6)} USDC</span>
+            </div>
+            <div className="flex items-center justify-between font-mono text-[10px] text-slate-500">
+              <span className="uppercase tracking-wider">Owner</span>
+              <span className="text-slate-700">
+                {owner.slice(0, 6)}…{owner.slice(-4)}
+              </span>
+            </div>
+            {showActions && (
+              <div className="flex items-center justify-between font-mono text-[10px] text-slate-500">
+                <span className="uppercase tracking-wider">Balance</span>
+                <span className="text-emerald-600 font-semibold">
+                  {balance !== undefined ? formatUnits(balance, 6) : "0"} USDC
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Execution stats */}
+          <div className="border-t border-slate-100 pt-3">
+            <ExecutionStats
+              score={score}
+              count={count}
+              loading={isLoadingReputation}
+              onClick={() => (document.getElementById(executionsModalId) as HTMLDialogElement)?.showModal()}
+            />
+          </div>
+
+          {/* Action strip */}
+          <div className="border-t border-slate-100 pt-4 mt-auto">
             {showActions ? (
-              <>
-                <p className="text-xs font-bold text-success">
-                  Balance: {balance !== undefined ? formatUnits(balance, 6) : "0"} USDC
-                </p>
-                <button className="btn btn-primary btn-xs" onClick={handleWithdraw} disabled={!!pendingAction}>
-                  {pendingAction === `withdraw-${agentId}` ? "..." : "Withdraw"}
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleWithdraw}
+                  disabled={busy}
+                  className="w-full font-mono text-xs uppercase tracking-wider bg-[#0ea5a5] hover:bg-[#0d9494] text-white py-2 transition-colors disabled:opacity-40"
+                >
+                  {pendingAction === `withdraw-${agentIdStr}` ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    "Withdraw earnings ▸"
+                  )}
                 </button>
                 <button
-                  className="btn btn-secondary btn-xs"
+                  type="button"
                   onClick={() => (document.getElementById(manageModalId) as HTMLDialogElement)?.showModal()}
+                  className="w-full font-mono text-xs uppercase tracking-wider border border-slate-200 hover:bg-slate-50 text-slate-600 py-2 transition-colors"
                 >
                   Manage
                 </button>
-              </>
+              </div>
             ) : (
-              <Link href={`/agents/execute/${agentId.toString()}`} className="btn btn-primary btn-sm">
-                Execute
+              <Link
+                href={`/agents/execute/${agentIdStr}`}
+                className="inline-flex items-center gap-2 bg-[#0ea5a5] hover:bg-[#0d9494] text-white font-mono text-xs font-semibold px-4 py-2 transition-colors"
+              >
+                Execute ▸
               </Link>
             )}
-            <div className={`badge badge-xs ${active ? "badge-success" : "badge-error"}`}>
-              {active ? "Active" : "Inactive"}
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Manage Modal */}
+      {/* ── Manage modal (showActions only) ───────────────────── */}
       <dialog id={manageModalId} className="modal">
-        <div className="modal-box">
-          <form method="dialog">
-            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-          </form>
-          <h3 className="font-bold text-lg mb-4">Manage Agent #{agentId.toString()}</h3>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={priceInput}
-                onChange={e => setPriceInput(e.target.value)}
-                placeholder="New price (USDC)"
-                className="input input-bordered input-sm w-full"
-              />
-              <button className="btn btn-primary btn-sm" onClick={updatePrice} disabled={!!pendingAction}>
-                {pendingAction === `price-${agentId}` ? "Updating..." : "Update Price"}
+        <div className="modal-box w-11/12 max-w-md rounded-none border border-slate-200 p-0 overflow-hidden">
+          <div className="flex items-center justify-between bg-slate-950 px-5 py-3">
+            <p className="font-mono text-sm font-bold text-white">Manage // Agent_{agentIdStr.padStart(3, "0")}</p>
+            <form method="dialog">
+              <button className="font-mono text-slate-400 hover:text-white text-lg leading-none transition-colors">
+                ✕
               </button>
+            </form>
+          </div>
+          <div className="p-5 space-y-5">
+            <div className="space-y-1.5">
+              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                New price (USDC)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.000001"
+                  min="0"
+                  value={priceInput}
+                  onChange={e => setPriceInput(e.target.value)}
+                  placeholder="e.g. 1.00"
+                  className="flex-1 font-mono text-sm border border-slate-200 bg-white px-3 py-2 focus:outline-none focus:border-[#0ea5a5]"
+                />
+                <button
+                  type="button"
+                  onClick={updatePrice}
+                  disabled={busy}
+                  className="font-mono text-xs uppercase tracking-wider bg-slate-900 text-white px-4 py-2 hover:bg-slate-700 disabled:opacity-40 transition-colors whitespace-nowrap"
+                >
+                  {pendingAction === `price-${agentIdStr}` ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    "Update ▸"
+                  )}
+                </button>
+              </div>
             </div>
             <button
-              className={`btn btn-sm w-full ${active ? "btn-warning" : "btn-success"}`}
+              type="button"
               onClick={toggleStatus}
-              disabled={!!pendingAction}
+              disabled={busy}
+              className={`w-full font-mono text-xs uppercase tracking-wider py-2.5 transition-colors disabled:opacity-40 ${
+                active
+                  ? "border border-amber-400 text-amber-700 hover:bg-amber-50"
+                  : "border border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+              }`}
             >
-              {pendingAction === `status-${agentId}` ? "Updating..." : active ? "Deactivate Agent" : "Reactivate Agent"}
+              {pendingAction === `status-${agentIdStr}` ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : active ? (
+                "Deactivate Agent"
+              ) : (
+                "Reactivate Agent"
+              )}
             </button>
           </div>
         </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
       </dialog>
 
-      {/* Reviews modal */}
-      <dialog id={reviewsModalId} className="modal">
-        <div className="modal-box w-11/12 max-w-lg">
-          <form method="dialog">
-            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-          </form>
-          <h3 className="font-bold text-lg mb-1">{metadata?.name || `Agent #${agentId.toString()}`}</h3>
-          <div className="flex flex-col gap-4 max-h-80 overflow-y-auto">
-            {feedbacks.length === 0 ? (
-              <p className="text-sm opacity-50 text-center py-4">No reviews yet</p>
-            ) : (
-              feedbacks.map((f, i) => (
-                <div key={i} className="flex flex-col gap-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="opacity-60 font-mono">{f.client.slice(0, 6)}...</span>
-                    <StarRating score={Number(f.score)} />
-                  </div>
-                  <div className="divider my-0"></div>
+      {/* ── Execution history modal ───────────────────────────── */}
+      <dialog id={executionsModalId} className="modal">
+        <div className="modal-box w-11/12 max-w-lg rounded-none border border-slate-200 p-0 overflow-hidden">
+          <div className="flex items-center justify-between bg-slate-950 px-5 py-3">
+            <div>
+              <p className="font-mono text-[9px] tracking-[0.2em] text-slate-400 uppercase">
+                Execution History // Agent_{agentIdStr.padStart(3, "0")}
+              </p>
+              <p className="font-mono text-sm font-bold text-white mt-0.5">{name}</p>
+            </div>
+            <form method="dialog">
+              <button className="font-mono text-slate-400 hover:text-white text-lg leading-none transition-colors">
+                ✕
+              </button>
+            </form>
+          </div>
+
+          <div className="p-5 space-y-5">
+            {score !== null && count > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-end gap-3">
+                  <span className="font-mono text-4xl font-bold text-slate-900">{pct}%</span>
+                  <span className="font-mono text-xs text-slate-400 mb-1.5 uppercase tracking-wider">success rate</span>
                 </div>
-              ))
+                <div className="w-full h-1.5 bg-slate-100">
+                  <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex gap-4 font-mono text-[11px]">
+                  <span className="text-emerald-600 font-bold">✓ {successCount} successful</span>
+                  {count - successCount > 0 && (
+                    <span className="text-red-500 font-bold">✗ {count - successCount} failed</span>
+                  )}
+                  <span className="text-slate-400">{count} total</span>
+                </div>
+              </div>
+            ) : (
+              <p className="font-mono text-xs text-slate-400 uppercase tracking-wider">No executions recorded</p>
+            )}
+
+            {feedbacks.length > 0 && (
+              <div className="border-t border-slate-100 pt-4 space-y-0 max-h-72 overflow-y-auto">
+                {feedbacks.map((fb, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
+                  >
+                    <span className="font-mono text-[10px] text-slate-500">
+                      {fb.client.slice(0, 6)}…{fb.client.slice(-4)}
+                    </span>
+                    <span
+                      className={`font-mono text-[10px] font-bold ${fb.score === 1 ? "text-emerald-600" : "text-red-500"}`}
+                    >
+                      {fb.score === 1 ? "✓ success" : "✗ failed"}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
       </dialog>
     </>
   );

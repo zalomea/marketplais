@@ -49,7 +49,12 @@ export const FaucetUSDCButton = () => {
       }
       data-tip="Grab USDC from faucet"
     >
-      <button className="btn btn-secondary btn-sm px-2 rounded-full" onClick={requestUSDC} disabled={loading}>
+      <button
+        className="flex items-center justify-center w-8 h-8 border border-slate-200 bg-white hover:border-[#0ea5a5] hover:bg-slate-50 transition-colors disabled:opacity-40"
+        onClick={requestUSDC}
+        disabled={loading}
+        title="Grab USDC from faucet"
+      >
         {!loading ? (
           <CurrencyDollarIcon className="h-4 w-4" />
         ) : (

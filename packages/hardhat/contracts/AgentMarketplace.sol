@@ -121,10 +121,6 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         return agent;
     }
 
-    function totalAgents() external view returns (uint256) {
-        return allAgentIds.length;
-    }
-
     // slither-disable-next-line calls-loop
     function getAgentFullDetails(uint256 agentId) public view returns (AgentFullDetails memory) {
         Agent memory agent = getAgent(agentId);
@@ -138,14 +134,14 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (page == 0) revert InvalidPage();
         if (count == 0) return new AgentFullDetails[](0);
 
-        uint256 agentCount = allAgentIds.length;
+        uint256 totalAgents = allAgentIds.length;
         uint256 startIndex = (page - 1) * count;
 
-        if (startIndex >= agentCount) revert InvalidPage();
+        if (startIndex >= totalAgents) revert InvalidPage();
 
         uint256 endIndex = startIndex + count;
-        if (endIndex > agentCount) {
-            endIndex = agentCount;
+        if (endIndex > totalAgents) {
+            endIndex = totalAgents;
         }
 
         uint256 actualCount = endIndex - startIndex;
@@ -162,19 +158,19 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {
         if (agentOwner == address(0)) revert ZeroAddress();
 
-        uint256 agentCount = allAgentIds.length;
-        uint256 ownerAgentCount = 0;
+        uint256 totalAgents = allAgentIds.length;
+        uint256 ownerAgentCount;
 
-        for (uint256 i = 0; i < agentCount; i++) {
+        for (uint256 i = 0; i < totalAgents; i++) {
             if (identityRegistry.ownerOf(allAgentIds[i]) == agentOwner) {
                 ownerAgentCount++;
             }
         }
 
         AgentFullDetails[] memory res = new AgentFullDetails[](ownerAgentCount);
-        uint256 resultIndex = 0;
+        uint256 resultIndex;
 
-        for (uint256 i = 0; i < agentCount; i++) {
+        for (uint256 i = 0; i < totalAgents; i++) {
             uint256 agentId = allAgentIds[i];
             if (identityRegistry.ownerOf(agentId) == agentOwner) {
                 res[resultIndex] = getAgentFullDetails(agentId);

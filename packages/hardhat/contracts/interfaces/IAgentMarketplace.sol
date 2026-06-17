@@ -17,7 +17,6 @@ interface IAgentMarketplace {
         string uri;
     }
 
-    function totalAgents() external view returns (uint256);
     function getAgent(uint256) external view returns (Agent memory);
     function getAgentFullDetails(uint256) external view returns (AgentFullDetails memory);
     function getAgentsFullPaginated(uint256 page, uint256 count) external view returns (AgentFullDetails[] memory);

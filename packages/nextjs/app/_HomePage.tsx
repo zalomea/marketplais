@@ -12,10 +12,13 @@ export const HomePage: NextPage = () => {
   const [showIntro, setShowIntro] = useState(true);
   const [agentsActive, setAgentsActive] = useState<number[]>([]);
 
-  const { data: totalAgentsCount } = useScaffoldReadContract({
+  const { data: agentsPage } = useScaffoldReadContract({
     contractName: "AgentMarketplace",
-    functionName: "totalAgents",
+    functionName: "getAgentsFullPaginated",
+    args: [1n, 100n],
   });
+
+  const totalAgentsCount = agentsPage ? BigInt(agentsPage.length) : undefined;
 
   useEffect(() => {
     if (typeof window !== "undefined") {

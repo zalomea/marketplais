@@ -1,79 +1,46 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+/* Inter font for clean, professional typography */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-
+/* DaisyUI: force a single light theme — no dark mode */
 @theme {
-  --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
-  --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --shadow-center: 0 8px 30px -12px rgba(2, 6, 23, 0.6);
 }
 
 @plugin "daisyui" {
-  themes:
-    light,
-    dark --prefersdark;
+  themes: light;
 }
 
 @plugin "daisyui/theme" {
   name: "light";
 
-  --color-primary: #93bbfb;
-  --color-primary-content: #212638;
-  --color-secondary: #dae8ff;
-  --color-secondary-content: #212638;
-  --color-accent: #93bbfb;
-  --color-accent-content: #212638;
-  --color-neutral: #212638;
-  --color-neutral-content: #ffffff;
+  --color-primary: #0ea5a5;
+  --color-primary-content: #071022;
+  --color-secondary: #e6eef9;
+  --color-secondary-content: #0b1220;
+  --color-accent: #60a5fa;
+  --color-accent-content: #071022;
+  --color-neutral: #0b1220;
+  --color-neutral-content: #0b1220;
   --color-base-100: #ffffff;
-  --color-base-200: #f4f8ff;
-  --color-base-300: #dae8ff;
-  --color-base-content: #212638;
-  --color-info: #93bbfb;
+  --color-base-200: #f7f9fb;
+  --color-base-300: #eef4fb;
+  --color-base-content: #071022;
+  --color-info: #60a5fa;
   --color-success: #34eeb6;
   --color-warning: #ffcf72;
   --color-error: #ff8863;
 
-  --radius-field: 1rem;
-  --radius-box: 1rem;
+  --radius-field: 4px;
+  --radius-box: 4px;
   --tt-tailw: 6px;
-}
-
-@plugin "daisyui/theme" {
-  name: "dark";
-
-  --color-primary: #212638;
-  --color-primary-content: #f9fbff;
-  --color-secondary: #323f61;
-  --color-secondary-content: #f9fbff;
-  --color-accent: #4969a6;
-  --color-accent-content: #f9fbff;
-  --color-neutral: #f9fbff;
-  --color-neutral-content: #385183;
-  --color-base-100: #385183;
-  --color-base-200: #2a3655;
-  --color-base-300: #212638;
-  --color-base-content: #f9fbff;
-  --color-info: #385183;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
-
-  --radius-field: 1rem;
-  --radius-box: 1rem;
-
-  --tt-tailw: 6px;
-  --tt-bg: var(--color-primary);
 }
 
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
 */
 @layer base {
   *,
@@ -90,6 +57,7 @@
 
   body {
     min-height: 100vh;
+    font-family: "Inter", system-ui, sans-serif;
   }
 
   h1,
@@ -106,13 +74,20 @@
   background: var(--color-base-200);
 }
 
+/* Hide Next.js development badge/overlay in UI */
+div[data-next-badge],
+div[data-next-badge] * {
+  display: none !important;
+}
+
+/* Sharp buttons — override DaisyUI pill radius */
 .btn {
-  @apply shadow-md;
-  border-radius: 9999rem;
+  @apply shadow-sm;
+  border-radius: 4px;
 }
 
 .btn.btn-ghost {
-  @apply shadow-none;
+  @apply shadow-none bg-transparent;
 }
 
 .link {
@@ -121,4 +96,152 @@
 
 .link:hover {
   opacity: 80%;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-base-content);
+}
+
+/* Compact sharp inputs */
+input,
+textarea,
+select {
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 36, 0.12);
+  background: var(--color-base-100);
+  padding: 0.4rem 0.6rem;
+}
+
+/* Override DaisyUI's large rounded corners */
+.rounded-3xl {
+  border-radius: 4px;
+}
+
+/* ─── @scaffold-ui/debug-contracts overrides ─────────────────
+   The debug-contracts library uses its own --sui-* CSS variables
+   and .btn-dc classes. We map them to our design system here.
+   ──────────────────────────────────────────────────────────── */
+
+:root {
+  /* Map sui palette to our design tokens */
+  --sui-primary: #0ea5a5;
+  --sui-primary-subtle: #e8f6f6;
+  --sui-base-100: #ffffff;
+  --sui-base-content: #071022;
+  --sui-accent: #0ea5a5;
+  --sui-input-border: #d1d5db;
+  --sui-input-background: #ffffff;
+  --sui-input-text: #071022;
+}
+
+/* Sharp action buttons (Read 📡 / Send 💸) */
+.btn-dc {
+  border-radius: 4px !important;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.75rem !important;
+  height: auto !important;
+  min-height: unset !important;
+}
+
+.btn-dc-secondary {
+  background-color: #0ea5a5 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.btn-dc-secondary:hover {
+  background-color: #0d9494 !important;
+}
+
+/* Sharp input wrappers — override rounded-full */
+.flex.border-2.rounded-full {
+  border-radius: 4px !important;
+  border-width: 1px !important;
+  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+}
+
+.flex.border-2.rounded-full:focus-within {
+  border-color: #0ea5a5 !important;
+}
+
+/* Read/Write tab header blobs — flatten the rounded-[22px] pill */
+[class*="rounded-\\[22px\\]"],
+.h-\\[5rem\\] {
+  border-radius: 4px !important;
+}
+
+/* Contract function cards — flatten rounded-3xl (already global but reinforce) */
+.bg-sui-base-100 {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Flatten all remaining pill shapes inside the debug contracts panel */
+[class*="rounded-full"]:not(.rounded-full-ignore) {
+  border-radius: 4px !important;
+}
+
+/* Read/Write tab header blobs — flatten radius and match our palette */
+[class*="bg-sui-primary-subtle"] {
+  background-color: #f0fafa !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* shadow-sui-primary-subtle — remove colored glow shadows from cards */
+[class*="shadow-sui-primary-subtle"] {
+  box-shadow: 0 1px 3px rgba(15, 23, 36, 0.06) !important;
+}
+
+/* Border on cards — match our slate palette */
+[class*="border-sui-primary-subtle"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* ─── Animations ──────────────────────────────────────────── */
+
+@keyframes pulse-node {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }

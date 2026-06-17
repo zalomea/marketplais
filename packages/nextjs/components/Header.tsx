@@ -1,42 +1,26 @@
 "use client";
 
 import React, { useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { hardhat } from "viem/chains";
-import { Bars3Icon, BugAntIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon } from "@heroicons/react/24/outline";
+import Logo from "~~/components/Logo";
 import { FaucetButton, FaucetUSDCButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
 
 type HeaderMenuLink = {
   label: string;
   href: string;
-  icon?: React.ReactNode;
 };
 
 export const menuLinks: HeaderMenuLink[] = [
-  {
-    label: "Home",
-    href: "/",
-  },
-  {
-    label: "Agents",
-    href: "/agents",
-  },
-  {
-    label: "Add Agent",
-    href: "/agents/add",
-  },
-  {
-    label: "My Agents",
-    href: "/agents/my",
-  },
-  {
-    label: "Debug Contracts",
-    href: "/debug",
-    icon: <BugAntIcon className="h-4 w-4" />,
-  },
+  { label: "Home", href: "/" },
+  { label: "Agents", href: "/agents" },
+  { label: "Add Agent", href: "/agents/add" },
+  { label: "My Agents", href: "/agents/my" },
+  { label: "Debug", href: "/debug" },
+  { label: "Explorer", href: "/blockexplorer" },
 ];
 
 export const HeaderMenuLinks = () => {
@@ -44,7 +28,7 @@ export const HeaderMenuLinks = () => {
 
   return (
     <>
-      {menuLinks.map(({ label, href, icon }) => {
+      {menuLinks.map(({ label, href }) => {
         const isActive = pathname === href;
         return (
           <li key={href}>
@@ -52,11 +36,10 @@ export const HeaderMenuLinks = () => {
               href={href}
               passHref
               className={`${
-                isActive ? "bg-secondary shadow-md" : ""
-              } hover:bg-secondary hover:shadow-md focus:!bg-secondary active:!text-neutral py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col`}
+                isActive ? "border-b-2 border-slate-900 text-slate-900" : "text-slate-600 hover:text-slate-900"
+              } px-3 py-3 text-sm font-medium transition whitespace-nowrap`}
             >
-              {icon}
-              <span>{label}</span>
+              {label}
             </Link>
           </li>
         );
@@ -65,9 +48,6 @@ export const HeaderMenuLinks = () => {
   );
 };
 
-/**
- * Site header
- */
 export const Header = () => {
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
@@ -78,38 +58,40 @@ export const Header = () => {
   });
 
   return (
-    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
-      <div className="navbar-start w-auto lg:w-1/2">
-        <details className="dropdown" ref={burgerMenuRef}>
-          <summary className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent">
-            <Bars3Icon className="h-1/2" />
-          </summary>
-          <ul
-            className="menu menu-compact dropdown-content mt-3 p-2 shadow-sm bg-base-100 rounded-box w-52"
-            onClick={() => {
-              burgerMenuRef?.current?.removeAttribute("open");
-            }}
-          >
+    <div className="sticky top-0 w-full border-b border-slate-200 bg-white z-20">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between flex-nowrap">
+          {/* Logo + wordmark */}
+          <Link href="/" className="flex items-center gap-3 shrink-0 font-semibold text-lg text-slate-900">
+            <Logo className="w-7 h-7" />
+            <span className="ml-1">MarketplAIs</span>
+          </Link>
+
+          {/* Desktop nav */}
+          <ul className="hidden lg:flex lg:flex-nowrap items-center gap-1 ml-8">
             <HeaderMenuLinks />
           </ul>
-        </details>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-2 ml-4 mr-6 shrink-0">
-          <div className="flex relative w-10 h-10">
-            <Image alt="SE2 logo" className="cursor-pointer" fill src="/logo.svg" />
+
+          {/* Mobile burger */}
+          <details className="dropdown dropdown-end lg:hidden" ref={burgerMenuRef}>
+            <summary className="btn btn-ghost btn-sm">
+              <Bars3Icon className="h-5 w-5" />
+            </summary>
+            <ul
+              className="dropdown-content menu bg-white border border-slate-200 rounded-none w-52 shadow-lg"
+              onClick={() => burgerMenuRef?.current?.removeAttribute("open")}
+            >
+              <HeaderMenuLinks />
+            </ul>
+          </details>
+
+          {/* Right-side actions */}
+          <div className="ml-auto flex items-center gap-3 shrink-0 flex-nowrap">
+            <RainbowKitCustomConnectButton />
+            {isLocalNetwork && <FaucetButton />}
+            {isLocalNetwork && <FaucetUSDCButton />}
           </div>
-          <div className="flex flex-col">
-            <span className="font-bold leading-tight">MarketplAIs</span>
-            <span className="text-xs">AI agent marketplace</span>
-          </div>
-        </Link>
-        <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
-          <HeaderMenuLinks />
-        </ul>
-      </div>
-      <div className="navbar-end grow mr-4">
-        <RainbowKitCustomConnectButton />
-        {isLocalNetwork && <FaucetButton />}
-        {isLocalNetwork && <FaucetUSDCButton />}
+        </div>
       </div>
     </div>
   );

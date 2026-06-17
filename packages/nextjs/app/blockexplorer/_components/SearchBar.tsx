@@ -9,7 +9,6 @@ import { usePublicClient } from "wagmi";
 export const SearchBar = () => {
   const [searchInput, setSearchInput] = useState("");
   const router = useRouter();
-
   const client = usePublicClient({ chainId: hardhat.id });
 
   const handleSearch = async (event: React.FormEvent) => {
@@ -25,7 +24,6 @@ export const SearchBar = () => {
         console.error("Failed to fetch transaction:", error);
       }
     }
-
     if (isAddress(searchInput)) {
       router.push(`/blockexplorer/address/${searchInput}`);
       return;
@@ -33,15 +31,18 @@ export const SearchBar = () => {
   };
 
   return (
-    <form onSubmit={handleSearch} className="flex items-center justify-end mb-5 space-x-3 mx-5">
+    <form onSubmit={handleSearch} className="flex items-center gap-2 mb-6">
       <input
-        className="border-primary bg-base-100 text-base-content placeholder:text-base-content/50 p-2 mr-2 w-full md:w-1/2 lg:w-1/3 rounded-md shadow-md focus:outline-hidden focus:ring-2 focus:ring-accent"
         type="text"
         value={searchInput}
         placeholder="Search by hash or address"
         onChange={e => setSearchInput(e.target.value)}
+        className="flex-1 font-mono text-sm text-slate-700 bg-white border border-slate-200 px-4 py-2.5 focus:outline-none focus:border-[#0ea5a5] transition-colors placeholder:text-slate-300"
       />
-      <button className="btn btn-sm btn-primary" type="submit">
+      <button
+        type="submit"
+        className="font-mono text-[10px] uppercase tracking-wider bg-slate-900 hover:bg-slate-700 text-white px-5 py-2.5 transition-colors whitespace-nowrap"
+      >
         Search
       </button>
     </form>

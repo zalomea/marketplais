@@ -27,20 +27,54 @@ interface WizardState {
   active: boolean;
 }
 
+// ─── Shared field components ──────────────────────────────────────────────────
+
+const Field = ({
+  label,
+  hint,
+  required,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-1.5">
+    <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+      {label}
+      {required && <span className="text-[#0ea5a5] ml-1">*</span>}
+      {hint && <span className="ml-2 normal-case tracking-normal text-slate-400">— {hint}</span>}
+    </label>
+    {children}
+  </div>
+);
+
+const inputCls =
+  "w-full font-mono text-sm text-slate-800 bg-white border border-slate-200 px-3 py-2.5 focus:outline-none focus:border-[#0ea5a5] transition-colors placeholder:text-slate-300";
+
+const ErrorLine = ({ msg }: { msg: string }) => (
+  <p className="font-mono text-[10px] text-red-500 uppercase tracking-wider">{msg}</p>
+);
+
+const WIZARD_STEPS = ["Basic Info", "Services", "Config", "Review"] as const;
+const stepIndex = (s: WizardState["step"]) => (["basic", "services", "config", "review"] as const).indexOf(s);
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function AddAgentPage() {
   const { writeContractAsync } = useScaffoldWriteContract({ contractName: "AgentMarketplace" });
   const [activeTab, setActiveTab] = useState<"new" | "existing">("new");
-  // Local pending flag for new agent form
   const [pendingNew, setPendingNew] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
 
-  // Tab 1: New Agent with agentURI
+  // Tab 1 — New Agent
   const [price, setPrice] = useState("");
   const [agentURI, setAgentURI] = useState("");
   const [agentJSON, setAgentJSON] = useState("");
   const [message, setMessage] = useState("");
 
-  // Wizard state
+  // Wizard
   const [wizard, setWizard] = useState<WizardState>({
     step: "basic",
     name: "",
@@ -51,19 +85,15 @@ export default function AddAgentPage() {
     x402Support: false,
     active: true,
   });
+  const [newService, setNewService] = useState<Partial<Service>>({ name: "A2A", endpoint: "", version: "" });
 
-  const [newService, setNewService] = useState<Partial<Service>>({
-    name: "A2A",
-    endpoint: "",
-    version: "",
-  });
-
-  // Tab 2: Existing Agent with agentID
+  // Tab 2 — Existing Agent
   const [agentID, setAgentID] = useState("");
-  // Local pending flag for existing form to avoid double submissions
   const [pendingExisting, setPendingExisting] = useState(false);
   const [priceExisting, setPriceExisting] = useState("");
   const [messageExisting, setMessageExisting] = useState("");
+
+  // ── Handlers (unchanged logic) ────────────────────────────────────────────
 
   const onSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,33 +106,25 @@ export default function AddAgentPage() {
       return;
     }
     setMessage("");
-
     setPendingNew(true);
     try {
-      // Use parseUnits to handle 6 decimals for USDC
-      const priceInUnits = parseUnits(price, 6);
-
       const result = await writeContractAsync({
         functionName: "register",
-        args: [priceInUnits, agentURI, false],
+        args: [parseUnits(price, 6), agentURI, false],
       });
       notification.success("Agent registered! tx: " + result);
-      // Reset form fields after success
       setPrice("");
       setAgentURI("");
       setAgentJSON("");
     } catch (err) {
-      const msg = getParsedError(err);
-      notification.error(msg);
+      notification.error(getParsedError(err));
     } finally {
       setPendingNew(false);
     }
-    console.log({ price, agentURI });
   };
 
   const onSubmitExisting = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Prevent double submissions
     if (pendingExisting) return;
     if (!priceExisting || Number(priceExisting) <= 0) {
       setMessageExisting("Please enter a valid price");
@@ -113,45 +135,32 @@ export default function AddAgentPage() {
       return;
     }
     setMessageExisting("");
-
     setPendingExisting(true);
     try {
-      // Use parseUnits to handle 6 decimals for USDC
-      const priceInUnits = parseUnits(priceExisting, 6);
-
       const result = await writeContractAsync({
         functionName: "register",
-        args: [priceInUnits, BigInt(agentID), false],
+        args: [parseUnits(priceExisting, 6), BigInt(agentID), false],
       });
       notification.success("Existing agent registered! tx: " + result);
-      // Reset form fields after success
       setPriceExisting("");
       setAgentID("");
-
-      setMessageExisting("");
     } catch (err) {
-      const msg = getParsedError(err);
-      notification.error(msg);
+      notification.error(getParsedError(err));
     } finally {
       setPendingExisting(false);
     }
-    console.log({ agentID, priceExisting });
   };
 
   const handleGenerateBase64 = () => {
     try {
-      const parsedJSON = JSON.parse(agentJSON);
-      const jsonString = JSON.stringify(parsedJSON);
-      const base64 = btoa(jsonString);
-      const base64URI = `data:application/json;base64,${base64}`;
-      setAgentURI(base64URI);
+      const base64 = btoa(JSON.stringify(JSON.parse(agentJSON)));
+      setAgentURI(`data:application/json;base64,${base64}`);
       setMessage("");
     } catch {
       setMessage("Invalid JSON. Please check your input.");
     }
   };
 
-  // Wizard functions
   const advanceWizardStep = () => {
     if (wizard.step === "basic") {
       if (!wizard.name.trim() || !wizard.description.trim()) {
@@ -174,13 +183,9 @@ export default function AddAgentPage() {
   };
 
   const goBackWizardStep = () => {
-    if (wizard.step === "services") {
-      setWizard({ ...wizard, step: "basic" });
-    } else if (wizard.step === "config") {
-      setWizard({ ...wizard, step: "services" });
-    } else if (wizard.step === "review") {
-      setWizard({ ...wizard, step: "config" });
-    }
+    if (wizard.step === "services") setWizard({ ...wizard, step: "basic" });
+    else if (wizard.step === "config") setWizard({ ...wizard, step: "services" });
+    else if (wizard.step === "review") setWizard({ ...wizard, step: "config" });
   };
 
   const addService = () => {
@@ -188,57 +193,33 @@ export default function AddAgentPage() {
       setMessage("Please enter an endpoint");
       return;
     }
-    if (newService.name === "OASF" && newService.version && !newService.skills) {
-      newService.skills = [];
-      newService.domains = [];
-    }
     const service: Service = {
       id: Date.now().toString(),
       name: newService.name as ServiceType,
       endpoint: newService.endpoint,
       ...(newService.version && { version: newService.version }),
-      ...(newService.skills && { skills: newService.skills }),
-      ...(newService.domains && { domains: newService.domains }),
     };
-    setWizard({
-      ...wizard,
-      services: [...wizard.services, service],
-    });
+    setWizard({ ...wizard, services: [...wizard.services, service] });
     setNewService({ name: "A2A", endpoint: "", version: "" });
     setMessage("");
   };
 
-  const removeService = (id: string) => {
-    setWizard({
-      ...wizard,
-      services: wizard.services.filter(s => s.id !== id),
-    });
-  };
+  const removeService = (id: string) => setWizard({ ...wizard, services: wizard.services.filter(s => s.id !== id) });
 
   const generateJSON = () => {
-    const webService = {
-      name: "web",
-      endpoint: wizard.webEndpoint,
-    };
-
     const agentObj = {
       type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
       name: wizard.name,
       description: wizard.description,
       ...(wizard.image && { image: wizard.image }),
-      services: [webService, ...wizard.services.map(({ id, ...s }) => s)],
+      services: [{ name: "web", endpoint: wizard.webEndpoint }, ...wizard.services.map(({ id, ...s }) => s)],
       x402Support: wizard.x402Support,
       active: wizard.active,
     };
-
     const jsonString = JSON.stringify(agentObj, null, 2);
     setAgentJSON(jsonString);
-
-    // Auto-generate Base64 URI
-    const base64 = btoa(jsonString);
-    const base64URI = `data:application/json;base64,${base64}`;
-    setAgentURI(base64URI);
-
+    // Auto-fill the agentURI field with the base64-encoded JSON (from main #92)
+    setAgentURI(`data:application/json;base64,${btoa(jsonString)}`);
     setShowWizard(false);
     setWizard({
       step: "basic",
@@ -253,357 +234,392 @@ export default function AddAgentPage() {
     setNewService({ name: "A2A", endpoint: "", version: "" });
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="container mx-auto p-4">
-      <div className="card bg-base-100 shadow-md max-w-2xl mx-auto">
-        <div className="card-body">
-          <h1 className="card-title">🚀 Monetize Your AI Agent in 60 Seconds</h1>
-          <p className="mb-4">
-            Turn your LLM backend into a revenue stream on Base. No smart contract coding required. We handle the Web3
-            heavy lifting while you focus on building the best prompt logic.
+    <div className="mx-auto max-w-3xl px-6 lg:px-8 py-10">
+      {/* Page header */}
+      <div className="mb-8 border border-slate-200 bg-white border-t-2 border-t-slate-900">
+        <div className="bg-slate-950 px-6 py-3">
+          <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase">Add Agent // Registry</p>
+        </div>
+        <div className="px-6 py-5">
+          <h1 className="font-mono text-xl font-bold text-slate-900 uppercase tracking-tight mb-2">
+            Register Your Agent
+          </h1>
+          <p className="text-sm text-slate-500 leading-6">
+            Turn your LLM backend into a revenue stream on Base. Set a USDC price per call, link your ERC-8004 identity,
+            and start earning.
           </p>
-
-          <ul className="list-disc pl-5 space-y-2 mb-6">
-            <li>
-              <strong>Set your rate:</strong> Define a fixed price in USDC per API call.
-            </li>
-            <li>
-              <strong>Link your identity:</strong> Provide an existing ERC-8004 Agent ID or submit a new agentURI (IPFS
-              or base64 JSON).
-            </li>
-            <li>
-              <strong>Get your MarketplAIs API Key:</strong> Get your MarketplAIs API Key instantly and start earning.
-            </li>
-          </ul>
-
-          {/* Tabs */}
-          <div className="tabs tabs-bordered mb-4">
-            <button
-              className={`tab ${activeTab === "new" ? "tab-active" : ""}`}
-              onClick={() => {
-                setActiveTab("new");
-                setMessageExisting("");
-              }}
-            >
-              Create New Agent
-            </button>
-            <button
-              className={`tab ${activeTab === "existing" ? "tab-active" : ""}`}
-              onClick={() => {
-                setActiveTab("existing");
-                setMessage("");
-              }}
-            >
-              Register Existing Agent
-            </button>
+          <div className="mt-4 grid grid-cols-3 gap-4 border-t border-slate-100 pt-4">
+            {[
+              ["01", "Set your rate", "Fixed USDC price per API call"],
+              ["02", "Link identity", "ERC-8004 Agent ID or new agentURI"],
+              ["03", "Start earning", "Funds settle on-chain after each execution"],
+            ].map(([num, title, desc]) => (
+              <div key={num} className="space-y-1">
+                <span className="font-mono text-[9px] text-[#0ea5a5] tracking-widest">{num}</span>
+                <p className="font-mono text-[10px] font-bold text-slate-800 uppercase tracking-tight">{title}</p>
+                <p className="text-[10px] text-slate-400 leading-4">{desc}</p>
+              </div>
+            ))}
           </div>
-
-          {/* Tab 1: Create New Agent */}
-          {activeTab === "new" && (
-            <form onSubmit={onSubmitNew} className="space-y-4">
-              <div>
-                <label className="label">
-                  <span className="label-text">Price (USDC per call)</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  min="0"
-                  value={price}
-                  onChange={e => setPrice(e.target.value)}
-                  className="input input-bordered w-full"
-                  placeholder="e.g. 1.00"
-                />
-              </div>
-
-              <div className="divider my-2">Generate from JSON or paste URI</div>
-
-              <div>
-                <label className="label">
-                  <span className="label-text">Agent JSON (optional)</span>
-                </label>
-                <textarea
-                  value={agentJSON}
-                  onChange={e => setAgentJSON(e.target.value)}
-                  className="textarea textarea-bordered w-full"
-                  rows={4}
-                  placeholder='{"name": "My Agent", "description": "...", ...}'
-                />
-                <div className="flex gap-2 mt-2">
-                  <button type="button" onClick={() => setShowWizard(true)} className="btn btn-secondary btn-sm flex-1">
-                    📋 Open Wizard
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleGenerateBase64}
-                    className="btn btn-secondary btn-sm flex-1"
-                    disabled={!agentJSON.trim()}
-                  >
-                    Generate Base64 agentURI
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="label">
-                  <span className="label-text">agentURI</span>
-                </label>
-                <textarea
-                  value={agentURI}
-                  onChange={e => setAgentURI(e.target.value)}
-                  className="textarea textarea-bordered w-full"
-                  rows={4}
-                  placeholder="https://... or data:application/json;base64,..."
-                />
-              </div>
-
-              {message && <div className="text-error">{message}</div>}
-              <div className="card-actions justify-end">
-                <button type="submit" className="btn btn-primary" disabled={pendingNew}>
-                  {pendingNew ? "Loading..." : "Submit"}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Tab 2: Register Existing Agent */}
-          {activeTab === "existing" && (
-            <form onSubmit={onSubmitExisting} className="space-y-4">
-              <div>
-                <label className="label">
-                  <span className="label-text">Price (USDC per call)</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  min="0"
-                  value={priceExisting}
-                  onChange={e => setPriceExisting(e.target.value)}
-                  className="input input-bordered w-full"
-                  placeholder="e.g. 1.00"
-                />
-              </div>
-
-              <div>
-                <label className="label">
-                  <span className="label-text">agentID (from IdentityRegistry)</span>
-                </label>
-                <input
-                  type="number"
-                  value={agentID}
-                  onChange={e => setAgentID(e.target.value)}
-                  className="input input-bordered w-full"
-                  placeholder="e.g. 12345"
-                />
-              </div>
-
-              {messageExisting && <div className="text-error">{messageExisting}</div>}
-
-              <div className="card-actions justify-end">
-                <button type="submit" className="btn btn-primary" disabled={pendingExisting}>
-                  {pendingExisting ? "Loading..." : "Submit"}
-                </button>
-              </div>
-            </form>
-          )}
         </div>
       </div>
 
-      {/* Wizard Modal */}
-      {showWizard && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="card bg-base-100 shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="card-body">
-              <h2 className="card-title">Agent JSON Wizard</h2>
+      {/* Tab strip */}
+      <div className="flex border-b border-slate-200 mb-6">
+        {(["new", "existing"] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => {
+              setActiveTab(tab);
+              setMessage("");
+              setMessageExisting("");
+            }}
+            className={`font-mono text-[10px] uppercase tracking-[0.18em] px-5 py-3 border-b-2 transition-colors ${
+              activeTab === tab
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            {tab === "new" ? "Create New Agent" : "Register Existing"}
+          </button>
+        ))}
+      </div>
 
-              {/* Step: Basic Info */}
+      {/* ── Tab 1: Create New Agent ─────────────────────────────────── */}
+      {activeTab === "new" && (
+        <form onSubmit={onSubmitNew} className="space-y-6">
+          <Field label="Price (USDC per call)" required>
+            <input
+              type="number"
+              step="0.000001"
+              min="0"
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              className={inputCls}
+              placeholder="e.g. 1.00"
+            />
+          </Field>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              Generate from JSON or paste URI
+            </span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+          <Field label="Agent JSON" hint="optional — used to generate the agentURI below">
+            <textarea
+              value={agentJSON}
+              onChange={e => setAgentJSON(e.target.value)}
+              className={`${inputCls} resize-none`}
+              rows={5}
+              placeholder={'{"name": "My Agent", "description": "...", ...}'}
+            />
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowWizard(true);
+                  setMessage("");
+                }}
+                className="flex-1 font-mono text-[10px] uppercase tracking-wider border border-slate-200 bg-slate-50 hover:bg-slate-100 py-2 transition-colors text-slate-600"
+              >
+                Open Wizard ▸
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateBase64}
+                disabled={!agentJSON.trim()}
+                className="flex-1 font-mono text-[10px] uppercase tracking-wider border border-slate-200 bg-slate-50 hover:bg-slate-100 py-2 transition-colors text-slate-600 disabled:opacity-30"
+              >
+                Generate Base64 URI
+              </button>
+            </div>
+          </Field>
+
+          <Field label="agentURI" required hint="https://... or data:application/json;base64,...">
+            <textarea
+              value={agentURI}
+              onChange={e => setAgentURI(e.target.value)}
+              className={`${inputCls} resize-none`}
+              rows={4}
+              placeholder="https://... or data:application/json;base64,..."
+            />
+          </Field>
+
+          {message && <ErrorLine msg={message} />}
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={pendingNew}
+              className="font-mono text-xs uppercase tracking-wider bg-[#0ea5a5] hover:bg-[#0d9494] text-white px-8 py-3 transition-colors disabled:opacity-40"
+            >
+              {pendingNew ? <span className="loading loading-spinner loading-xs" /> : "Register Agent ▸"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ── Tab 2: Register Existing Agent ─────────────────────────── */}
+      {activeTab === "existing" && (
+        <form onSubmit={onSubmitExisting} className="space-y-6">
+          <Field label="Price (USDC per call)" required>
+            <input
+              type="number"
+              step="0.000001"
+              min="0"
+              value={priceExisting}
+              onChange={e => setPriceExisting(e.target.value)}
+              className={inputCls}
+              placeholder="e.g. 1.00"
+            />
+          </Field>
+
+          <Field label="Agent ID" hint="token ID from the IdentityRegistry" required>
+            <input
+              type="number"
+              value={agentID}
+              onChange={e => setAgentID(e.target.value)}
+              className={inputCls}
+              placeholder="e.g. 55216"
+            />
+          </Field>
+
+          {messageExisting && <ErrorLine msg={messageExisting} />}
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={pendingExisting}
+              className="font-mono text-xs uppercase tracking-wider bg-[#0ea5a5] hover:bg-[#0d9494] text-white px-8 py-3 transition-colors disabled:opacity-40"
+            >
+              {pendingExisting ? <span className="loading loading-spinner loading-xs" /> : "Register Agent ▸"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ── Wizard Modal ────────────────────────────────────────────── */}
+      {showWizard && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-200 shadow-2xl">
+            {/* Modal header band */}
+            <div className="flex items-center justify-between bg-slate-950 px-5 py-3 shrink-0">
+              <div>
+                <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase">
+                  Wizard // Step {stepIndex(wizard.step) + 1} of 4 — {WIZARD_STEPS[stepIndex(wizard.step)]}
+                </p>
+                <p className="font-mono text-sm font-bold text-white mt-0.5">Agent JSON Builder</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowWizard(false);
+                  setMessage("");
+                }}
+                className="font-mono text-slate-400 hover:text-white text-lg leading-none transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Step progress bar */}
+            <div className="flex shrink-0">
+              {WIZARD_STEPS.map((label, i) => (
+                <div
+                  key={label}
+                  className={`flex-1 h-0.5 transition-colors ${
+                    i <= stepIndex(wizard.step) ? "bg-[#0ea5a5]" : "bg-slate-100"
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Step content */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+              {/* Step 1: Basic Info */}
               {wizard.step === "basic" && (
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-500">Step 1 of 4: Basic Information</div>
-                  <div>
-                    <label className="label">
-                      <span className="label-text">Agent Name *</span>
-                    </label>
+                <>
+                  <Field label="Agent Name" required>
                     <input
                       type="text"
                       value={wizard.name}
                       onChange={e => setWizard({ ...wizard, name: e.target.value })}
-                      className="input input-bordered w-full"
+                      className={inputCls}
                       placeholder="e.g. MyAgent"
                     />
-                  </div>
-                  <div>
-                    <label className="label">
-                      <span className="label-text">Description *</span>
-                    </label>
+                  </Field>
+                  <Field label="Description" required>
                     <textarea
                       value={wizard.description}
                       onChange={e => setWizard({ ...wizard, description: e.target.value })}
-                      className="textarea textarea-bordered w-full"
+                      className={`${inputCls} resize-none`}
                       rows={4}
                       placeholder="Describe what your agent does..."
                     />
-                  </div>
-                  <div>
-                    <label className="label">
-                      <span className="label-text">Image URL (optional)</span>
-                    </label>
+                  </Field>
+                  <Field label="Image URL" hint="optional">
                     <input
                       type="text"
                       value={wizard.image}
                       onChange={e => setWizard({ ...wizard, image: e.target.value })}
-                      className="input input-bordered w-full"
+                      className={inputCls}
                       placeholder="https://example.com/image.png"
                     />
-                  </div>
-                </div>
+                  </Field>
+                </>
               )}
 
-              {/* Step: Services */}
+              {/* Step 2: Services */}
               {wizard.step === "services" && (
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-500">Step 2 of 4: Services</div>
-
-                  {/* Web Service (Required) */}
-                  <div>
-                    <label className="label">
-                      <span className="label-text font-bold">Web Endpoint * (Required)</span>
-                    </label>
+                <>
+                  <Field label="Web Endpoint" required hint="primary HTTP endpoint">
                     <input
                       type="text"
                       value={wizard.webEndpoint}
                       onChange={e => setWizard({ ...wizard, webEndpoint: e.target.value })}
-                      className="input input-bordered w-full"
+                      className={inputCls}
                       placeholder="https://web.agentxyz.com/"
                     />
+                  </Field>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-slate-100" />
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                      Additional services (optional)
+                    </span>
+                    <div className="flex-1 h-px bg-slate-100" />
                   </div>
 
-                  {/* Additional Services */}
-                  <div>
-                    <h3 className="font-bold mb-3">Add Additional Services (optional)</h3>
-
-                    <div className="space-y-3">
-                      <div>
-                        <label className="label">
-                          <span className="label-text text-sm">Service Type</span>
-                        </label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Service Type">
                         <select
                           value={newService.name}
-                          onChange={e =>
-                            setNewService({
-                              ...newService,
-                              name: e.target.value as ServiceType,
-                            })
-                          }
-                          className="select select-bordered w-full select-sm"
+                          onChange={e => setNewService({ ...newService, name: e.target.value as ServiceType })}
+                          className={inputCls}
                         >
-                          <option value="A2A">A2A</option>
-                          <option value="MCP">MCP</option>
-                          <option value="OASF">OASF</option>
-                          <option value="ENS">ENS</option>
-                          <option value="DID">DID</option>
-                          <option value="email">Email</option>
+                          {(["A2A", "MCP", "OASF", "ENS", "DID", "email"] as ServiceType[]).map(t => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
                         </select>
-                      </div>
-
-                      <div>
-                        <label className="label">
-                          <span className="label-text text-sm">Endpoint</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newService.endpoint || ""}
-                          onChange={e => setNewService({ ...newService, endpoint: e.target.value })}
-                          className="input input-bordered w-full input-sm"
-                          placeholder="e.g. https://api.example.com"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="label">
-                          <span className="label-text text-sm">Version (optional)</span>
-                        </label>
+                      </Field>
+                      <Field label="Version" hint="optional">
                         <input
                           type="text"
                           value={newService.version || ""}
                           onChange={e => setNewService({ ...newService, version: e.target.value })}
-                          className="input input-bordered w-full input-sm"
-                          placeholder="e.g. 0.3.0"
+                          className={inputCls}
+                          placeholder="0.3.0"
                         />
-                      </div>
-
-                      <button type="button" onClick={addService} className="btn btn-sm btn-outline w-full">
-                        + Add Service
-                      </button>
+                      </Field>
                     </div>
+                    <Field label="Endpoint">
+                      <input
+                        type="text"
+                        value={newService.endpoint || ""}
+                        onChange={e => setNewService({ ...newService, endpoint: e.target.value })}
+                        className={inputCls}
+                        placeholder="https://api.example.com"
+                      />
+                    </Field>
+                    <button
+                      type="button"
+                      onClick={addService}
+                      className="w-full font-mono text-[10px] uppercase tracking-wider border border-dashed border-slate-300 hover:border-[#0ea5a5] hover:text-[#0ea5a5] py-2.5 transition-colors text-slate-500"
+                    >
+                      + Add Service
+                    </button>
                   </div>
 
-                  {/* List of added services */}
+                  {/* Added services list */}
                   {wizard.services.length > 0 && (
-                    <div>
-                      <h3 className="font-bold mb-2">Added Services:</h3>
-                      <div className="space-y-2">
-                        {wizard.services.map(service => (
-                          <div
-                            key={service.id}
-                            className="p-3 rounded border border-gray-300 flex justify-between items-start"
-                          >
-                            <div className="flex-1">
-                              <p className="font-semibold">{service.name}</p>
-                              <p className="text-xs">{service.endpoint}</p>
-                              {service.version && <p className="text-xs">v{service.version}</p>}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeService(service.id)}
-                              className="btn btn-xs btn-ghost"
-                            >
-                              ✕
-                            </button>
+                    <div className="space-y-2">
+                      <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">Added services</p>
+                      {wizard.services.map(service => (
+                        <div
+                          key={service.id}
+                          className="flex items-center justify-between border border-slate-100 bg-slate-50 px-4 py-3"
+                        >
+                          <div>
+                            <span className="font-mono text-[10px] font-bold text-[#0ea5a5] uppercase tracking-wider">
+                              {service.name}
+                            </span>
+                            <p className="font-mono text-[10px] text-slate-500 mt-0.5">{service.endpoint}</p>
+                            {service.version && (
+                              <p className="font-mono text-[9px] text-slate-400">v{service.version}</p>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => removeService(service.id)}
+                            className="font-mono text-slate-400 hover:text-red-500 text-xs transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </div>
+                </>
               )}
 
-              {/* Step: Configuration */}
+              {/* Step 3: Configuration */}
               {wizard.step === "config" && (
                 <div className="space-y-4">
-                  <div className="text-sm text-gray-500">Step 3 of 4: Configuration</div>
-
-                  <div className="form-control">
-                    <label className="label cursor-pointer">
-                      <span className="label-text">x402 Support (payment gating)</span>
-                      <input
-                        type="checkbox"
-                        checked={wizard.x402Support}
-                        onChange={e => setWizard({ ...wizard, x402Support: e.target.checked })}
-                        className="checkbox"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="form-control">
-                    <label className="label cursor-pointer">
-                      <span className="label-text">Agent is Active</span>
-                      <input
-                        type="checkbox"
-                        checked={wizard.active}
-                        onChange={e => setWizard({ ...wizard, active: e.target.checked })}
-                        className="checkbox"
-                      />
-                    </label>
-                  </div>
+                  {(
+                    [
+                      { key: "x402Support", label: "x402 Support", hint: "Enable payment gating via HTTP 402" },
+                      {
+                        key: "active",
+                        label: "Agent Active",
+                        hint: "Whether the agent accepts executions immediately",
+                      },
+                    ] as { key: "x402Support" | "active"; label: string; hint: string }[]
+                  ).map(({ key, label, hint }) => {
+                    const checked = wizard[key];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setWizard({ ...wizard, [key]: !checked })}
+                        className="flex items-center justify-between w-full border border-slate-100 bg-slate-50 px-5 py-4 hover:border-slate-200 transition-colors text-left"
+                      >
+                        <div>
+                          <p className="font-mono text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+                            {label}
+                          </p>
+                          <p className="font-mono text-[9px] text-slate-400 mt-0.5">{hint}</p>
+                        </div>
+                        {/* Custom sharp toggle — no DaisyUI checkbox */}
+                        <div
+                          className={`relative w-10 h-5 flex-shrink-0 transition-colors duration-200 ${checked ? "bg-[#0ea5a5]" : "bg-slate-200"}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-5" : "translate-x-0"}`}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Step: Review */}
+              {/* Step 4: Review */}
               {wizard.step === "review" && (
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-500">Step 4 of 4: Review</div>
-                  <pre className="p-4 rounded text-xs overflow-auto max-h-96 border border-gray-300">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400 mb-3">
+                    Generated JSON — review before submitting
+                  </p>
+                  <pre className="font-mono text-[10px] text-slate-700 bg-slate-50 border border-slate-100 p-4 overflow-auto max-h-80 leading-5">
                     {JSON.stringify(
                       {
                         type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
@@ -624,41 +640,48 @@ export default function AddAgentPage() {
                 </div>
               )}
 
-              {/* Messages */}
-              {message && <div className="text-error text-sm">{message}</div>}
+              {message && <ErrorLine msg={message} />}
+            </div>
 
-              {/* Navigation Buttons */}
-              <div className="card-actions justify-between mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowWizard(false);
-                    setMessage("");
-                  }}
-                  className="btn btn-ghost"
-                >
-                  Cancel
-                </button>
-
-                <div className="flex gap-2">
-                  {wizard.step !== "basic" && (
-                    <button type="button" onClick={goBackWizardStep} className="btn btn-outline">
-                      Back
-                    </button>
-                  )}
-
-                  {wizard.step !== "review" && (
-                    <button type="button" onClick={advanceWizardStep} className="btn btn-primary">
-                      Next
-                    </button>
-                  )}
-
-                  {wizard.step === "review" && (
-                    <button type="button" onClick={generateJSON} className="btn btn-success">
-                      Generate JSON
-                    </button>
-                  )}
-                </div>
+            {/* Modal footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowWizard(false);
+                  setMessage("");
+                }}
+                className="font-mono text-[10px] uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <div className="flex gap-2">
+                {wizard.step !== "basic" && (
+                  <button
+                    type="button"
+                    onClick={goBackWizardStep}
+                    className="font-mono text-[10px] uppercase tracking-wider border border-slate-200 px-5 py-2.5 hover:bg-slate-50 transition-colors text-slate-600"
+                  >
+                    ← Back
+                  </button>
+                )}
+                {wizard.step !== "review" ? (
+                  <button
+                    type="button"
+                    onClick={advanceWizardStep}
+                    className="font-mono text-[10px] uppercase tracking-wider bg-slate-900 text-white px-5 py-2.5 hover:bg-slate-700 transition-colors"
+                  >
+                    Next ▸
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={generateJSON}
+                    className="font-mono text-[10px] uppercase tracking-wider bg-[#0ea5a5] text-white px-5 py-2.5 hover:bg-[#0d9494] transition-colors"
+                  >
+                    Generate JSON ▸
+                  </button>
+                )}
               </div>
             </div>
           </div>

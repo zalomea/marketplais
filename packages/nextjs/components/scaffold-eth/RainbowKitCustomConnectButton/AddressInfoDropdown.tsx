@@ -54,18 +54,18 @@ export const AddressInfoDropdown = ({
   return (
     <>
       <details ref={dropdownRef} className="dropdown dropdown-end leading-3">
-        <summary className="btn btn-secondary btn-sm pl-0 pr-2 shadow-md dropdown-toggle gap-0 h-auto!">
+        <summary className="flex items-center gap-1.5 border border-slate-200 bg-white hover:border-slate-400 px-2 py-1.5 cursor-pointer transition-colors h-auto! list-none">
           <BlockieAvatar address={checkSumAddress} size={30} ensImage={ensAvatar} />
-          <span className="ml-2 mr-1">
-            {isENS(displayName) ? displayName : checkSumAddress?.slice(0, 6) + "..." + checkSumAddress?.slice(-4)}
+          <span className="font-mono text-xs text-slate-700 ml-1.5 mr-0.5">
+            {isENS(displayName) ? displayName : checkSumAddress?.slice(0, 6) + "…" + checkSumAddress?.slice(-4)}
           </span>
-          <ChevronDownIcon className="h-6 w-4 ml-2 sm:ml-0" />
+          <ChevronDownIcon className="h-3.5 w-3.5 text-slate-400" />
         </summary>
-        <ul className="dropdown-content menu z-2 p-2 mt-2 shadow-center shadow-accent bg-base-200 rounded-box gap-1">
+        <ul className="dropdown-content menu z-[100] p-1 mt-1 shadow-lg bg-white border border-slate-200 rounded-none gap-0 min-w-48">
           <NetworkOptions hidden={!selectingNetwork} />
           <li className={selectingNetwork ? "hidden" : ""}>
             <div
-              className="h-8 btn-sm rounded-xl! flex gap-3 py-3 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"
               onClick={() => copyAddressToClipboard(checkSumAddress)}
             >
               {isAddressCopiedToClipboard ? (
@@ -82,14 +82,20 @@ export const AddressInfoDropdown = ({
             </div>
           </li>
           <li className={selectingNetwork ? "hidden" : ""}>
-            <label htmlFor="qrcode-modal" className="h-8 btn-sm rounded-xl! flex gap-3 py-3">
-              <QrCodeIcon className="h-6 w-4 ml-2 sm:ml-0" />
+            <label
+              htmlFor="qrcode-modal"
+              className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"
+            >
+              <QrCodeIcon className="h-4 w-4" />
               <span className="whitespace-nowrap">View QR Code</span>
             </label>
           </li>
           <li className={selectingNetwork ? "hidden" : ""}>
-            <button className="h-8 btn-sm rounded-xl! flex gap-3 py-3" type="button">
-              <ArrowTopRightOnSquareIcon className="h-6 w-4 ml-2 sm:ml-0" />
+            <button
+              className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-slate-600 hover:bg-slate-50 w-full transition-colors"
+              type="button"
+            >
+              <ArrowTopRightOnSquareIcon className="h-4 w-4" />
               <a
                 target="_blank"
                 href={blockExplorerAddressLink}
@@ -103,31 +109,32 @@ export const AddressInfoDropdown = ({
           {allowedNetworks.length > 1 ? (
             <li className={selectingNetwork ? "hidden" : ""}>
               <button
-                className="h-8 btn-sm rounded-xl! flex gap-3 py-3"
+                className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-slate-600 hover:bg-slate-50 w-full transition-colors"
                 type="button"
-                onClick={() => {
-                  setSelectingNetwork(true);
-                }}
+                onClick={() => setSelectingNetwork(true)}
               >
-                <ArrowsRightLeftIcon className="h-6 w-4 ml-2 sm:ml-0" /> <span>Switch Network</span>
+                <ArrowsRightLeftIcon className="h-4 w-4" /> <span>Switch Network</span>
               </button>
             </li>
           ) : null}
           {connector?.id === BURNER_WALLET_ID ? (
             <li>
-              <label htmlFor="reveal-burner-pk-modal" className="h-8 btn-sm rounded-xl! flex gap-3 py-3 text-error">
-                <EyeIcon className="h-6 w-4 ml-2 sm:ml-0" />
+              <label
+                htmlFor="reveal-burner-pk-modal"
+                className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-red-500 hover:bg-red-50 cursor-pointer transition-colors"
+              >
+                <EyeIcon className="h-4 w-4" />
                 <span>Reveal Private Key</span>
               </label>
             </li>
           ) : null}
           <li className={selectingNetwork ? "hidden" : ""}>
             <button
-              className="menu-item text-error h-8 btn-sm rounded-xl! flex gap-3 py-3"
+              className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-red-500 hover:bg-red-50 w-full transition-colors"
               type="button"
               onClick={() => disconnect()}
             >
-              <ArrowLeftOnRectangleIcon className="h-6 w-4 ml-2 sm:ml-0" /> <span>Disconnect</span>
+              <ArrowLeftOnRectangleIcon className="h-4 w-4" /> <span>Disconnect</span>
             </button>
           </li>
         </ul>

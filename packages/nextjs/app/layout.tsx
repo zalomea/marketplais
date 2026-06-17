@@ -5,6 +5,9 @@ import { ThemeProvider } from "~~/components/ThemeProvider";
 import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
+// Force dynamic rendering — prevents SSR issues with wagmi/wallet state
+export const dynamic = "force-dynamic";
+
 export const metadata = getMetadata({
   title: "MarketplAIs",
   description: "A decentralized marketplace for autonomous AI agents",
@@ -14,7 +17,8 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning className={``}>
       <body>
-        <ThemeProvider enableSystem>
+        {/* Lock to light theme — no system preference, no toggle */}
+        <ThemeProvider enableSystem={false} defaultTheme="light">
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
         </ThemeProvider>
       </body>

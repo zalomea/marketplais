@@ -9,30 +9,27 @@ type PaginationButtonProps = {
 const ITEMS_PER_PAGE = 20;
 
 export const PaginationButton = ({ currentPage, totalItems, setCurrentPage }: PaginationButtonProps) => {
-  const isPrevButtonDisabled = currentPage === 0;
-  const isNextButtonDisabled = currentPage + 1 >= Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const isPrevDisabled = currentPage === 0;
+  const isNextDisabled = currentPage + 1 >= Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  const prevButtonClass = isPrevButtonDisabled ? "btn-disabled cursor-default" : "btn-primary";
-  const nextButtonClass = isNextButtonDisabled ? "btn-disabled cursor-default" : "btn-primary";
-
-  if (isNextButtonDisabled && isPrevButtonDisabled) return null;
+  if (isNextDisabled && isPrevDisabled) return null;
 
   return (
-    <div className="mt-5 justify-end flex gap-3 mx-5">
+    <div className="flex items-center justify-end gap-3 mt-4">
       <button
-        className={`btn btn-sm ${prevButtonClass}`}
-        disabled={isPrevButtonDisabled}
+        className="flex items-center justify-center w-8 h-8 border border-slate-200 hover:border-slate-400 transition-colors disabled:opacity-30 disabled:cursor-default"
+        disabled={isPrevDisabled}
         onClick={() => setCurrentPage(currentPage - 1)}
       >
-        <ArrowLeftIcon className="h-4 w-4" />
+        <ArrowLeftIcon className="h-4 w-4 text-slate-600" />
       </button>
-      <span className="self-center text-primary-content font-medium">Page {currentPage + 1}</span>
+      <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500">Page {currentPage + 1}</span>
       <button
-        className={`btn btn-sm ${nextButtonClass}`}
-        disabled={isNextButtonDisabled}
+        className="flex items-center justify-center w-8 h-8 border border-slate-200 hover:border-slate-400 transition-colors disabled:opacity-30 disabled:cursor-default"
+        disabled={isNextDisabled}
         onClick={() => setCurrentPage(currentPage + 1)}
       >
-        <ArrowRightIcon className="h-4 w-4" />
+        <ArrowRightIcon className="h-4 w-4 text-slate-600" />
       </button>
     </div>
   );

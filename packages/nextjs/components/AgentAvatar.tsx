@@ -54,7 +54,15 @@ function buildEdges(agentId: bigint): [number, number][] {
   return edges;
 }
 
-export const AgentAvatar = ({ agentId, size = 120 }: { agentId: bigint; size?: number }) => {
+export const AgentAvatar = ({
+  agentId,
+  size = 120,
+  imageUri,
+}: {
+  agentId: bigint;
+  size?: number;
+  imageUri?: string;
+}) => {
   const nodes = buildNodes(agentId);
   const edges = buildEdges(agentId);
   const id = Number(agentId % 100000n);
@@ -63,41 +71,60 @@ export const AgentAvatar = ({ agentId, size = 120 }: { agentId: bigint; size?: n
 
   return (
     <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={size} height={size} xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      {/* Edges */}
-      {edges.map(([a, b], i) => (
-        <line
-          key={i}
-          x1={nodes[a].x}
-          y1={nodes[a].y}
-          x2={nodes[b].x}
-          y2={nodes[b].y}
-          stroke="#0ea5a5"
-          strokeWidth="0.8"
-          opacity="0.35"
-          strokeLinecap="round"
-        />
-      ))}
-      {/* Spoke from hero node to center */}
-      <line
-        x1={nodes[heroIndex].x}
-        y1={nodes[heroIndex].y}
-        x2={CENTER}
-        y2={CENTER}
-        stroke="#60a5fa"
-        strokeWidth="0.7"
-        opacity="0.5"
-        strokeLinecap="round"
-      />
-      {/* Regular nodes */}
-      {nodes.map((n, i) =>
-        i === heroIndex ? null : (
-          <circle key={i} cx={n.x} cy={n.y} r={2.4} fill="#0b1329" stroke="#0ea5a5" strokeWidth="1" opacity="0.85" />
-        ),
+      {/* Image */}
+      {imageUri && (
+        <image href={imageUri} x="0" y="0" width={SIZE} height={SIZE} preserveAspectRatio="xMidYMid slice" />
       )}
-      {/* Hero node — slightly larger, cyan fill */}
-      <circle cx={nodes[heroIndex].x} cy={nodes[heroIndex].y} r={3.2} fill="#0ea5a5" opacity="0.95" />
-      {/* Center dot */}
-      <circle cx={CENTER} cy={CENTER} r={2} fill="#60a5fa" opacity="0.7" />
+
+      {/* Geometry (only if no image) */}
+      {!imageUri && (
+        <>
+          {/* Edges */}
+          {edges.map(([a, b], i) => (
+            <line
+              key={i}
+              x1={nodes[a].x}
+              y1={nodes[a].y}
+              x2={nodes[b].x}
+              y2={nodes[b].y}
+              stroke="#0ea5a5"
+              strokeWidth="0.8"
+              opacity="0.35"
+              strokeLinecap="round"
+            />
+          ))}
+          {/* Spoke from hero node to center */}
+          <line
+            x1={nodes[heroIndex].x}
+            y1={nodes[heroIndex].y}
+            x2={CENTER}
+            y2={CENTER}
+            stroke="#60a5fa"
+            strokeWidth="0.7"
+            opacity="0.5"
+            strokeLinecap="round"
+          />
+          {/* Regular nodes */}
+          {nodes.map((n, i) =>
+            i === heroIndex ? null : (
+              <circle
+                key={i}
+                cx={n.x}
+                cy={n.y}
+                r={2.4}
+                fill="#0b1329"
+                stroke="#0ea5a5"
+                strokeWidth="1"
+                opacity="0.85"
+              />
+            ),
+          )}
+          {/* Hero node — slightly larger, cyan fill */}
+          <circle cx={nodes[heroIndex].x} cy={nodes[heroIndex].y} r={3.2} fill="#0ea5a5" opacity="0.95" />
+          {/* Center dot */}
+          <circle cx={CENTER} cy={CENTER} r={2} fill="#60a5fa" opacity="0.7" />
+        </>
+      )}
     </svg>
   );
 };

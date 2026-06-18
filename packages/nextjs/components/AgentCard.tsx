@@ -13,6 +13,7 @@ import { getParsedError, notification } from "~~/utils/scaffold-eth";
 interface AgentMetadata {
   name: string;
   description: string;
+  image?: string;
 }
 
 interface AgentCardProps {
@@ -201,7 +202,7 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
 
         {/* Avatar zone */}
         <div className="flex items-center justify-center py-6 bg-slate-50 border-b border-slate-100">
-          <AgentAvatar agentId={agentId} size={88} />
+          <AgentAvatar agentId={agentId} size={88} imageUri={metadata?.image} />
         </div>
 
         {/* Body */}
@@ -273,10 +274,12 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
               </div>
             ) : (
               <Link
-                href={`/agents/execute/${agentIdStr}`}
-                className="inline-flex items-center gap-2 bg-[#0ea5a5] hover:bg-[#0d9494] text-white font-mono text-xs font-semibold px-4 py-2 transition-colors"
+                href={active ? `/agents/execute/${agentIdStr}` : "#"}
+                className={`inline-flex items-center gap-2 text-white font-mono text-xs font-semibold px-4 py-2 transition-colors ${
+                  active ? "bg-[#0ea5a5] hover:bg-[#0d9494]" : "bg-slate-300 cursor-not-allowed pointer-events-none"
+                }`}
               >
-                Execute ▸
+                {active ? "Execute ▸" : "Inactive"}
               </Link>
             )}
           </div>

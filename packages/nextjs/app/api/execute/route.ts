@@ -235,18 +235,25 @@ export async function POST(request: Request) {
     }
 
     // Step 6 — Finalize or Refund based on agent execution result.
+    let txHashFinal: `0x${string}` | undefined;
     try {
       const relayerClient = getRelayerWalletClient();
       const functionName = agentSucceeded ? "finalizePayment" : "refundPayment";
 
-      const txHashFinal = await relayerClient.writeContract({
+      txHashFinal = await relayerClient.writeContract({
         address: marketplaceRouter.address,
         abi: marketplaceRouter.abi,
         functionName,
         chain: publicClient.chain,
         args: [nonce],
       });
-      await publicClient.waitForTransactionReceipt({ hash: txHashFinal, timeout: 30_000 });
+      const finalReceipt = await publicClient.waitForTransactionReceipt({ hash: txHashFinal, timeout: 30_000 });
+      if (finalReceipt.status !== "success") {
+        return NextResponse.json(
+          { error: `${agentSucceeded ? "Finalize" : "Refund"} reverted on-chain`, txHash: txHashFinal },
+          { status: 502 },
+        );
+      }
     } catch (err: any) {
       console.error(`[execute] Finalization/Refund (${agentSucceeded ? "finalize" : "refund"}) failed:`, err?.message);
       // Even if finalization fails, we report the agent's outcome if it was successful,

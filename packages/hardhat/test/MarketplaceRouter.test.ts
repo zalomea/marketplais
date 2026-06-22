@@ -552,4 +552,71 @@ describe("MarketplaceRouter", function () {
       ).to.be.revertedWithCustomError(router, "FeeTooHigh");
     });
   });
+
+  // ─── Escrow trap fix: settlement must survive a reverting reputation registry ─
+  describe("finalizePayment / refundPayment with reverting reputation registry", function () {
+    let mockReputation: any;
+    let mockRouter: MarketplaceRouter;
+
+    before(async function () {
+      const MockReputationFactory = await ethers.getContractFactory("ReputationRegistryMock");
+      mockReputation = await MockReputationFactory.deploy();
+      await mockReputation.waitForDeployment();
+
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      mockRouter = await RouterFactory.deploy(
+        await agentMarketplace.getAddress(),
+        await mockReputation.getAddress(),
+        USDC_ADDRESS,
+        FEE_BPS,
+        treasury.address,
+        { gasLimit: 10000000 },
+      );
+      await mockRouter.waitForDeployment();
+    });
+
+    async function lockWithMockRouter(customNonce?: string): Promise<string> {
+      const nonce = customNonce ?? ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(
+        client,
+        await mockRouter.getAddress(),
+        TOTAL_PAYMENT,
+        validUntil,
+        nonce,
+      );
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await mockRouter.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+      return nonce;
+    }
+
+    it("Should finalize payment and credit agent even if giveFeedback reverts", async function () {
+      const nonce = await lockWithMockRouter();
+      await mockReputation.setShouldRevert(true);
+
+      await expect(mockRouter.connect(owner).finalizePayment(nonce))
+        .to.emit(mockRouter, "PaymentFinalized")
+        .withArgs(nonce, agentId, AGENT_PRICE)
+        .and.to.emit(mockRouter, "ReputationFeedbackFailed")
+        .withArgs(nonce, agentId, "giveFeedback reverted");
+
+      expect(await mockRouter.agentBalances(agentId)).to.equal(AGENT_PRICE);
+      expect(await mockRouter.totalLocked()).to.equal(0n);
+    });
+
+    it("Should refund payment to client even if giveFeedback reverts", async function () {
+      const nonce = await lockWithMockRouter();
+      const clientBefore = await usdc.balanceOf(client.address);
+      await mockReputation.setShouldRevert(true);
+
+      await expect(mockRouter.connect(owner).refundPayment(nonce))
+        .to.emit(mockRouter, "PaymentRefunded")
+        .withArgs(nonce, client.address, TOTAL_PAYMENT)
+        .and.to.emit(mockRouter, "ReputationFeedbackFailed")
+        .withArgs(nonce, agentId, "giveFeedback reverted");
+
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+      expect(await mockRouter.totalLocked()).to.equal(0n);
+    });
+  });
 });

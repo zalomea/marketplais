@@ -49,6 +49,7 @@ contract MarketplaceRouter {
     event PaymentLocked(bytes32 indexed nonce, address indexed client, uint256 indexed agentId, uint256 totalAmount, uint256 agentEarnings);
     event PaymentFinalized(bytes32 indexed nonce, uint256 indexed agentId, uint256 agentEarnings);
     event PaymentRefunded(bytes32 indexed nonce, address indexed client, uint256 totalAmount);
+    event ReputationFeedbackFailed(bytes32 indexed nonce, uint256 indexed agentId, string reason);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -205,16 +206,7 @@ contract MarketplaceRouter {
         agentBalances[agentId] += agentEarnings;
         totalAgentLiabilities += agentEarnings;
         emit PaymentFinalized(nonce, agentId, agentEarnings);
-        reputationRegistry.giveFeedback(
-            agentId,
-            int128(1),
-            uint8(0),
-            "execution_success",
-            "x402_payment",
-            "",
-            "",
-            bytes32(0)
-        );
+        _recordReputationFeedback(nonce, agentId, int128(1), "execution_success");
     }
 
     function refundPayment(bytes32 nonce) external onlyRelayer {
@@ -229,15 +221,35 @@ contract MarketplaceRouter {
         emit PaymentRefunded(nonce, client, amount);
         bool success = token.transfer(client, amount);
         if (!success) revert TransferFailed();
-        reputationRegistry.giveFeedback(
-            agentId,
-            int128(0),
-            uint8(0),
-            "execution_failed",
-            "x402_payment",
-            "",
-            "",
-            bytes32(0)
-        );
+        _recordReputationFeedback(nonce, agentId, int128(0), "execution_failed");
+    }
+
+    /**
+     * @dev Records reputation feedback for a settled payment. The call is wrapped
+     * in try/catch so a reverting reputation registry cannot trap funds in escrow.
+     */
+    function _recordReputationFeedback(
+        bytes32 nonce,
+        uint256 agentId,
+        int128 value,
+        string memory tag1
+    ) internal {
+        try
+            reputationRegistry.giveFeedback(
+                agentId,
+                value,
+                uint8(0),
+                tag1,
+                "x402_payment",
+                "",
+                "",
+                bytes32(0)
+            )
+        {
+            return;
+        } catch {
+            // slither-disable-next-line reentrancy-events
+            emit ReputationFeedbackFailed(nonce, agentId, "giveFeedback reverted");
+        }
     }
 }

@@ -78,6 +78,7 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
   const [priceInput, setPriceInput] = useState("");
   const [newOwnerInput, setNewOwnerInput] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [payToAgentWallet, setPayToAgentWallet] = useState(false);
 
   const agentIdStr = agentId.toString();
   const executionsModalId = `executions-modal-${agentIdStr}`;
@@ -102,6 +103,18 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
     args: [agentId],
     query: { enabled: showActions },
   });
+
+  const { data: agentData } = useScaffoldReadContract({
+    contractName: "AgentMarketplace",
+    functionName: "getAgent",
+    args: [agentId],
+    query: { enabled: showActions },
+  });
+
+  // Sync local optimistic state with on-chain data whenever it changes.
+  useEffect(() => {
+    setPayToAgentWallet(agentData?.payToAgentWallet ?? false);
+  }, [agentData?.payToAgentWallet]);
 
   const { writeContractAsync: marketplaceRouter } = useScaffoldWriteContract({ contractName: "MarketplaceRouter" });
   const { writeContractAsync: agentMarketplace } = useScaffoldWriteContract({ contractName: "AgentMarketplace" });
@@ -185,6 +198,13 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
       notification.success("Agent transferred");
       setNewOwnerInput("");
       (document.getElementById(transferModalId) as HTMLDialogElement)?.close();
+  const handleSetPaymentDestination = async (newValue: boolean) => {
+    if (newValue === payToAgentWallet) return;
+    setPendingAction(`destination-${agentIdStr}`);
+    try {
+      await agentMarketplace({ functionName: "setPaymentDestination", args: [agentId, newValue] });
+      setPayToAgentWallet(newValue);
+      notification.success("Payment destination updated");
     } catch (err) {
       notification.error(getParsedError(err));
     } finally {
@@ -403,6 +423,42 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
                   )}
                 </button>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                Payment destination
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSetPaymentDestination(false)}
+                  disabled={busy || pendingAction === `destination-${agentIdStr}`}
+                  className={`flex-1 font-mono text-xs uppercase tracking-wider py-2 transition-colors disabled:opacity-40 ${
+                    !payToAgentWallet
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  Owner Wallet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetPaymentDestination(true)}
+                  disabled={busy || pendingAction === `destination-${agentIdStr}`}
+                  className={`flex-1 font-mono text-xs uppercase tracking-wider py-2 transition-colors disabled:opacity-40 ${
+                    payToAgentWallet
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  Agent Wallet
+                </button>
+              </div>
+              {payToAgentWallet && (
+                <p className="font-mono text-[10px] text-amber-600">
+                  Warning: If the agent wallet is not set, withdrawals will fail until you change this setting back.
+                </p>
+              )}
             </div>
             <button
               type="button"

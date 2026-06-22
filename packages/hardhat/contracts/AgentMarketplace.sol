@@ -15,7 +15,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     mapping(uint256 => Agent) public agents;
     uint256[] public allAgentIds;
-    
+
     // EnumerableSet for efficient owner-based lookups
     mapping(address => EnumerableSet.UintSet) private _ownerAgents;
 
@@ -101,9 +101,9 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     function transferAgent(uint256 agentId, address newOwner) external {
         if (newOwner == address(0)) revert ZeroAddress();
         if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
-        
+
         address currentOwner = identityRegistry.ownerOf(agentId);
-        
+
         if (msg.sender != currentOwner) revert NotOwnerOfAgent();
         if (currentOwner == newOwner) revert SameOwner();
 
@@ -112,7 +112,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         _ownerAgents[currentOwner].remove(agentId);
         // slither-disable-next-line unused-return
         _ownerAgents[newOwner].add(agentId);
-        
+
         emit AgentTransferred(agentId, currentOwner, newOwner);
 
         identityRegistry.safeTransferFrom(currentOwner, newOwner, agentId);
@@ -123,7 +123,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
         address currentOwner = identityRegistry.ownerOf(agentId);
         address marketplaceRecordedOwner = agents[agentId].owner;
-        
+
         if (currentOwner == marketplaceRecordedOwner) revert SameOwner();
 
         agents[agentId].owner = currentOwner;
@@ -131,7 +131,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         _ownerAgents[marketplaceRecordedOwner].remove(agentId);
         // slither-disable-next-line unused-return
         _ownerAgents[currentOwner].add(agentId);
-        
+
         emit AgentTransferred(agentId, marketplaceRecordedOwner, currentOwner);
     }
 
@@ -184,8 +184,22 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     // slither-disable-next-line calls-loop
     function getAgentFullDetails(uint256 agentId) public view returns (AgentFullDetails memory) {
         Agent memory agent = getAgent(agentId);
-        address agentOwner = identityRegistry.ownerOf(agentId);
-        string memory uri = identityRegistry.tokenURI(agentId);
+
+        address agentOwner = address(0);
+        try identityRegistry.ownerOf(agentId) returns (address o) {
+            agentOwner = o;
+        } catch {
+            // Token burned or non-existent in the registry — return inactive, zeroed-out record
+            agent.active = false;
+            return AgentFullDetails(agent, address(0), "");
+        }
+
+        string memory uri = "";
+        try identityRegistry.tokenURI(agentId) returns (string memory u) {
+            uri = u;
+        } catch {
+            uri = "";
+        }
 
         return AgentFullDetails(agent, agentOwner, uri);
     }

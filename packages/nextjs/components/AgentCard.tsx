@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatUnits, parseUnits } from "viem";
+import { formatUnits, isAddress, parseUnits } from "viem";
 import AgentAvatar from "~~/components/AgentAvatar";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { useAgentReputation } from "~~/hooks/useAgentReputation";
 import { getParsedError, notification } from "~~/utils/scaffold-eth";
 
@@ -76,11 +76,24 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
 
   // Management state (self-contained, only used when showActions=true)
   const [priceInput, setPriceInput] = useState("");
+  const [newOwnerInput, setNewOwnerInput] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const agentIdStr = agentId.toString();
   const executionsModalId = `executions-modal-${agentIdStr}`;
   const manageModalId = `manage-modal-${agentIdStr}`;
+  const transferModalId = `transfer-modal-${agentIdStr}`;
+
+  const { data: deployedMarketplace } = useDeployedContractInfo({ contractName: "AgentMarketplace" });
+  const { writeContractAsync: identityRegistry } = useScaffoldWriteContract({ contractName: "IdentityRegistry" });
+  const { data: marketplaceAgent } = useScaffoldReadContract({
+    contractName: "AgentMarketplace",
+    functionName: "getAgent",
+    args: [agentId],
+  });
+
+  const marketplaceOwner = marketplaceAgent?.owner;
+  const isOutOfSync = marketplaceOwner !== undefined && owner.toLowerCase() !== marketplaceOwner.toLowerCase();
 
   // Withdrawable earnings held in the router for this agent (from main #90)
   const { data: balance, refetch: refetchBalance } = useScaffoldReadContract({
@@ -132,6 +145,46 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
       });
       notification.success("Agent status updated");
       (document.getElementById(manageModalId) as HTMLDialogElement)?.close();
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleSyncOwnership = async () => {
+    setPendingAction(`sync-${agentIdStr}`);
+    try {
+      await agentMarketplace({ functionName: "syncAgentOwnership", args: [agentId] });
+      notification.success("Ownership synced");
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!isAddress(newOwnerInput)) {
+      notification.error("Invalid address");
+      return;
+    }
+    if (newOwnerInput.toLowerCase() === owner.toLowerCase()) {
+      notification.error("New owner must be different");
+      return;
+    }
+    if (!deployedMarketplace?.address) {
+      notification.error("Marketplace contract not deployed");
+      return;
+    }
+
+    setPendingAction(`transfer-${agentIdStr}`);
+    try {
+      await identityRegistry({ functionName: "approve", args: [deployedMarketplace.address, agentId] });
+      await agentMarketplace({ functionName: "transferAgent", args: [agentId, newOwnerInput] });
+      notification.success("Agent transferred");
+      setNewOwnerInput("");
+      (document.getElementById(transferModalId) as HTMLDialogElement)?.close();
     } catch (err) {
       notification.error(getParsedError(err));
     } finally {
@@ -228,6 +281,23 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
                 {owner.slice(0, 6)}…{owner.slice(-4)}
               </span>
             </div>
+            {isOutOfSync && (
+              <div className="flex items-center justify-between font-mono text-[10px] text-amber-600">
+                <span className="uppercase tracking-wider">Ownership out of sync</span>
+                <button
+                  type="button"
+                  onClick={handleSyncOwnership}
+                  disabled={busy}
+                  className="font-mono text-[10px] uppercase tracking-wider text-amber-600 hover:text-amber-700 hover:underline disabled:opacity-40"
+                >
+                  {pendingAction === `sync-${agentIdStr}` ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    "Sync ▸"
+                  )}
+                </button>
+              </div>
+            )}
             {showActions && (
               <div className="flex items-center justify-between font-mono text-[10px] text-slate-500">
                 <span className="uppercase tracking-wider">Balance</span>
@@ -270,6 +340,14 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
                   className="w-full font-mono text-xs uppercase tracking-wider border border-slate-200 hover:bg-slate-50 text-slate-600 py-2 transition-colors"
                 >
                   Manage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (document.getElementById(transferModalId) as HTMLDialogElement)?.showModal()}
+                  disabled={busy}
+                  className="w-full font-mono text-xs uppercase tracking-wider border border-red-200 hover:bg-red-50 text-red-600 py-2 transition-colors disabled:opacity-40"
+                >
+                  Transfer Agent
                 </button>
               </div>
             ) : (
@@ -344,6 +422,65 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
                 "Reactivate Agent"
               )}
             </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+
+      {/* ── Transfer modal (showActions only) ─────────────────── */}
+      <dialog id={transferModalId} className="modal">
+        <div className="modal-box w-11/12 max-w-md rounded-none border border-slate-200 p-0 overflow-hidden">
+          <div className="flex items-center justify-between bg-slate-950 px-5 py-3">
+            <p className="font-mono text-sm font-bold text-white">Transfer // Agent_{agentIdStr.padStart(3, "0")}</p>
+            <form method="dialog">
+              <button className="font-mono text-slate-400 hover:text-white text-lg leading-none transition-colors">
+                ✕
+              </button>
+            </form>
+          </div>
+          <div className="p-5 space-y-5">
+            <div className="space-y-1.5">
+              <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                New owner address
+              </label>
+              <input
+                type="text"
+                value={newOwnerInput}
+                onChange={e => setNewOwnerInput(e.target.value)}
+                placeholder="0x..."
+                className="w-full font-mono text-sm border border-slate-200 bg-white px-3 py-2 focus:outline-none focus:border-[#0ea5a5]"
+              />
+              {newOwnerInput && !isAddress(newOwnerInput) && (
+                <p className="font-mono text-[10px] text-red-500">Invalid address</p>
+              )}
+              {newOwnerInput && isAddress(newOwnerInput) && newOwnerInput.toLowerCase() === owner.toLowerCase() && (
+                <p className="font-mono text-[10px] text-red-500">Cannot transfer to current owner</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <form method="dialog" className="flex-1">
+                <button
+                  type="submit"
+                  className="w-full font-mono text-xs uppercase tracking-wider border border-slate-200 hover:bg-slate-50 text-slate-600 py-2 transition-colors"
+                >
+                  Cancel
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={handleTransfer}
+                disabled={busy || !isAddress(newOwnerInput) || newOwnerInput.toLowerCase() === owner.toLowerCase()}
+                className="flex-1 font-mono text-xs uppercase tracking-wider bg-slate-900 text-white px-4 py-2 hover:bg-slate-700 disabled:opacity-40 transition-colors"
+              >
+                {pendingAction === `transfer-${agentIdStr}` ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  "Transfer ▸"
+                )}
+              </button>
+            </div>
           </div>
         </div>
         <form method="dialog" className="modal-backdrop">

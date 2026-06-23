@@ -8,6 +8,7 @@ interface IAgentMarketplace {
         address owner;
         uint256 agentId;
         uint256 price;
+        uint256 nonce;
         bool payToAgentWallet;
         bool active;
     }

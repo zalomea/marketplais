@@ -232,11 +232,15 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
   const handleShowApiKey = async () => {
     setPendingAction(`apikey-${agentIdStr}`);
     try {
-      const signature = await signMessageAsync({ message: `Verify ownership: ${agentIdStr}` });
+      // Include a timestamp in the signed message so a captured signature cannot
+      // be replayed to reveal the API key later.
+      const timestamp = Date.now();
+      const message = `Verify ownership: ${agentIdStr} at ${timestamp}`;
+      const signature = await signMessageAsync({ message });
       const res = await fetch("/api/agents/reveal-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId: agentIdStr, signature }),
+        body: JSON.stringify({ agentId: agentIdStr, signature, timestamp }),
       });
       if (res.status === 401) {
         notification.error("Invalid signature — you may not be the owner");

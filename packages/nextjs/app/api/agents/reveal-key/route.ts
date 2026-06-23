@@ -11,16 +11,28 @@ import { deriveApiKey } from "~~/utils/apiKey";
 export async function POST(req: NextRequest) {
   let agentId: number | string;
   let signature: `0x${string}`;
+  let timestamp: number;
   try {
-    const body = (await req.json()) as { agentId: number | string; signature: `0x${string}` };
+    const body = (await req.json()) as {
+      agentId: number | string;
+      signature: `0x${string}`;
+      timestamp: number;
+    };
     agentId = body.agentId;
     signature = body.signature;
+    timestamp = body.timestamp;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (agentId === undefined || agentId === null || !signature) {
+  if (agentId === undefined || agentId === null || !signature || timestamp === undefined || timestamp === null) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  }
+
+  // Reject replayed or future-dated signatures: the challenge is only valid
+  // within a 5-minute window centered on the server's clock.
+  if (Math.abs(Date.now() - timestamp) > 300000) {
+    return NextResponse.json({ error: "Signature expired" }, { status: 401 });
   }
 
   // The signature must be a 0x-prefixed hex string; reject malformed input early.
@@ -41,32 +53,35 @@ export async function POST(req: NextRequest) {
   }
   const agentMarketplace = contracts.AgentMarketplace;
 
-  // Read the agent (owner + nonce) from the marketplace. getAgent reverts with
-  // AgentNotFoundInMarketplace for unknown ids — map that to 404.
-  let agent: { owner: string; agentId: bigint; nonce: bigint };
+  // Use getAgentFullDetails so the owner is the live IdentityRegistry owner
+  // (top-level `owner`), not the stale cached `agent.owner` that drifts after
+  // an NFT transfer until syncAgentOwnership is called. getAgentFullDetails
+  // reverts with AgentNotFoundInMarketplace for unknown ids — map to 404.
+  let fullDetails: { agent: { agentId: bigint; nonce: bigint }; owner: string };
   try {
-    agent = (await publicClient.readContract({
+    fullDetails = (await publicClient.readContract({
       address: agentMarketplace.address,
       abi: agentMarketplace.abi,
-      functionName: "getAgent",
+      functionName: "getAgentFullDetails",
       args: [BigInt(agentId)],
-    })) as { owner: string; agentId: bigint; nonce: bigint };
+    })) as { agent: { agentId: bigint; nonce: bigint }; owner: string };
   } catch {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
-  if (!agent.agentId || !isAddress(agent.owner)) {
+  if (!fullDetails.agent.agentId || !isAddress(fullDetails.owner)) {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
-  // Verify the EIP-191 personal_sign signature over the ownership challenge.
-  const message = `Verify ownership: ${agentId}`;
-  const valid = await verifyMessage({ address: agent.owner, message, signature });
+  // Reconstruct the exact signed message (must match the client side).
+  const message = `Verify ownership: ${agentId} at ${timestamp}`;
+  const valid = await verifyMessage({ address: fullDetails.owner, message, signature });
   if (!valid) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  // Owner proven — derive and return the current API key.
-  const apiKey = deriveApiKey(agent.agentId, agent.owner, agent.nonce, secret);
+  // Owner proven — derive and return the current API key using the live owner
+  // and on-chain nonce.
+  const apiKey = deriveApiKey(fullDetails.agent.agentId, fullDetails.owner, fullDetails.agent.nonce, secret);
   return NextResponse.json({ apiKey });
 }

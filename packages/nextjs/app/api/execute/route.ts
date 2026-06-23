@@ -88,17 +88,29 @@ export async function POST(request: Request) {
     const { USDC, IdentityRegistry } = extContracts;
 
     // Step 1 — recompute amount from chain; never trust what the client claims to have signed.
-    let agent: { owner: string; agentId: bigint; price: bigint; nonce: bigint; active: boolean };
+    // Use getAgentFullDetails so `owner` is the live IdentityRegistry owner, not
+    // the stale cached `agent.owner`. The API key is derived from the live
+    // owner + on-chain nonce, so a stale owner would produce a key the agent
+    // endpoint would reject.
+    let fullDetails: {
+      agent: { price: bigint; nonce: bigint; active: boolean };
+      owner: string;
+    };
     try {
-      agent = (await publicClient.readContract({
+      fullDetails = (await publicClient.readContract({
         address: agentMarketplace.address,
         abi: agentMarketplace.abi,
-        functionName: "getAgent",
+        functionName: "getAgentFullDetails",
         args: [BigInt(agentId)],
-      })) as { owner: string; agentId: bigint; price: bigint; nonce: bigint; active: boolean };
+      })) as {
+        agent: { price: bigint; nonce: bigint; active: boolean };
+        owner: string;
+      };
     } catch {
       return NextResponse.json({ error: "Failed to fetch agent data" }, { status: 500 });
     }
+
+    const { agent, owner } = fullDetails;
 
     if (!agent.active) {
       return NextResponse.json({ error: "Agent not active" }, { status: 400 });
@@ -189,9 +201,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Could not resolve agent endpoint" }, { status: 502 });
     }
 
-    // Derive the agent's API key from its on-chain owner + nonce so the agent
+    // Derive the agent's API key from the live on-chain owner + nonce so the agent
     // endpoint can authenticate the relayer without a shared static secret.
-    const apiKey = deriveApiKey(BigInt(agentId), agent.owner, agent.nonce, API_KEY_SECRET);
+    const apiKey = deriveApiKey(BigInt(agentId), owner, agent.nonce, API_KEY_SECRET);
 
     // security policy violation is 422 — 502 would imply a retryable network error
     const isDev = process.env.NODE_ENV === "development";

@@ -24,8 +24,13 @@ export async function verifyAgentApiKey(
 ): Promise<{ ok: boolean; response?: NextResponse }> {
   const agentIdStr = process.env[agentIdEnvVar];
   if (!agentIdStr) {
-    console.warn(`[agentAuth] ${agentIdEnvVar} not set — skipping API key validation (dev fallback)`);
-    return { ok: true };
+    // Fail closed: a missing agent ID env var is a server misconfiguration,
+    // not a dev-friendly state. Returning ok:true would let anyone bypass the
+    // x402 escrow flow by hitting the agent endpoint directly.
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Server misconfiguration: agent ID env var missing" }, { status: 500 }),
+    };
   }
 
   const providedKey = req.headers.get("X-API-Key");
@@ -41,21 +46,25 @@ export async function verifyAgentApiKey(
   }
   const agentMarketplace = contracts.AgentMarketplace;
 
-  let agent: { owner: string; nonce: bigint };
+  // Use getAgentFullDetails so the owner comes from the live IdentityRegistry
+  // (top-level `owner`), not the stale cached `agent.owner`. The cached owner
+  // drifts after an NFT transfer until syncAgentOwnership is called, which
+  // would let a previous owner derive a still-valid key.
+  let fullDetails: { agent: { nonce: bigint }; owner: string };
   try {
-    agent = (await publicClient.readContract({
+    fullDetails = (await publicClient.readContract({
       address: agentMarketplace.address,
       abi: agentMarketplace.abi,
-      functionName: "getAgent",
+      functionName: "getAgentFullDetails",
       args: [BigInt(agentIdStr)],
-    })) as { owner: string; nonce: bigint };
+    })) as { agent: { nonce: bigint }; owner: string };
   } catch {
     // Agent missing or contract read failed — treat as unauthorized, not a 500,
     // so probes can't distinguish "bad key" from "bad agent id".
     return { ok: false, response: NextResponse.json({ error: "Invalid API Key" }, { status: 401 }) };
   }
 
-  const expectedKey = deriveApiKey(BigInt(agentIdStr), agent.owner, agent.nonce, secret);
+  const expectedKey = deriveApiKey(BigInt(agentIdStr), fullDetails.owner, fullDetails.agent.nonce, secret);
 
   // Constant-time comparison to avoid timing side-channels. Length mismatch
   // short-circuits (the expected HMAC is always 64 hex chars, which is public).

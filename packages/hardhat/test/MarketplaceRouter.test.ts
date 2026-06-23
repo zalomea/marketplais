@@ -158,6 +158,43 @@ describe("MarketplaceRouter", function () {
     return nonce;
   }
 
+  // Helper: Builds EIP-712 signature for IdentityRegistry.setAgentWallet.
+  // The signature must come from the *newWallet* itself (verified by the registry).
+  async function buildSetAgentWalletSignature(
+    signer: SignerWithAddress,
+    agentOwnerAddress: string,
+    agentId: bigint,
+    newWallet: string,
+    deadline: number,
+  ): Promise<string> {
+    const domainData = await iIdentityRegistry.eip712Domain();
+    const domain = {
+      name: domainData.name,
+      version: domainData.version,
+      chainId: domainData.chainId,
+      verifyingContract: domainData.verifyingContract,
+      ...(domainData.salt !== ethers.ZeroHash ? { salt: domainData.salt } : {}),
+    };
+
+    const types = {
+      AgentWalletSet: [
+        { name: "agentId", type: "uint256" },
+        { name: "newWallet", type: "address" },
+        { name: "owner", type: "address" },
+        { name: "deadline", type: "uint256" },
+      ],
+    };
+
+    const message = {
+      agentId,
+      newWallet,
+      owner: agentOwnerAddress,
+      deadline,
+    };
+
+    return signer.signTypedData(domain, types, message);
+  }
+
   // ─── Initial Setup ───────────────────────────────────────────────────────────
 
   describe("Payment Flow (lockPayment + finalizePayment)", function () {
@@ -617,6 +654,78 @@ describe("MarketplaceRouter", function () {
 
       expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
       expect(await mockRouter.totalLocked()).to.equal(0n);
+    });
+  });
+
+  // ─── payToAgentWallet withdrawal paths ────────────────────────────────────────
+  describe("withdrawAgentEarnings — payToAgentWallet paths", function () {
+    let walletAgentId: bigint;
+
+    beforeEach(async function () {
+      const tx = await agentMarketplace
+        .connect(agentOwner)
+        ["register(uint256,string,bool)"](AGENT_PRICE, "ipfs://wallet-agent", true);
+      const receipt = await tx.wait();
+      const event = receipt?.logs
+        .map((log: any) => {
+          try {
+            return agentMarketplace.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e?.name === "AgentRegistered");
+      walletAgentId = event?.args.agentId;
+    });
+
+    async function lockAndFinalizeForWalletAgent(customNonce?: string): Promise<string> {
+      const nonce = customNonce ?? ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await router.connect(owner).lockPayment(client.address, walletAgentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await router.connect(owner).finalizePayment(nonce);
+      return nonce;
+    }
+
+    it("Should revert withdrawal when payToAgentWallet=true but wallet is unset", async function () {
+      await lockAndFinalizeForWalletAgent();
+      await expect(router.withdrawAgentEarnings(walletAgentId)).to.be.reverted;
+    });
+
+    it("Should allow recovery by toggling payToAgentWallet back to false", async function () {
+      await lockAndFinalizeForWalletAgent();
+      await expect(router.withdrawAgentEarnings(walletAgentId)).to.be.reverted;
+
+      await agentMarketplace.connect(agentOwner).setPaymentDestination(walletAgentId, false);
+
+      const ownerBefore = await usdc.balanceOf(agentOwner.address);
+      await router.withdrawAgentEarnings(walletAgentId);
+      expect(await usdc.balanceOf(agentOwner.address)).to.equal(ownerBefore + AGENT_PRICE);
+      expect(await router.agentBalances(walletAgentId)).to.equal(0n);
+    });
+
+    it("Should withdraw to agent wallet when payToAgentWallet=true and wallet is set", async function () {
+      const [, , , , agentWallet] = await ethers.getSigners();
+      await lockAndFinalizeForWalletAgent();
+
+      // Registry enforces MAX_DEADLINE_DELAY = 5 minutes.
+      const deadline = (await getBlockTimestamp()) + 120;
+      const signature = await buildSetAgentWalletSignature(
+        agentWallet,
+        agentOwner.address,
+        walletAgentId,
+        agentWallet.address,
+        deadline,
+      );
+      await iIdentityRegistry
+        .connect(agentOwner)
+        .setAgentWallet(walletAgentId, agentWallet.address, deadline, signature);
+
+      const walletBefore = await usdc.balanceOf(agentWallet.address);
+      await router.withdrawAgentEarnings(walletAgentId);
+      expect(await usdc.balanceOf(agentWallet.address)).to.equal(walletBefore + AGENT_PRICE);
+      expect(await router.agentBalances(walletAgentId)).to.equal(0n);
     });
   });
 });

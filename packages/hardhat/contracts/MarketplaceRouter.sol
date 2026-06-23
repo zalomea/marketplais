@@ -11,7 +11,7 @@ contract MarketplaceRouter {
     IAgentMarketplace public immutable agentMarketplace;
     IReputationRegistry public immutable reputationRegistry;
     IUSDC public immutable token;
-    address public relayer; 
+    address public relayer;
 
     uint256 public feeBps;
     uint256 public constant WAITING_PERIOD = 7 days;
@@ -46,7 +46,13 @@ contract MarketplaceRouter {
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);
     event RelayerUpdated(address indexed newRelayer);
-    event PaymentLocked(bytes32 indexed nonce, address indexed client, uint256 indexed agentId, uint256 totalAmount, uint256 agentEarnings);
+    event PaymentLocked(
+        bytes32 indexed nonce,
+        address indexed client,
+        uint256 indexed agentId,
+        uint256 totalAmount,
+        uint256 agentEarnings
+    );
     event PaymentFinalized(bytes32 indexed nonce, uint256 indexed agentId, uint256 agentEarnings);
     event PaymentRefunded(bytes32 indexed nonce, address indexed client, uint256 totalAmount);
     event ReputationFeedbackFailed(bytes32 indexed nonce, uint256 indexed agentId, string reason);
@@ -55,7 +61,7 @@ contract MarketplaceRouter {
         if (msg.sender != owner) revert NotOwner();
         _;
     }
-    
+
     modifier onlyRelayer() {
         if (msg.sender != relayer) revert NotOwner();
         _;
@@ -89,7 +95,7 @@ contract MarketplaceRouter {
         uint256 available = currentBalance - totalAgentLiabilities - totalLocked;
 
         emit FeesWithdrawn(available, block.timestamp);
-        
+
         bool success = token.transfer(treasury, available);
         if (!success) revert TransferFailed();
     }
@@ -121,7 +127,7 @@ contract MarketplaceRouter {
         if (msg.sender != pendingOwner) revert NotOwner();
         // slither-disable-next-line timestamp
         if (block.timestamp < waitOwnerUntil) revert WaitingPeriodNotOver();
-        
+
         emit OwnerTransferred(owner, pendingOwner, block.timestamp);
         owner = pendingOwner;
         pendingOwner = address(0);
@@ -138,7 +144,7 @@ contract MarketplaceRouter {
         emit FeeBpsUpdated(feeBps, newFeeBps, block.timestamp);
         feeBps = newFeeBps;
     }
-    
+
     function setRelayer(address newRelayer) external onlyOwner {
         if (newRelayer == address(0)) revert ZeroAddress();
         emit RelayerUpdated(newRelayer);
@@ -179,7 +185,7 @@ contract MarketplaceRouter {
             active: true
         });
         totalLocked += amount;
-        proccessesNonces[nonce] = true; 
+        proccessesNonces[nonce] = true;
         if (signature.length != 65) revert InvalidAuthorization();
         bytes32 r;
         bytes32 s;
@@ -228,24 +234,8 @@ contract MarketplaceRouter {
      * @dev Records reputation feedback for a settled payment. The call is wrapped
      * in try/catch so a reverting reputation registry cannot trap funds in escrow.
      */
-    function _recordReputationFeedback(
-        bytes32 nonce,
-        uint256 agentId,
-        int128 value,
-        string memory tag1
-    ) internal {
-        try
-            reputationRegistry.giveFeedback(
-                agentId,
-                value,
-                uint8(0),
-                tag1,
-                "x402_payment",
-                "",
-                "",
-                bytes32(0)
-            )
-        {
+    function _recordReputationFeedback(bytes32 nonce, uint256 agentId, int128 value, string memory tag1) internal {
+        try reputationRegistry.giveFeedback(agentId, value, uint8(0), tag1, "x402_payment", "", "", bytes32(0)) {
             return;
         } catch {
             // slither-disable-next-line reentrancy-events

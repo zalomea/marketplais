@@ -15,7 +15,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     mapping(uint256 => Agent) public agents;
     uint256[] public allAgentIds;
-    
+
     // EnumerableSet for efficient owner-based lookups
     mapping(address => EnumerableSet.UintSet) private _ownerAgents;
 
@@ -29,6 +29,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     event AgentReactivated(uint256 indexed agentId, uint256 time);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event AgentTransferred(uint256 indexed agentId, address indexed from, address indexed to);
+    event PaymentDestinationUpdated(uint256 indexed agentId, bool payToAgentWallet);
 
     error ZeroPrice();
     error EmptyURI();
@@ -41,6 +42,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     error InvalidPage();
     error NotOwner();
     error SameOwner();
+    error SamePaymentDestination();
     error WaitingPeriodNotOver();
 
     modifier onlyOwner() {
@@ -101,9 +103,9 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     function transferAgent(uint256 agentId, address newOwner) external {
         if (newOwner == address(0)) revert ZeroAddress();
         if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
-        
+
         address currentOwner = identityRegistry.ownerOf(agentId);
-        
+
         if (msg.sender != currentOwner) revert NotOwnerOfAgent();
         if (currentOwner == newOwner) revert SameOwner();
 
@@ -112,7 +114,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         _ownerAgents[currentOwner].remove(agentId);
         // slither-disable-next-line unused-return
         _ownerAgents[newOwner].add(agentId);
-        
+
         emit AgentTransferred(agentId, currentOwner, newOwner);
 
         identityRegistry.safeTransferFrom(currentOwner, newOwner, agentId);
@@ -123,7 +125,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
         address currentOwner = identityRegistry.ownerOf(agentId);
         address marketplaceRecordedOwner = agents[agentId].owner;
-        
+
         if (currentOwner == marketplaceRecordedOwner) revert SameOwner();
 
         agents[agentId].owner = currentOwner;
@@ -131,7 +133,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         _ownerAgents[marketplaceRecordedOwner].remove(agentId);
         // slither-disable-next-line unused-return
         _ownerAgents[currentOwner].add(agentId);
-        
+
         emit AgentTransferred(agentId, marketplaceRecordedOwner, currentOwner);
     }
 
@@ -173,6 +175,15 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (newPrice == agent.price) revert SamePrice();
         emit PriceUpdated(agentId, agent.price, newPrice, block.timestamp);
         agent.price = newPrice;
+    }
+
+    function setPaymentDestination(uint256 agentId, bool newPayToAgentWallet) external {
+        Agent storage agent = agents[agentId];
+        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
+        if (agent.payToAgentWallet == newPayToAgentWallet) revert SamePaymentDestination();
+        agent.payToAgentWallet = newPayToAgentWallet;
+        emit PaymentDestinationUpdated(agentId, newPayToAgentWallet);
     }
 
     function getAgent(uint256 agentId) public view returns (Agent memory) {

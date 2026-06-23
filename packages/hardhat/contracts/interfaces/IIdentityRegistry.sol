@@ -5,11 +5,10 @@ import { IERC721Metadata } from "@openzeppelin/contracts/token/ERC721/extensions
 
 /**
  * @title IIdentityRegistry
- * @dev Interface for the ERC-8004 Identity Registry. 
+ * @dev Interface for the ERC-8004 Identity Registry.
  * It manages agent identities as portable and transferable ERC-721 tokens.
  */
 interface IIdentityRegistry is IERC721Metadata {
-
     /**
      * @dev Metadata structure as defined in the source code.
      */
@@ -81,4 +80,20 @@ interface IIdentityRegistry is IERC721Metadata {
      * @notice Manually removes the verified wallet association.
      */
     function unsetAgentWallet(uint256 agentId) external;
+
+    /**
+     * @notice Returns the EIP-712 domain separator information.
+     */
+    function eip712Domain()
+        external
+        view
+        returns (
+            bytes1 fields,
+            string memory name,
+            string memory version,
+            uint256 chainId,
+            address verifyingContract,
+            bytes32 salt,
+            uint256[] memory extensions
+        );
 }

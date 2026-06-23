@@ -195,8 +195,22 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     // slither-disable-next-line calls-loop
     function getAgentFullDetails(uint256 agentId) public view returns (AgentFullDetails memory) {
         Agent memory agent = getAgent(agentId);
-        address agentOwner = identityRegistry.ownerOf(agentId);
-        string memory uri = identityRegistry.tokenURI(agentId);
+
+        address agentOwner = address(0);
+        try identityRegistry.ownerOf(agentId) returns (address o) {
+            agentOwner = o;
+        } catch {
+            // Token burned or non-existent in the registry — return inactive, zeroed-out record
+            agent.active = false;
+            return AgentFullDetails(agent, address(0), "");
+        }
+
+        string memory uri = "";
+        try identityRegistry.tokenURI(agentId) returns (string memory u) {
+            uri = u;
+        } catch {
+            uri = "";
+        }
 
         return AgentFullDetails(agent, agentOwner, uri);
     }

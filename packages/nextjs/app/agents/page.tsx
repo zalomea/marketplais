@@ -1,6 +1,7 @@
 "use client";
 
 import type { NextPage } from "next";
+import { zeroAddress } from "viem";
 import { AgentCard } from "~~/components/AgentCard";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
@@ -13,8 +14,9 @@ const AgentsPage: NextPage = () => {
     args: [BigInt(1), BigInt(pageSize)],
   });
 
-  const activeAgents = agentDetails?.filter(details => details.agent.active) ?? [];
-  const inactiveAgents = agentDetails?.filter(details => !details.agent.active) ?? [];
+  const validAgents = agentDetails?.filter(details => details.owner !== zeroAddress) ?? [];
+  const activeAgents = validAgents.filter(details => details.agent.active);
+  const inactiveAgents = validAgents.filter(details => !details.agent.active);
   const activeCount = activeAgents.length;
   const inactiveCount = inactiveAgents.length;
 
@@ -47,7 +49,7 @@ const AgentsPage: NextPage = () => {
         <div className="flex justify-center py-20">
           <span className="loading loading-spinner loading-lg opacity-40" />
         </div>
-      ) : agentDetails?.length === 0 ? (
+      ) : validAgents.length === 0 ? (
         <div className="border border-slate-200 bg-slate-50 p-12 text-center">
           <p className="font-mono text-xs text-slate-400 uppercase tracking-wider">
             [ No agents registered in the marketplace ]
@@ -55,7 +57,7 @@ const AgentsPage: NextPage = () => {
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {agentDetails?.map(details => (
+          {validAgents.map(details => (
             <AgentCard
               key={details.agent.agentId.toString()}
               agentId={details.agent.agentId}

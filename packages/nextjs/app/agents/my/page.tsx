@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { NextPage } from "next";
+import { zeroAddress } from "viem";
 import { useAccount } from "wagmi";
 import { AgentCard } from "~~/components/AgentCard";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
@@ -14,6 +15,8 @@ const MyAgentsPage: NextPage = () => {
     functionName: "getAgentsByOwner",
     args: [connectedAddress],
   }) as { data: any[] | undefined; isLoading: boolean };
+
+  const validAgents = agentDetails?.filter(details => details.owner !== zeroAddress) ?? [];
 
   const shortAddress = connectedAddress ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}` : null;
 
@@ -29,7 +32,7 @@ const MyAgentsPage: NextPage = () => {
           {isConnected && !isLoading && (
             <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
               <span className="w-1.5 h-1.5 rounded-full bg-[#0ea5a5]" />
-              <span>{agentDetails?.length ?? 0} owned</span>
+              <span>{validAgents.length} owned</span>
             </div>
           )}
         </div>
@@ -46,9 +49,9 @@ const MyAgentsPage: NextPage = () => {
         <div className="flex justify-center py-20">
           <span className="loading loading-spinner loading-lg opacity-40" />
         </div>
-      ) : agentDetails && agentDetails.length > 0 ? (
+      ) : validAgents.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {agentDetails.map(details => (
+          {validAgents.map(details => (
             <AgentCard
               key={details.agent.agentId.toString()}
               agentId={details.agent.agentId}

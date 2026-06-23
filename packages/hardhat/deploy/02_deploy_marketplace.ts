@@ -3,6 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 const USDC_ADDRESSES: Record<string, string> = {
   hardhat: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  localhost: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   base: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   baseSepolia: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };

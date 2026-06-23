@@ -1,10 +1,21 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
+const USDC_ADDRESSES: Record<string, string> = {
+  hardhat: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  base: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  baseSepolia: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+};
+
 const deployMarketplace: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
-  const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  const network = hre.network.name;
+
+  const USDC_ADDRESS = process.env.USDC_ADDRESS || USDC_ADDRESSES[network];
+  if (!USDC_ADDRESS) {
+    throw new Error(`USDC_ADDRESS not configured for network "${network}". Set USDC_ADDRESS in .env.`);
+  }
 
   const FEE_BPS = Number(process.env.MARKETPLACE_FEE_BPS || "1000");
   const treasury = process.env.MARKETPLACE_TREASURY_ADDRESS || deployer;
@@ -44,7 +55,9 @@ const deployMarketplace: DeployFunction = async function (hre: HardhatRuntimeEnv
   );
 
   if (relayer !== deployer) {
-    await (await MarketplaceRouter.setRelayer(relayer, { gasLimit: 10000000 })).wait();
+    const setRelayer = MarketplaceRouter.getFunction("setRelayer");
+    const gas = await setRelayer.estimateGas(relayer);
+    await (await setRelayer(relayer, { gasLimit: (gas * 120n) / 100n })).wait();
     console.log("✅ Relayer set to:", relayer);
   } else {
     console.log("✅ Relayer defaults to deployer:", relayer);

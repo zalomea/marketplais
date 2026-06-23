@@ -284,27 +284,13 @@ export async function POST(request: Request) {
       args: [BigInt(agentId)],
     })) as { price: bigint; active: boolean };
   } catch (err: any) {
-    // Expanded revert handling for AgentMarketplace calls
     const revertMsg = err?.data?.error?.errorMessage as string | undefined;
-    if (revertMsg) {
-      // Known revert signatures from the contract
-      if (revertMsg.includes("AgentNotFoundInMarketplace")) {
-        return NextResponse.json(
-          { error: "Agent not found in marketplace (invalid or inactive agentId)" },
-          { status: 400 },
-        );
-      }
-      if (revertMsg.includes("AgentInactive")) {
-        return NextResponse.json({ error: "Agent is inactive" }, { status: 400 });
-      }
-      if (revertMsg.includes("InvalidAgentId")) {
-        return NextResponse.json({ error: "Invalid agent identifier supplied" }, { status: 400 });
-      }
-      if (revertMsg.includes("PriceNotSet")) {
-        return NextResponse.json({ error: "Agent price not configured" }, { status: 500 });
-      }
+    if (revertMsg?.includes("AgentNotFoundInMarketplace")) {
+      return NextResponse.json(
+        { error: "Agent not found in marketplace (invalid or inactive agentId)" },
+        { status: 400 },
+      );
     }
-    // Fallback for unexpected errors
     console.error("Unexpected error while fetching agent:", err);
     return NextResponse.json({ error: "Failed to fetch agent data from marketplace" }, { status: 500 });
   }

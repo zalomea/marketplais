@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http } from "viem";
-import { hardhat } from "viem/chains";
 import deployedContracts from "~~/contracts/deployedContracts";
+import { publicClient } from "~~/services/web3/viemClient";
 
 // Helper function to parse agent URI
 const parseAgentMetadata = (uri: string) => {
@@ -27,11 +26,6 @@ const parseAgentMetadata = (uri: string) => {
 };
 
 export async function GET() {
-  const publicClient = createPublicClient({
-    chain: hardhat,
-    transport: http(),
-  });
-
   const chainId = publicClient.chain.id;
   const contracts = (deployedContracts as any)[chainId];
 

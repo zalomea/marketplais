@@ -1356,7 +1356,7 @@ const deployedContracts = {
               type: "bytes32",
             },
           ],
-          name: "proccessesNonces",
+          name: "processesNonces",
           outputs: [
             {
               internalType: "bool",

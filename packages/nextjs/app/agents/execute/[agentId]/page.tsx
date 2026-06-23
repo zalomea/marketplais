@@ -102,7 +102,7 @@ const AgentExecutePage: NextPage = () => {
             verifyingContract: challenge.token,
           },
           types: {
-            TransferWithAuthorization: [
+            ReceiveWithAuthorization: [
               { name: "from", type: "address" },
               { name: "to", type: "address" },
               { name: "value", type: "uint256" },
@@ -111,7 +111,7 @@ const AgentExecutePage: NextPage = () => {
               { name: "nonce", type: "bytes32" },
             ],
           },
-          primaryType: "TransferWithAuthorization",
+          primaryType: "ReceiveWithAuthorization",
           message: {
             from: connectedAddress,
             to: challenge.spender,

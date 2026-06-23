@@ -26,7 +26,7 @@ const AGENT_URI = "ipfs://QmTestAgentURI";
 
 // ─── EIP-3009 helpers ─────────────────────────────────────────────────────────
 
-async function buildTransferAuthorization(
+async function buildReceiveWithAuthorization(
   signer: SignerWithAddress,
   to: string,
   value: bigint,
@@ -42,7 +42,7 @@ async function buildTransferAuthorization(
   };
 
   const types = {
-    TransferWithAuthorization: [
+    ReceiveWithAuthorization: [
       { name: "from", type: "address" },
       { name: "to", type: "address" },
       { name: "value", type: "uint256" },
@@ -148,7 +148,7 @@ describe("MarketplaceRouter", function () {
   async function lockAndProcessPayment(amount: bigint = TOTAL_PAYMENT, customNonce?: string): Promise<string> {
     const nonce = customNonce ?? ethers.hexlify(ethers.randomBytes(32));
     const validUntil = (await getBlockTimestamp()) + 86400;
-    const { v, r, s } = await buildTransferAuthorization(client, routerAddress, amount, validUntil, nonce);
+    const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, amount, validUntil, nonce);
     const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
     await router.connect(owner).lockPayment(client.address, agentId, amount, validUntil, nonce, sig);
@@ -206,7 +206,7 @@ describe("MarketplaceRouter", function () {
     it("Should emit PaymentLocked and PaymentFinalized events", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       const txLock = await router
@@ -223,7 +223,7 @@ describe("MarketplaceRouter", function () {
     it("Should allow refunding payment if agent fails", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
@@ -264,7 +264,7 @@ describe("MarketplaceRouter", function () {
     it("Should not sweep locked funds in escrow and should allow refund after withdrawFees call", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
@@ -281,7 +281,7 @@ describe("MarketplaceRouter", function () {
       // Payment A: lock and finalize so its fee becomes withdrawable surplus (totalLocked back to 0)
       const nonceA = ethers.hexlify(ethers.randomBytes(32));
       const validUntilA = (await getBlockTimestamp()) + 86400;
-      const sigA = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntilA, nonceA);
+      const sigA = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntilA, nonceA);
       const rawSigA = ethers.concat([sigA.r, sigA.s, ethers.toBeHex(sigA.v, 1)]);
       await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntilA, nonceA, rawSigA);
       await router.connect(owner).finalizePayment(nonceA);
@@ -289,7 +289,7 @@ describe("MarketplaceRouter", function () {
       // Payment B: lock but do NOT finalize, so it stays escrowed
       const nonceB = ethers.hexlify(ethers.randomBytes(32));
       const validUntilB = (await getBlockTimestamp()) + 86400;
-      const sigB = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntilB, nonceB);
+      const sigB = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntilB, nonceB);
       const rawSigB = ethers.concat([sigB.r, sigB.s, ethers.toBeHex(sigB.v, 1)]);
       await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntilB, nonceB, rawSigB);
 
@@ -331,7 +331,7 @@ describe("MarketplaceRouter", function () {
     it("Should revert lockPayment with NotRelayer when called by a non-relayer", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
       await expect(
         router.connect(client).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
@@ -354,7 +354,7 @@ describe("MarketplaceRouter", function () {
     it("Should revert lockPayment with PaymentAlreadyProcessed when the same nonce is locked twice", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
@@ -369,7 +369,7 @@ describe("MarketplaceRouter", function () {
       const belowAmount = TOTAL_PAYMENT - 1n;
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, belowAmount, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, belowAmount, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await expect(
@@ -386,6 +386,25 @@ describe("MarketplaceRouter", function () {
       await expect(
         router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, invalidSig),
       ).to.be.revertedWithCustomError(router, "InvalidAuthorization");
+    });
+
+    // Front-running protection: only the router (the `to` address) can execute receiveWithAuthorization
+    it("Should prevent non-router accounts from executing the authorization directly", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+
+      const [, , attacker] = await ethers.getSigners();
+      await expect(
+        usdc
+          .connect(attacker)
+          .receiveWithAuthorization(client.address, routerAddress, TOTAL_PAYMENT, 0, validUntil, nonce, v, r, s),
+      ).to.be.reverted;
+
+      // Router can still lock the payment normally
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+      await expect(router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig)).to
+        .not.be.reverted;
     });
 
     // Reverts with PaymentNotLocked for an unknown nonce
@@ -410,7 +429,7 @@ describe("MarketplaceRouter", function () {
     it("Should revert finalizePayment with PaymentNotLocked if called twice", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
       await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
@@ -615,7 +634,7 @@ describe("MarketplaceRouter", function () {
     async function lockWithMockRouter(customNonce?: string): Promise<string> {
       const nonce = customNonce ?? ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(
+      const { v, r, s } = await buildReceiveWithAuthorization(
         client,
         await mockRouter.getAddress(),
         TOTAL_PAYMENT,
@@ -681,7 +700,7 @@ describe("MarketplaceRouter", function () {
     async function lockAndFinalizeForWalletAgent(customNonce?: string): Promise<string> {
       const nonce = customNonce ?? ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
-      const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
       await router.connect(owner).lockPayment(client.address, walletAgentId, TOTAL_PAYMENT, validUntil, nonce, sig);
       await router.connect(owner).finalizePayment(nonce);

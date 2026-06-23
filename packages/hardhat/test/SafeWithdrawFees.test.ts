@@ -39,8 +39,8 @@ const SAFE_ABI = [
 
 // ─── EIP-3009 helpers ─────────────────────────────────────────────────────────
 
-// Signs an EIP-3009 TransferWithAuthorization so the router pulls USDC without a prior approve()
-async function buildTransferAuthorization(
+// Signs an EIP-3009 ReceiveWithAuthorization so the router pulls USDC without a prior approve()
+async function buildReceiveWithAuthorization(
   signer: SignerWithAddress,
   to: string,
   value: bigint,
@@ -51,7 +51,7 @@ async function buildTransferAuthorization(
     // Hardhat fork preserves the local chainId (31337), not Base mainnet's (8453)
     { name: "USD Coin", version: "2", chainId: 31337, verifyingContract: USDC_ADDRESS },
     {
-      TransferWithAuthorization: [
+      ReceiveWithAuthorization: [
         { name: "from", type: "address" },
         { name: "to", type: "address" },
         { name: "value", type: "uint256" },
@@ -235,7 +235,7 @@ describe("SafeWithdrawFees", function () {
   async function accumulateFees(): Promise<void> {
     const nonce = ethers.hexlify(ethers.randomBytes(32));
     const validUntil = (await getBlockTimestamp()) + 86400;
-    const { v, r, s } = await buildTransferAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+    const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
     const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
 
     await router.connect(safeSigner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatUnits, isAddress, parseUnits } from "viem";
+import { useSignMessage } from "wagmi";
 import AgentAvatar from "~~/components/AgentAvatar";
 import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { useAgentReputation } from "~~/hooks/useAgentReputation";
@@ -79,6 +80,14 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
   const [newOwnerInput, setNewOwnerInput] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [payToAgentWallet, setPayToAgentWallet] = useState(false);
+
+  // API key reveal + rotation state (only used when showActions=true)
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [keyVisible, setKeyVisible] = useState(false);
+  const { signMessageAsync } = useSignMessage();
+  const { writeContractAsync: incrementNonce, isMining: isIncrementing } = useScaffoldWriteContract({
+    contractName: "AgentMarketplace",
+  });
 
   const agentIdStr = agentId.toString();
   const executionsModalId = `executions-modal-${agentIdStr}`;
@@ -212,6 +221,58 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
       await agentMarketplace({ functionName: "setPaymentDestination", args: [agentId, newValue] });
       setPayToAgentWallet(newValue);
       notification.success("Payment destination updated");
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  // Prove ownership with an EIP-191 signature and fetch the derived API key.
+  const handleShowApiKey = async () => {
+    setPendingAction(`apikey-${agentIdStr}`);
+    try {
+      // Include a timestamp in the signed message so a captured signature cannot
+      // be replayed to reveal the API key later.
+      const timestamp = Date.now();
+      const message = `Verify ownership: ${agentIdStr} at ${timestamp}`;
+      const signature = await signMessageAsync({ message });
+      const res = await fetch("/api/agents/reveal-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId: agentIdStr, signature, timestamp }),
+      });
+      if (res.status === 401) {
+        notification.error("Invalid signature — you may not be the owner");
+        return;
+      }
+      if (res.status === 404) {
+        notification.error("Agent not found");
+        return;
+      }
+      if (!res.ok) {
+        notification.error("Failed to retrieve API key");
+        return;
+      }
+      const data = (await res.json()) as { apiKey: string };
+      setApiKey(data.apiKey);
+      setKeyVisible(false);
+      notification.success("API key revealed");
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  // Rotate the API key by incrementing the on-chain nonce, then force a re-reveal.
+  const handleRegenerateApiKey = async () => {
+    setPendingAction(`regen-${agentIdStr}`);
+    try {
+      await incrementNonce({ functionName: "incrementNonce", args: [agentId] });
+      setApiKey(null);
+      setKeyVisible(false);
+      notification.success("API key rotated — reveal the new key");
     } catch (err) {
       notification.error(getParsedError(err));
     } finally {
@@ -376,6 +437,42 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
                 >
                   Transfer Agent
                 </button>
+                <button
+                  type="button"
+                  onClick={handleShowApiKey}
+                  disabled={busy || isIncrementing}
+                  className="btn btn-sm btn-outline w-full font-mono uppercase tracking-wider disabled:opacity-40"
+                >
+                  {pendingAction === `apikey-${agentIdStr}` ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    "Show API Key"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegenerateApiKey}
+                  disabled={busy || isIncrementing}
+                  className="btn btn-sm btn-warning w-full font-mono uppercase tracking-wider disabled:opacity-40"
+                >
+                  {isIncrementing || pendingAction === `regen-${agentIdStr}` ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    "Regenerate API Key"
+                  )}
+                </button>
+                {apiKey && (
+                  <div className="mt-2 font-mono text-xs">
+                    <div className="flex items-center justify-between gap-2 border border-slate-200 bg-slate-50 px-2 py-1.5">
+                      <span className="truncate text-slate-700">
+                        {keyVisible ? apiKey : `••••••••••••••••${apiKey.slice(-4)}`}
+                      </span>
+                      <button type="button" onClick={() => setKeyVisible(v => !v)} className="btn btn-xs btn-ghost">
+                        {keyVisible ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <Link

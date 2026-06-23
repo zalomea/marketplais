@@ -30,6 +30,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event AgentTransferred(uint256 indexed agentId, address indexed from, address indexed to);
     event PaymentDestinationUpdated(uint256 indexed agentId, bool payToAgentWallet);
+    event NonceIncremented(uint256 indexed agentId, uint256 newNonce);
 
     error ZeroPrice();
     error EmptyURI();
@@ -67,6 +68,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
             owner: msg.sender,
             agentId: agentId,
             price: price,
+            nonce: 0,
             payToAgentWallet: payToAgentWallet,
             active: true
         });
@@ -90,6 +92,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
             owner: msg.sender,
             agentId: agentId,
             price: price,
+            nonce: 0,
             payToAgentWallet: payToAgentWallet,
             active: true
         });
@@ -184,6 +187,15 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (agent.payToAgentWallet == newPayToAgentWallet) revert SamePaymentDestination();
         agent.payToAgentWallet = newPayToAgentWallet;
         emit PaymentDestinationUpdated(agentId, newPayToAgentWallet);
+    }
+
+    /// @notice Increments the agent's nonce, rotating its derived API key.
+    /// @dev Only the current agent owner (per the IdentityRegistry) may call this.
+    function incrementNonce(uint256 agentId) external {
+        if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
+        agents[agentId].nonce++;
+        emit NonceIncremented(agentId, agents[agentId].nonce);
     }
 
     function getAgent(uint256 agentId) public view returns (Agent memory) {

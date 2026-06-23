@@ -197,7 +197,7 @@ contract MarketplaceRouter {
             v := byte(0, calldataload(add(signature.offset, 64)))
         }
         emit PaymentLocked(nonce, client, agentId, amount, agentEarnings);
-        IUSDC(token).transferWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
+        IUSDC(token).receiveWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);
     }
 
     function finalizePayment(bytes32 nonce) external onlyRelayer {

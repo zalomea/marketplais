@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     const platformFee = (agent.price * feeBps) / 10000n;
     const totalAmount = agent.price + platformFee;
 
-    // Step 2 — verify TransferWithAuthorization signature off-chain (no gas).
+    // Step 2 — verify ReceiveWithAuthorization signature off-chain (no gas).
     const nonce = headerNonce as `0x${string}`;
     const deadline = BigInt(headerDeadline);
 
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
         verifyingContract: USDC.address,
       },
       types: {
-        TransferWithAuthorization: [
+        ReceiveWithAuthorization: [
           { name: "from", type: "address" },
           { name: "to", type: "address" },
           { name: "value", type: "uint256" },
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
           { name: "nonce", type: "bytes32" },
         ],
       },
-      primaryType: "TransferWithAuthorization",
+      primaryType: "ReceiveWithAuthorization",
       message: {
         from: clientAddress as `0x${string}`,
         to: marketplaceRouter.address as `0x${string}`,

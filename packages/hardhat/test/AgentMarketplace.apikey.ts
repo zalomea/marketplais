@@ -77,4 +77,13 @@ describe("AgentMarketplace — API key nonce", function () {
       "NotOwnerOfAgent",
     );
   });
+
+  it("reverts with AgentNotFoundInMarketplace when agentId is not registered", async function () {
+    const [, agentOwner] = await ethers.getSigners();
+    const unregisteredAgentId = 999999n;
+
+    await expect(
+      agentMarketplace.connect(agentOwner).incrementNonce(unregisteredAgentId),
+    ).to.be.revertedWithCustomError(agentMarketplace, "AgentNotFoundInMarketplace");
+  });
 });

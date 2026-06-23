@@ -192,6 +192,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     /// @notice Increments the agent's nonce, rotating its derived API key.
     /// @dev Only the current agent owner (per the IdentityRegistry) may call this.
     function incrementNonce(uint256 agentId) external {
+        if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         agents[agentId].nonce++;
         emit NonceIncremented(agentId, agents[agentId].nonce);

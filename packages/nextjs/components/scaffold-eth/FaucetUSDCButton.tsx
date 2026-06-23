@@ -17,7 +17,7 @@ export const FaucetUSDCButton = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const { writeContractAsync } = useScaffoldWriteContract("USDCFaucet");
+  const { writeContractAsync } = useScaffoldWriteContract({ contractName: "USDCFaucet" });
 
   const requestUSDC = async () => {
     if (!address) return;

@@ -209,42 +209,6 @@ Use `~~` path alias for all Next.js imports: `import { useTargetNetwork } from "
 - Add live networks in `packages/hardhat/hardhat.config.ts` (already includes base, sepolia, arbitrum, etc.)
 - Add networks in `packages/nextjs/scaffold.config.ts` before deploying to testnet/mainnet; decrease `pollingInterval` for L2 chains
 
-## Known Bugs & Technical Debt
-
-These issues were confirmed by adversarial code review on 2026-06-16. **Do not reintroduce them, and fix before touching the affected file.**
-
-### CRITICAL — unfixed
-
-**C1 · Escrow trap** (`packages/hardhat/contracts/MarketplaceRouter.sol` L208, L232)  
-`finalizePayment` and `refundPayment` both call `reputationRegistry.giveFeedback()` **unguarded**. If the real Base `ReputationRegistry` reverts for any reason, neither exit can execute — funds are **permanently trapped**. Fix: wrap the `giveFeedback` call in `try/catch` (reputation is non-critical to settlement).
-
-**C2 · Payment bypass** (`packages/nextjs/app/api/agents/analyze/route.ts`)  
-The analyze route is an **unauthenticated Groq LLM proxy** — anyone can POST directly without going through the x402 escrow flow, burning `GROQ_API_KEY` quota for free. There is no shared secret between the relayer and the agent backend. Fix: verify a relayer-signed token on every request before calling Groq.
-
-**C3 · Summarize stub** (`packages/nextjs/app/api/agents/summarize/route.ts`)  
-Returns a hardcoded "Lorem ipsum summarized" string but is **registered as a paid default agent** (0.01 USDC). Users pay real money for fake output.
-
-### HIGH — unfixed
-
-**H1 · USDC display bug** (`packages/nextjs/components/AgentCard.tsx` L98)  
-`price.toString()` renders raw micro-USDC — users see `"20000"` instead of `"0.02"`. Use `formatUnits(price, 6)`. The execute page and `my/page.tsx` already format correctly; only the browse grid (`/agents`) is broken.
-
-**H2 · Reputation scale mismatch** (`packages/hardhat/contracts/MarketplaceRouter.sol` L210–211)  
-Router writes `value=1` (success) or `value=0` (failure) with `valueDecimals=0`. The `StarRating` component in `AgentCard` assumes a 0–5 scale, so every successful agent displays **1.0 ★ out of 5** permanently.
-
-**H3 · `getAgentWallet` revert risk** (`packages/hardhat/contracts/MarketplaceRouter.sol` `withdrawAgentEarnings`)  
-When `payToAgentWallet=true`, `withdrawAgentEarnings` calls `identityRegistry.getAgentWallet(agentId)`. If the registry reverts (agent wallet not set), the entire withdrawal reverts and agent earnings are frozen.
-
-### LOW / hygiene — unfixed
-
-- `onlyRelayer` modifier reverts with `NotOwner()` (MarketplaceRouter.sol L59) — wrong error, should be `NotRelayer()`.
-- Dead code in `MarketplaceRouter`: event `PaymentRouted` (L44) never emitted; error `ZeroPrice` (L32) never used.
-- `execute/route.ts` L290–298 handles `AgentInactive` / `InvalidAgentId` / `PriceNotSet` — these errors don't exist in `AgentMarketplace.sol`.
-- `FaucetUSDCButton.tsx` calls `useScaffoldWriteContract("USDCFaucet")` (deprecated string form). Use `{ contractName: "USDCFaucet" }`.
-- `AgentMarketplace.getAgentsByOwner` (L158–182) is an **unbounded O(n) double loop** with one external `ownerOf` call per agent. Will not scale with many agents.
-- Typo: `proccessesNonces` (double `c`) in `MarketplaceRouter.sol` L26.
-- `02_deploy_marketplace.ts` has USDC address hardcoded to Base mainnet regardless of network; `setRelayer` uses a magic `gasLimit: 10000000` instead of `estimateGas + 20%` (script 04 does it right — follow that pattern).
-
 ## Documentation
 
 Use **Context7 MCP** tools to fetch up-to-date docs for Wagmi, Viem, RainbowKit, DaisyUI, Hardhat, Next.js, etc.

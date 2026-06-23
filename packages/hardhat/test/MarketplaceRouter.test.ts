@@ -327,27 +327,27 @@ describe("MarketplaceRouter", function () {
 
   // ─── Payment Flow reverts and boundaries ────────────────────────────────────
   describe("Payment Flow (lockPayment + finalizePayment) — reverts and boundaries", function () {
-    // Reverts with NotOwner when lockPayment is called by a non-relayer
-    it("Should revert lockPayment with NotOwner when called by a non-relayer", async function () {
+    // Reverts with NotRelayer when lockPayment is called by a non-relayer
+    it("Should revert lockPayment with NotRelayer when called by a non-relayer", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
       const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
       const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
       await expect(
         router.connect(client).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig),
-      ).to.be.revertedWithCustomError(router, "NotOwner");
+      ).to.be.revertedWithCustomError(router, "NotRelayer");
     });
 
-    // Reverts with NotOwner when finalizePayment is called by a non-relayer
-    it("Should revert finalizePayment with NotOwner when called by a non-relayer", async function () {
+    // Reverts with NotRelayer when finalizePayment is called by a non-relayer
+    it("Should revert finalizePayment with NotRelayer when called by a non-relayer", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
-      await expect(router.connect(client).finalizePayment(nonce)).to.be.revertedWithCustomError(router, "NotOwner");
+      await expect(router.connect(client).finalizePayment(nonce)).to.be.revertedWithCustomError(router, "NotRelayer");
     });
 
-    // Reverts with NotOwner when refundPayment is called by a non-relayer
-    it("Should revert refundPayment with NotOwner when called by a non-relayer", async function () {
+    // Reverts with NotRelayer when refundPayment is called by a non-relayer
+    it("Should revert refundPayment with NotRelayer when called by a non-relayer", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
-      await expect(router.connect(client).refundPayment(nonce)).to.be.revertedWithCustomError(router, "NotOwner");
+      await expect(router.connect(client).refundPayment(nonce)).to.be.revertedWithCustomError(router, "NotRelayer");
     });
 
     // Reverts with PaymentAlreadyProcessed when the same nonce is locked twice

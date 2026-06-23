@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x082254a081E7EAD92344d420aE7A1D8c49b7C58d",
+      address: "0x318850C92C81ea78323046C0C5c8dF325a39adA5",
       abi: [
         {
           inputs: [
@@ -906,10 +906,10 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 47247190,
+      deployedOnBlock: 47247497,
     },
     MarketplaceRouter: {
-      address: "0x0C2672Fcec56ee1E1B4C16fE7bCa530Cfa4C1B3C",
+      address: "0xE3bA028FdE5892004AaC1431072a2e9aBC082EB6",
       abi: [
         {
           inputs: [
@@ -979,6 +979,11 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "NotRelayer",
+          type: "error",
+        },
+        {
+          inputs: [],
           name: "PaymentAlreadyProcessed",
           type: "error",
         },
@@ -1010,11 +1015,6 @@ const deployedContracts = {
         {
           inputs: [],
           name: "ZeroAddress",
-          type: "error",
-        },
-        {
-          inputs: [],
-          name: "ZeroPrice",
           type: "error",
         },
         {
@@ -1179,8 +1179,21 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
-              name: "client",
+              name: "newRelayer",
               type: "address",
+            },
+          ],
+          name: "RelayerUpdated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
             },
             {
               indexed: true,
@@ -1190,25 +1203,12 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
+              internalType: "string",
+              name: "reason",
+              type: "string",
             },
           ],
-          name: "PaymentRouted",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "newRelayer",
-              type: "address",
-            },
-          ],
-          name: "RelayerUpdated",
+          name: "ReputationFeedbackFailed",
           type: "event",
         },
         {
@@ -1438,7 +1438,7 @@ const deployedContracts = {
               type: "bytes32",
             },
           ],
-          name: "proccessesNonces",
+          name: "processesNonces",
           outputs: [
             {
               internalType: "bool",
@@ -1614,7 +1614,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247192,
+      deployedOnBlock: 47247499,
     },
     USDCFaucet: {
       address: "0x8ffd9d94EEee8E44CA274e9b8C7a2e9580c1a8a3",

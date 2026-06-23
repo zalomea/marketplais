@@ -23,13 +23,13 @@ contract MarketplaceRouter {
     uint256 public totalAgentLiabilities;
     // USDC held in escrow, not yet assigned to agents or fees
     uint256 public totalLocked;
-    mapping(bytes32 => bool) public proccessesNonces;
+    mapping(bytes32 => bool) public processesNonces;
 
     error AgentNotActive();
     error NotOwner();
+    error NotRelayer();
     error NoFeesToWithdraw();
     error ZeroAddress();
-    error ZeroPrice();
     error InsufficientAmount();
     error FeeTooHigh();
     error SameOwner();
@@ -41,7 +41,6 @@ contract MarketplaceRouter {
     error PaymentAlreadyProcessed();
     error PaymentNotLocked();
 
-    event PaymentRouted(address indexed client, uint256 indexed agentId, uint256 amount);
     event FeesWithdrawn(uint256 tokenAmount, uint256 time);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
     event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);
@@ -63,7 +62,7 @@ contract MarketplaceRouter {
     }
 
     modifier onlyRelayer() {
-        if (msg.sender != relayer) revert NotOwner();
+        if (msg.sender != relayer) revert NotRelayer();
         _;
     }
 
@@ -169,7 +168,7 @@ contract MarketplaceRouter {
         bytes32 nonce,
         bytes calldata signature
     ) external onlyRelayer {
-        if (lockedPayments[nonce].active || proccessesNonces[nonce]) revert PaymentAlreadyProcessed();
+        if (lockedPayments[nonce].active || processesNonces[nonce]) revert PaymentAlreadyProcessed();
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
         if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (!agent.active) revert AgentNotActive();
@@ -185,7 +184,7 @@ contract MarketplaceRouter {
             active: true
         });
         totalLocked += amount;
-        proccessesNonces[nonce] = true;
+        processesNonces[nonce] = true;
         if (signature.length != 65) revert InvalidAuthorization();
         bytes32 r;
         bytes32 s;

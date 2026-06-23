@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0xf8fbe724C6f738a62D48617d38a3C4B2d8B7a4dd",
+      address: "0x082254a081E7EAD92344d420aE7A1D8c49b7C58d",
       abi: [
         {
           inputs: [
@@ -184,6 +184,25 @@ const deployedContracts = {
           inputs: [
             {
               indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "newNonce",
+              type: "uint256",
+            },
+          ],
+          name: "NonceIncremented",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
               internalType: "address",
               name: "oldOwner",
               type: "address",
@@ -300,6 +319,11 @@ const deployedContracts = {
               type: "uint256",
             },
             {
+              internalType: "uint256",
+              name: "nonce",
+              type: "uint256",
+            },
+            {
               internalType: "bool",
               name: "payToAgentWallet",
               type: "bool",
@@ -373,6 +397,11 @@ const deployedContracts = {
                   type: "uint256",
                 },
                 {
+                  internalType: "uint256",
+                  name: "nonce",
+                  type: "uint256",
+                },
+                {
                   internalType: "bool",
                   name: "payToAgentWallet",
                   type: "bool",
@@ -418,6 +447,11 @@ const deployedContracts = {
                     {
                       internalType: "uint256",
                       name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "nonce",
                       type: "uint256",
                     },
                     {
@@ -481,6 +515,11 @@ const deployedContracts = {
                     {
                       internalType: "uint256",
                       name: "price",
+                      type: "uint256",
+                    },
+                    {
+                      internalType: "uint256",
+                      name: "nonce",
                       type: "uint256",
                     },
                     {
@@ -552,6 +591,11 @@ const deployedContracts = {
                       type: "uint256",
                     },
                     {
+                      internalType: "uint256",
+                      name: "nonce",
+                      type: "uint256",
+                    },
+                    {
                       internalType: "bool",
                       name: "payToAgentWallet",
                       type: "bool",
@@ -596,6 +640,19 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+          ],
+          name: "incrementNonce",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -756,7 +813,7 @@ const deployedContracts = {
             },
             {
               internalType: "bool",
-              name: "_payToAgentWallet",
+              name: "newPayToAgentWallet",
               type: "bool",
             },
           ],
@@ -849,10 +906,10 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 47247466,
+      deployedOnBlock: 47247190,
     },
     MarketplaceRouter: {
-      address: "0x465c65DB6a68d2EAa9cE0BFD8e9dD637322e66d2",
+      address: "0x0C2672Fcec56ee1E1B4C16fE7bCa530Cfa4C1B3C",
       abi: [
         {
           inputs: [
@@ -1152,6 +1209,31 @@ const deployedContracts = {
             },
           ],
           name: "RelayerUpdated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "agentId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "reason",
+              type: "string",
+            },
+          ],
+          name: "ReputationFeedbackFailed",
           type: "event",
         },
         {
@@ -1532,10 +1614,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247468,
+      deployedOnBlock: 47247192,
     },
     USDCFaucet: {
-      address: "0x59326dfEd728f0Fbb685854b4d940003c0F475e2",
+      address: "0x8ffd9d94EEee8E44CA274e9b8C7a2e9580c1a8a3",
       abi: [
         {
           inputs: [
@@ -1593,7 +1675,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247481,
+      deployedOnBlock: 47247187,
     },
   },
 } as const;

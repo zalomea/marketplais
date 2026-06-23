@@ -4,6 +4,16 @@ import { isAddress } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
 import externalContracts from "~~/contracts/externalContracts";
 import { getRelayerWalletClient, publicClient } from "~~/services/web3/viemClient";
+import { deriveApiKey } from "~~/utils/apiKey";
+
+// Fail closed: without the server secret we cannot derive API keys, so the
+// execute gateway must not operate (neither the 402 challenge nor escrow flow).
+if (!process.env.API_KEY_SECRET) {
+  throw new Error("API_KEY_SECRET is not set");
+}
+// Captured once at module load (narrowed to `string` by the guard above) so the
+// per-request handler can use it without re-checking or non-null assertions.
+const API_KEY_SECRET = process.env.API_KEY_SECRET;
 
 // Expected request payload (application/json):
 // {
@@ -78,17 +88,29 @@ export async function POST(request: Request) {
     const { USDC, IdentityRegistry } = extContracts;
 
     // Step 1 — recompute amount from chain; never trust what the client claims to have signed.
-    let agent: { price: bigint; active: boolean };
+    // Use getAgentFullDetails so `owner` is the live IdentityRegistry owner, not
+    // the stale cached `agent.owner`. The API key is derived from the live
+    // owner + on-chain nonce, so a stale owner would produce a key the agent
+    // endpoint would reject.
+    let fullDetails: {
+      agent: { price: bigint; nonce: bigint; active: boolean };
+      owner: string;
+    };
     try {
-      agent = (await publicClient.readContract({
+      fullDetails = (await publicClient.readContract({
         address: agentMarketplace.address,
         abi: agentMarketplace.abi,
-        functionName: "getAgent",
+        functionName: "getAgentFullDetails",
         args: [BigInt(agentId)],
-      })) as { price: bigint; active: boolean };
+      })) as {
+        agent: { price: bigint; nonce: bigint; active: boolean };
+        owner: string;
+      };
     } catch {
       return NextResponse.json({ error: "Failed to fetch agent data" }, { status: 500 });
     }
+
+    const { agent, owner } = fullDetails;
 
     if (!agent.active) {
       return NextResponse.json({ error: "Agent not active" }, { status: 400 });
@@ -179,6 +201,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Could not resolve agent endpoint" }, { status: 502 });
     }
 
+    // Derive the agent's API key from the live on-chain owner + nonce so the agent
+    // endpoint can authenticate the relayer without a shared static secret.
+    const apiKey = deriveApiKey(BigInt(agentId), owner, agent.nonce, API_KEY_SECRET);
+
     // security policy violation is 422 — 502 would imply a retryable network error
     const isDev = process.env.NODE_ENV === "development";
     if (!isDev && !agentEndpoint.startsWith("https://")) {
@@ -219,7 +245,7 @@ export async function POST(request: Request) {
     try {
       const agentResponse = await fetch(agentEndpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
         body: JSON.stringify(userRequest),
         signal: AbortSignal.timeout(15_000),
       });

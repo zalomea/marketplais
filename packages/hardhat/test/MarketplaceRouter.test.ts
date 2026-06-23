@@ -654,6 +654,9 @@ describe("MarketplaceRouter", function () {
 
       expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
       expect(await mockRouter.totalLocked()).to.equal(0n);
+    });
+  });
+
   // ─── payToAgentWallet withdrawal paths ────────────────────────────────────────
   describe("withdrawAgentEarnings — payToAgentWallet paths", function () {
     let walletAgentId: bigint;

@@ -7,7 +7,6 @@ pragma solidity ^0.8.35;
  * It manages trust signals for agents as signed fixed-point numbers.
  */
 interface IReputationRegistry {
-
     // --- Events ---
 
     /**
@@ -96,16 +95,19 @@ interface IReputationRegistry {
         uint256 agentId,
         address client,
         uint256 feedbackIndex
-    ) external view returns (
-        int128 value,
-        uint8 valueDecimals,
-        string memory tag1,
-        string memory tag2,
-        string memory endpoint,
-        string memory feedbackURI,
-        bytes32 feedbackHash,
-        bool revoked
-    );
+    )
+        external
+        view
+        returns (
+            int128 value,
+            uint8 valueDecimals,
+            string memory tag1,
+            string memory tag2,
+            string memory endpoint,
+            string memory feedbackURI,
+            bytes32 feedbackHash,
+            bool revoked
+        );
 
     /**
      * @notice Returns all feedback for an agent, filtered by clients and tags.

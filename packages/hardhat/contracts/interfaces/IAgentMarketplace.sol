@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-import {IIdentityRegistry} from "./IIdentityRegistry.sol";
+import { IIdentityRegistry } from "./IIdentityRegistry.sol";
 
 interface IAgentMarketplace {
     struct Agent {
         address owner;
         uint256 agentId;
         uint256 price;
-        bool payToAgentWallet; 
+        bool payToAgentWallet;
         bool active;
     }
 

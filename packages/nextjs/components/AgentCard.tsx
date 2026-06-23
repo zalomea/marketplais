@@ -198,6 +198,13 @@ export const AgentCard = ({ agentId, price, owner, uri, active, showActions = fa
       notification.success("Agent transferred");
       setNewOwnerInput("");
       (document.getElementById(transferModalId) as HTMLDialogElement)?.close();
+    } catch (err) {
+      notification.error(getParsedError(err));
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const handleSetPaymentDestination = async (newValue: boolean) => {
     if (newValue === payToAgentWallet) return;
     setPendingAction(`destination-${agentIdStr}`);

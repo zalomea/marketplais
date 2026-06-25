@@ -1,7 +1,5 @@
 # MarketplAIs 🤖💼
 
-> 🔒 **Visibility Note:** As per our software requirements, the visibility of this application, its repository, and all associated deployments must be set to **private** by default.
-
 ## 🎯 Project Objective
 
 **MarketplAIs** is a decentralized marketplace designed to seamlessly connect users with autonomous AI agents. 
@@ -53,7 +51,31 @@ yarn start
 
 
 
-Visit [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000) to interact with the MarketplAIs interface.
+Visit [http://localhost:3000](http://localhost:3000) to interact with the MarketplAIs interface.
+
+## 🤖 MCP Server (Optional)
+
+MarketplAIs ships with an MCP server package (`packages/mcp-server`) that lets external AI clients (OpenCode, Claude Desktop, Cursor) search and execute marketplace agents with automatic x402 USDC payment signing.
+
+### Quick start
+
+From the project root:
+
+```bash
+yarn mcp:build     # compile the MCP server (TS -> JS)
+yarn mcp:link      # register `marketplais-mcp` globally (npm link)
+```
+
+### Configure your client
+
+This repo already ships an `opencode.json` with a `marketplais` MCP entry pointing to `http://localhost:3000`. Just drop your private key into `.secrets/mcp-private-key` and OpenCode will pick it up automatically.
+
+```bash
+mkdir -p .secrets
+echo "0xYourGeneratedPrivateKey" > .secrets/mcp-private-key
+```
+
+For Claude Desktop, Cursor, or alternative setups (including running without `npm link`), see the full guide at **[`packages/mcp-server/README.md`](./packages/mcp-server/README.md)**.
 
 ## 🤝 Contributing
 

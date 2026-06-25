@@ -5,6 +5,15 @@
       "type": "remote",
       "url": "https://mcp.context7.com/mcp"
     },
+    "marketplais": {
+      "type": "local",
+      "command": ["marketplais-mcp"],
+      "enabled": true,
+      "environment": {
+        "API_BASE_URL": "http://localhost:3000",
+        "PRIVATE_KEY": "{file:.secrets/mcp-private-key}"
+      }
+    },
     "github": {
       "type": "local",
       "enabled": true,

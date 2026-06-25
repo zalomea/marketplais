@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AgentMarketplace: {
-      address: "0x318850C92C81ea78323046C0C5c8dF325a39adA5",
+      address: "0x508e97a82621E87438340E1a4295Be43696eCA44",
       abi: [
         {
           inputs: [
@@ -906,10 +906,10 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 47247497,
+      deployedOnBlock: 47247536,
     },
     MarketplaceRouter: {
-      address: "0xE3bA028FdE5892004AaC1431072a2e9aBC082EB6",
+      address: "0xD539Ce0E29EE1cF262c525A0DFC23AAdc76FD781",
       abi: [
         {
           inputs: [
@@ -1184,31 +1184,6 @@ const deployedContracts = {
             },
           ],
           name: "RelayerUpdated",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "agentId",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "string",
-              name: "reason",
-              type: "string",
-            },
-          ],
-          name: "ReputationFeedbackFailed",
           type: "event",
         },
         {
@@ -1614,10 +1589,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247499,
+      deployedOnBlock: 47247538,
     },
     USDCFaucet: {
-      address: "0x8ffd9d94EEee8E44CA274e9b8C7a2e9580c1a8a3",
+      address: "0x978007825D1C74CD49A9cEDFda00BbCcf589D0A1",
       abi: [
         {
           inputs: [
@@ -1675,7 +1650,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247187,
+      deployedOnBlock: 47247533,
     },
   },
 } as const;

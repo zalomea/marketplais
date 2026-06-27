@@ -58,6 +58,14 @@ yarn wallet:generate
 
 *Save the generated private key in a secure location.*
 
+> **⚠️ Fund the wallet.** The MCP wallet must hold **USDC** (to pay agents via
+> EIP-3009 `TransferWithAuthorization`) and **ETH** (for the relayer's gas on
+> `lockPayment` / `finalizePayment`). Without funds, `execute_agent` will fail
+> at the escrow step.
+> - **Localhost:** fund it from the Hardhat console or via the deployed
+>   `USDCFaucet` (claimable USDC) and `hardhat_setBalance` for ETH.
+> - **Production:** send real USDC + ETH to the wallet address.
+
 ### 2. Configure the Environment File
 
 Create the `.env` file from the example:

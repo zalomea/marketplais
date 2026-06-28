@@ -53,7 +53,7 @@ contract MarketplaceRouter {
         uint256 agentEarnings
     );
     event PaymentFinalized(bytes32 indexed nonce, uint256 indexed agentId, uint256 agentEarnings);
-    event PaymentRefunded(bytes32 indexed nonce, address indexed client, uint256 totalAmount);
+    event PaymentRefunded(bytes32 indexed nonce, address indexed client, uint256 refundedAmount, uint256 feeRetained);
     event ReputationFeedbackFailed(bytes32 indexed nonce, uint256 indexed agentId, string reason);
 
     modifier onlyOwner() {
@@ -217,14 +217,18 @@ contract MarketplaceRouter {
     function refundPayment(bytes32 nonce) external onlyRelayer {
         LockedPayment storage payment = lockedPayments[nonce];
         if (!payment.active) revert PaymentNotLocked();
-        uint256 amount = payment.totalAmount;
+        uint256 totalAmount = payment.totalAmount;
+        uint256 agentEarnings = payment.agentEarnings;
         address client = payment.client;
         uint256 agentId = payment.agentId;
         payment.active = false;
         delete lockedPayments[nonce];
-        totalLocked -= amount;
-        emit PaymentRefunded(nonce, client, amount);
-        bool success = token.transfer(client, amount);
+        totalLocked -= totalAmount;
+        // Refund only agent earnings; platform fee is retained to cover gas costs
+        // incurred by the relayer regardless of agent outcome.
+        uint256 feeRetained = totalAmount - agentEarnings;
+        emit PaymentRefunded(nonce, client, agentEarnings, feeRetained);
+        bool success = token.transfer(client, agentEarnings);
         if (!success) revert TransferFailed();
         _recordReputationFeedback(nonce, agentId, int128(0), "execution_failed");
     }

@@ -23,6 +23,12 @@ const AgentExecutePage: NextPage = () => {
     args: [parsedAgentId ?? undefined] as const,
   });
 
+  // Read feeBps to show the payment breakdown to the user
+  const { data: feeBps } = useScaffoldReadContract({
+    contractName: "MarketplaceRouter",
+    functionName: "feeBps",
+  });
+
   // Fetch Event History for Agent Activity (PaymentFinalized)
   const { data: finalizedEvents } = useScaffoldEventHistory({
     contractName: "MarketplaceRouter",
@@ -210,6 +216,41 @@ const AgentExecutePage: NextPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Payment breakdown */}
+          {agentDetails?.agent.price && (
+            <div className="border border-slate-200 bg-slate-50/50 p-5 space-y-3">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-slate-400">Payment Breakdown</p>
+              {(() => {
+                const agentPrice = Number(formatUnits(agentDetails.agent.price, 6));
+                const feePct = feeBps ? Number(feeBps) / 100 : 10;
+                const fee = (agentPrice * feePct) / 100;
+                const total = agentPrice + fee;
+                return (
+                  <>
+                    <div className="space-y-1.5 font-mono text-[11px]">
+                      <div className="flex justify-between text-slate-500">
+                        <span>Agent price</span>
+                        <span className="text-slate-800">{agentPrice.toFixed(6)} USDC</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500">
+                        <span>Platform fee ({feePct.toFixed(0)}%)</span>
+                        <span className="text-slate-800">{fee.toFixed(6)} USDC</span>
+                      </div>
+                      <div className="flex justify-between border-t border-slate-200 pt-1.5 text-slate-700 font-bold">
+                        <span>Total</span>
+                        <span>{total.toFixed(6)} USDC</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-4 font-mono">
+                      If the agent fails, the agent price is refunded. The platform fee covers relayer gas costs and is
+                      non-refundable.
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">

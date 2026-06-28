@@ -342,7 +342,11 @@ export default function AddAgentPage() {
             </div>
           </Field>
 
-          <Field label="agentURI" required hint="https://... or data:application/json;base64,...">
+          <Field
+            label="agentURI"
+            required
+            hint="https://... or data:application/json;base64,... — ERC-8004 metadata, must include services[].web.endpoint"
+          >
             <textarea
               value={agentURI}
               onChange={e => setAgentURI(e.target.value)}
@@ -381,7 +385,11 @@ export default function AddAgentPage() {
             />
           </Field>
 
-          <Field label="Agent ID" hint="token ID from the IdentityRegistry" required>
+          <Field
+            label="Agent ID"
+            hint="token ID from the IdentityRegistry (ERC-721) — use this if you already own an agent NFT and want to list it in this marketplace"
+            required
+          >
             <input
               type="number"
               value={agentID}
@@ -478,7 +486,11 @@ export default function AddAgentPage() {
               {/* Step 2: Services */}
               {wizard.step === "services" && (
                 <>
-                  <Field label="Web Endpoint" required hint="primary HTTP endpoint">
+                  <Field
+                    label="Web Endpoint"
+                    required
+                    hint="HTTP POST endpoint receiving {prompt} — authenticated via API key derived from your on-chain identity + nonce"
+                  >
                     <input
                       type="text"
                       value={wizard.webEndpoint}

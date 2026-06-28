@@ -7,6 +7,11 @@ export async function POST(req: NextRequest) {
   const authResult = await verifyAgentApiKey(req, "SUMMARIZE_AGENT_ID");
   if (!authResult.ok) return authResult.response!;
 
+  // ~10% of calls fail to simulate real-world agent execution errors.
+  if (Math.random() < 0.1) {
+    return NextResponse.json({ error: "Agent execution failed" }, { status: 500 });
+  }
+
   return NextResponse.json({
     message: "Lorem ipsum summarized",
   });

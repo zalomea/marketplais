@@ -9,80 +9,82 @@ export type AgentFeedback = {
 };
 
 export type ReputationResult = {
-  score: number | null; // null when no feedback exists yet
-  count: number; // total number of feedback entries
-  feedbacks: AgentFeedback[]; // individual feedback entries
+  score: number | null;
+  count: number;
+  feedbacks: AgentFeedback[];
   isLoading: boolean;
 };
 
 /**
- * Reads an agent's aggregated reputation from the ReputationRegistry.
- * Requires two chained calls: first fetch the list of clients who gave feedback,
- * then use that list to compute the summary score and individual feedbacks.
+ * Reads platform execution feedbacks for an agent from ReputationRegistry.
+ *
+ * Only feedbacks with tag2="x402_payment" and tag1="execution_success"|"execution_failed"
+ * are included — these are the ones automatically recorded by MarketplaceRouter
+ * when a payment is finalized or refunded.
+ *
+ * Two chained reads:
+ *   1. getClients(agentId) → list of addresses that submitted feedback
+ *   2. readAllFeedback(agentId, clients, …) → flat arrays of feedback fields
+ *
+ * readAllFeedback reverts with "clientAddresses required" when passed an empty
+ * array, so the second call is gated on `clients` being non-empty.
  */
 export const useAgentReputation = (agentId: bigint): ReputationResult => {
-  // Step 1: fetch all addresses that submitted feedback for this agent
   const { data: clients, isLoading: isLoadingClients } = useScaffoldReadContract({
     contractName: "ReputationRegistry",
     functionName: "getClients",
     args: [agentId],
   });
 
-  // Step 2: compute the aggregated score — only runs once clients is resolved
-  const { data: summary, isLoading: isLoadingSummary } = useScaffoldReadContract({
-    contractName: "ReputationRegistry",
-    functionName: "getSummary",
-    args: [agentId, clients ?? [], "", ""],
-    query: {
-      enabled: clients !== undefined,
-    },
-  });
+  const hasClients = !!(clients && clients.length > 0);
 
-  // Step 3: fetch all individual feedbacks for the detail view
   const { data: allFeedback, isLoading: isLoadingFeedback } = useScaffoldReadContract({
     contractName: "ReputationRegistry",
     functionName: "readAllFeedback",
     args: [agentId, clients ?? [], "", "", false],
     query: {
-      enabled: clients !== undefined,
+      enabled: hasClients,
     },
   });
 
-  const isLoading = isLoadingClients || isLoadingSummary || isLoadingFeedback;
+  const isLoading = isLoadingClients || (hasClients && isLoadingFeedback);
 
-  // Guard: data not yet resolved
-  if (!summary) {
+  if (!hasClients || !allFeedback) {
     return { score: null, count: 0, feedbacks: [], isLoading };
   }
 
-  // getSummary returns a tuple: [count, summaryValue, summaryValueDecimals]
-  const [summaryCount, summaryValue, summaryValueDecimals] = summary;
+  // readAllFeedback returns a tuple of parallel arrays:
+  //   [0] clients (address[])
+  //   [1] feedbackIndexes (uint64[])
+  //   [2] values (int128[])
+  //   [3] valueDecimals (uint8[])
+  //   [4] tag1s (string[])
+  //   [5] tag2s (string[])
+  //   [6] revokedStatuses (bool[])
+  const [fbClients, , fbValues, fbDecimals, fbTag1s, fbTag2s, fbRevoked] = allFeedback;
 
-  // No feedback recorded yet
-  if (summaryCount === 0n) {
-    return { score: null, count: 0, feedbacks: [], isLoading };
+  const feedbacks: AgentFeedback[] = [];
+
+  for (let i = 0; i < fbClients.length; i++) {
+    const tag1 = fbTag1s[i];
+    const tag2 = fbTag2s[i];
+
+    if (tag2 !== "x402_payment") continue;
+    if (tag1 !== "execution_success" && tag1 !== "execution_failed") continue;
+    if (fbRevoked[i]) continue;
+
+    feedbacks.push({
+      client: fbClients[i],
+      score: Number(fbValues[i]) / Math.pow(10, Number(fbDecimals[i])),
+      tag1,
+      tag2,
+      isRevoked: fbRevoked[i],
+    });
   }
 
-  // summaryValue is a fixed-point int128; divide by 10^decimals to get the human-readable score
-  const score = Number(summaryValue) / Math.pow(10, Number(summaryValueDecimals));
+  const count = feedbacks.length;
+  const successCount = feedbacks.filter(f => f.tag1 === "execution_success").length;
+  const score = count > 0 ? successCount / count : null;
 
-  // readAllFeedback returns a tuple: [clients, feedbackIndexes, values, valueDecimals, tag1s, tag2s, revokedStatuses]
-  const feedbacks: AgentFeedback[] = allFeedback
-    ? allFeedback[0]
-        .map((client, i) => ({
-          client,
-          score: Number(allFeedback[2][i]) / Math.pow(10, Number(allFeedback[3][i])),
-          tag1: allFeedback[4][i],
-          tag2: allFeedback[5][i],
-          isRevoked: allFeedback[6][i],
-        }))
-        .filter(f => !f.isRevoked)
-    : [];
-
-  return {
-    score,
-    count: Number(summaryCount),
-    feedbacks,
-    isLoading: false,
-  };
+  return { score, count, feedbacks, isLoading: false };
 };

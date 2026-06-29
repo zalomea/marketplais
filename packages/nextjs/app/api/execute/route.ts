@@ -275,6 +275,7 @@ export async function POST(request: Request) {
         functionName,
         chain: publicClient.chain,
         args: [nonce],
+        gas: 1_000_000n, // fixed generous limit so reputationRegistry.giveFeedback (inside try/catch) has enough gas
       });
       const finalReceipt = await publicClient.waitForTransactionReceipt({ hash: txHashFinal, timeout: 30_000 });
       if (finalReceipt.status !== "success") {

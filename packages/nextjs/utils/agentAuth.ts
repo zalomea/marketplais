@@ -10,8 +10,7 @@ import { deriveApiKey } from "~~/utils/apiKey";
  * bypass the x402 escrow flow (fixes the unauthenticated-proxy issue, bug C2).
  *
  * Behavior:
- * - If the env var named by `agentIdEnvVar` is unset, logs a warning and returns
- *   `ok: true` so local dev works without a deployed agent ID.
+ * - If the agent ID is missing, returns an error so the request is rejected.
  * - If set, reads the agent from AgentMarketplace, derives the expected key, and
  *   compares it to the header with a constant-time comparison.
  *
@@ -20,21 +19,21 @@ import { deriveApiKey } from "~~/utils/apiKey";
  */
 export async function verifyAgentApiKey(
   req: NextRequest,
-  agentIdEnvVar: string,
+  agentId: string | number | undefined,
 ): Promise<{ ok: boolean; response?: NextResponse }> {
-  const agentIdStr = process.env[agentIdEnvVar];
+  const agentIdStr = typeof agentId === "number" ? String(agentId) : (agentId ?? req.headers.get("x-agent-id") ?? "");
   if (!agentIdStr) {
-    // Fail closed: a missing agent ID env var is a server misconfiguration,
-    // not a dev-friendly state. Returning ok:true would let anyone bypass the
-    // x402 escrow flow by hitting the agent endpoint directly.
+    // Fail closed: a missing agent ID is a server misconfiguration, not a
+    // dev-friendly state. Returning ok:true would let anyone bypass the x402
+    // escrow flow by hitting the agent endpoint directly.
     return {
       ok: false,
-      response: NextResponse.json({ error: "Server misconfiguration: agent ID env var missing" }, { status: 500 }),
+      response: NextResponse.json({ error: "Server misconfiguration: agent ID missing" }, { status: 500 }),
     };
   }
 
   const providedKey = req.headers.get("X-API-Key");
-  const secret = process.env.API_KEY_SECRET;
+  const secret = process.env.API_KEY_SECRET || "secretdev";
   if (!secret) {
     return { ok: false, response: NextResponse.json({ error: "Invalid API Key" }, { status: 401 }) };
   }

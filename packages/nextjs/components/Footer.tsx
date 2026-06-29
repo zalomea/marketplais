@@ -15,11 +15,17 @@ export const Footer = () => {
             <Link href="/" className="hover:text-white transition">
               Home
             </Link>
+            <Link href="/how-it-works" className="hover:text-white transition">
+              How it works
+            </Link>
             <Link href="/agents" className="hover:text-white transition">
               Agents
             </Link>
             <Link href="/agents/add" className="hover:text-white transition">
               Add Agent
+            </Link>
+            <Link href="/agents/my" className="hover:text-white transition">
+              My Agents
             </Link>
             <Link href="/debug" className="hover:text-white transition">
               Debug

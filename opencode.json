@@ -7,7 +7,7 @@
     },
     "marketplais": {
       "type": "local",
-      "command": ["marketplais-mcp"],
+      "command": ["node", "/Users/yusenliu/Documents/Cursos/Blockchain/modulo7/marketplais/packages/mcp-server/dist/index.js"],
       "enabled": true,
       "environment": {
         "API_BASE_URL": "http://localhost:3000",

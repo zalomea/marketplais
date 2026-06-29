@@ -220,7 +220,7 @@ describe("MarketplaceRouter", function () {
       await expect(txFinal).to.emit(router, "PaymentFinalized").withArgs(nonce, agentId, AGENT_PRICE);
     });
 
-    it("Should allow refunding payment if agent fails", async function () {
+    it("Should refund only agent earnings if agent fails (platform fee retained)", async function () {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
       const validUntil = (await getBlockTimestamp()) + 86400;
       const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
@@ -231,13 +231,32 @@ describe("MarketplaceRouter", function () {
       const clientBefore = await usdc.balanceOf(client.address);
       const txRefund = await router.connect(owner).refundPayment(nonce);
 
-      await expect(txRefund).to.emit(router, "PaymentRefunded").withArgs(nonce, client.address, TOTAL_PAYMENT);
-      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+      // Event now emits refundedAmount (agentEarnings) and feeRetained
+      await expect(txRefund)
+        .to.emit(router, "PaymentRefunded")
+        .withArgs(nonce, client.address, AGENT_PRICE, PLATFORM_FEE);
+      // Client receives only agent earnings, not the full total
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + AGENT_PRICE);
 
       await expect(router.connect(owner).finalizePayment(nonce)).to.be.revertedWithCustomError(
         router,
         "PaymentNotLocked",
       );
+    });
+
+    it("Should retain platform fee on refund and make it withdrawable", async function () {
+      const nonce = ethers.hexlify(ethers.randomBytes(32));
+      const validUntil = (await getBlockTimestamp()) + 86400;
+      const { v, r, s } = await buildReceiveWithAuthorization(client, routerAddress, TOTAL_PAYMENT, validUntil, nonce);
+      const sig = ethers.concat([r, s, ethers.toBeHex(v, 1)]);
+
+      await router.connect(owner).lockPayment(client.address, agentId, TOTAL_PAYMENT, validUntil, nonce, sig);
+      await router.connect(owner).refundPayment(nonce);
+
+      // The retained fee should now be withdrawable by the treasury
+      const treasuryBefore = await usdc.balanceOf(treasury.address);
+      await router.connect(owner).withdrawFees();
+      expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBefore + PLATFORM_FEE);
     });
   });
 
@@ -273,7 +292,8 @@ describe("MarketplaceRouter", function () {
 
       const clientBefore = await usdc.balanceOf(client.address);
       await router.connect(owner).refundPayment(nonce);
-      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+      // Client receives only agent earnings on refund
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + AGENT_PRICE);
     });
 
     // Mixed state: withdrawable fee surplus must coexist with a still-locked payment without touching escrow
@@ -301,11 +321,16 @@ describe("MarketplaceRouter", function () {
       await router.connect(owner).withdrawFees();
       expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBefore + expectedFee);
 
-      // B's escrow is intact: refund returns the full amount and clears totalLocked
+      // B's escrow is intact: refund returns agent earnings only and clears totalLocked
       const clientBefore = await usdc.balanceOf(client.address);
       await router.connect(owner).refundPayment(nonceB);
-      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+      // Client receives only agent earnings on refund (fee retained)
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + AGENT_PRICE);
       expect(await router.totalLocked()).to.equal(0n);
+      // B's retained fee is now also withdrawable
+      const treasuryBeforeB = await usdc.balanceOf(treasury.address);
+      await router.connect(owner).withdrawFees();
+      expect(await usdc.balanceOf(treasury.address)).to.equal(treasuryBeforeB + PLATFORM_FEE);
     });
   });
 
@@ -660,18 +685,19 @@ describe("MarketplaceRouter", function () {
       expect(await mockRouter.totalLocked()).to.equal(0n);
     });
 
-    it("Should refund payment to client even if giveFeedback reverts", async function () {
+    it("Should refund only agent earnings to client even if giveFeedback reverts", async function () {
       const nonce = await lockWithMockRouter();
       const clientBefore = await usdc.balanceOf(client.address);
       await mockReputation.setShouldRevert(true);
 
       await expect(mockRouter.connect(owner).refundPayment(nonce))
         .to.emit(mockRouter, "PaymentRefunded")
-        .withArgs(nonce, client.address, TOTAL_PAYMENT)
+        .withArgs(nonce, client.address, AGENT_PRICE, PLATFORM_FEE)
         .and.to.emit(mockRouter, "ReputationFeedbackFailed")
         .withArgs(nonce, agentId, "giveFeedback reverted");
 
-      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + TOTAL_PAYMENT);
+      // Client receives only agent earnings; fee retained by platform
+      expect(await usdc.balanceOf(client.address)).to.equal(clientBefore + AGENT_PRICE);
       expect(await mockRouter.totalLocked()).to.equal(0n);
     });
   });

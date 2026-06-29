@@ -200,37 +200,60 @@ export const HomePage: NextPage = () => {
           </div>
         </div>
 
-        {/* Feature cards */}
+        {/* How it works — dual path */}
         <section className="mt-20 space-y-8">
-          <div className="border border-slate-200 bg-white p-8 rounded-none shadow-sm">
-            <div className="grid gap-8 lg:grid-cols-3">
-              <div className="space-y-3">
-                <span className="font-mono text-[9px] tracking-wider text-slate-400 block">SYS // BUY_ZONE</span>
-                <h2 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase border-b border-slate-100 pb-2">
-                  Discover agents
-                </h2>
-                <p className="text-xs leading-6 text-slate-600">
-                  Browse available agents, compare pricing, and license access with a secure marketplace flow.
-                </p>
-              </div>
-              <div className="space-y-3">
-                <span className="font-mono text-[9px] tracking-wider text-slate-400 block">SYS // PUB_ZONE</span>
-                <h2 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase border-b border-slate-100 pb-2">
-                  Register agents
-                </h2>
-                <p className="text-xs leading-6 text-slate-600">
-                  Upload agents, set pricing, and manage identity with the same professional interface.
-                </p>
-              </div>
-              <div className="space-y-3">
-                <span className="font-mono text-[9px] tracking-wider text-slate-400 block">SYS // BILLING</span>
-                <h2 className="text-lg font-bold text-slate-900 font-mono tracking-tight uppercase border-b border-slate-100 pb-2">
-                  Web3 billing
-                </h2>
-                <p className="text-xs leading-6 text-slate-600">
-                  USDC payments and on-chain identities provide enterprise-grade accountability for every request.
-                </p>
-              </div>
+          <div className="border border-slate-200 bg-white p-8 rounded-none shadow-sm border-t-2 border-t-slate-800">
+            <p className="font-mono text-[9px] tracking-[0.22em] text-slate-400 uppercase mb-2">
+              Guide // Choose_your_path
+            </p>
+            <h2 className="font-mono text-lg font-bold text-slate-900 uppercase tracking-tight mb-6">How it works</h2>
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Consume */}
+              <Link
+                href="/how-it-works"
+                className="group border border-slate-200 bg-slate-50/70 p-6 hover:border-[#0ea5a5] transition-colors flex flex-col gap-4"
+              >
+                <div>
+                  <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-1">
+                    PATH A // CONSUME
+                  </span>
+                  <h3 className="font-mono text-sm font-bold text-slate-900 uppercase tracking-tight">
+                    I want to use agents
+                  </h3>
+                </div>
+                <ul className="space-y-1.5 text-xs text-slate-600 leading-5">
+                  <li>1. Connect your wallet</li>
+                  <li>2. Browse &amp; compare agents</li>
+                  <li>3. Sign USDC payment</li>
+                  <li>4. Get the result</li>
+                </ul>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[#0ea5a5] group-hover:underline mt-auto">
+                  Learn more →
+                </span>
+              </Link>
+              {/* Publish */}
+              <Link
+                href="/how-it-works"
+                className="group border border-slate-200 bg-slate-50/70 p-6 hover:border-[#0ea5a5] transition-colors flex flex-col gap-4"
+              >
+                <div>
+                  <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-1">
+                    PATH B // PUBLISH
+                  </span>
+                  <h3 className="font-mono text-sm font-bold text-slate-900 uppercase tracking-tight">
+                    I want to publish agents
+                  </h3>
+                </div>
+                <ul className="space-y-1.5 text-xs text-slate-600 leading-5">
+                  <li>1. Register your agent</li>
+                  <li>2. Set USDC price per call</li>
+                  <li>3. Deploy your HTTP endpoint</li>
+                  <li>4. Earn on every execution</li>
+                </ul>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[#0ea5a5] group-hover:underline mt-auto">
+                  Learn more →
+                </span>
+              </Link>
             </div>
           </div>
 

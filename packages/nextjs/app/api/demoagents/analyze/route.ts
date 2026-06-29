@@ -24,13 +24,14 @@ const DEFAULT_AGENT_PRICE_MICRO_USDC = 20_000; // 0.02 USDC
 export async function POST(req: NextRequest) {
   // Authenticate the caller via the derived X-API-Key before touching the LLM,
   // so the endpoint can no longer be used as an unauthenticated Groq proxy.
-  const authResult = await verifyAgentApiKey(req, "ANALYZE_AGENT_ID");
+  const agentId = req.headers.get("x-agent-id") ?? "";
+  const authResult = await verifyAgentApiKey(req, agentId);
   if (!authResult.ok) return authResult.response!;
 
   // Validate API key before using Groq
   if (!process.env.GROQ_API_KEY) {
     console.error("GROQ_API_KEY not set – cannot call LLM");
-    return NextResponse.json({ error: "GROQ_API_KEY not set" }, { status: 500 });
+    return NextResponse.json({ message: "GROQ_API_KEY not set" });
   }
   // Initialize Groq client now that we know the key exists
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });

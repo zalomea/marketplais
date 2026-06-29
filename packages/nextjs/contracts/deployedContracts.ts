@@ -906,7 +906,7 @@ const deployedContracts = {
         identityRegistry: "contracts/interfaces/IAgentMarketplace.sol",
         onERC721Received: "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol",
       },
-      deployedOnBlock: 47247190,
+      deployedOnBlock: 47247201,
     },
     MarketplaceRouter: {
       address: "0x0C2672Fcec56ee1E1B4C16fE7bCa530Cfa4C1B3C",
@@ -1589,7 +1589,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 47247192,
+      deployedOnBlock: 47247203,
     },
     USDCFaucet: {
       address: "0x8ffd9d94EEee8E44CA274e9b8C7a2e9580c1a8a3",

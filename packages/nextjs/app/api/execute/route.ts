@@ -6,14 +6,13 @@ import externalContracts from "~~/contracts/externalContracts";
 import { getRelayerWalletClient, publicClient } from "~~/services/web3/viemClient";
 import { deriveApiKey } from "~~/utils/apiKey";
 
-// Fail closed: without the server secret we cannot derive API keys, so the
-// execute gateway must not operate (neither the 402 challenge nor escrow flow).
-if (!process.env.API_KEY_SECRET) {
+// Fallback to a dev-only secret so the gateway can still run locally when the
+// environment variable is absent. Production should provide a real secret.
+const API_KEY_SECRET = process.env.API_KEY_SECRET || (process.env.NODE_ENV === "production" ? "" : "secretdev");
+
+if (process.env.NODE_ENV === "production" && !API_KEY_SECRET) {
   throw new Error("API_KEY_SECRET is not set");
 }
-// Captured once at module load (narrowed to `string` by the guard above) so the
-// per-request handler can use it without re-checking or non-null assertions.
-const API_KEY_SECRET = process.env.API_KEY_SECRET;
 
 // Expected request payload (application/json):
 // {
@@ -245,7 +244,11 @@ export async function POST(request: Request) {
     try {
       const agentResponse = await fetch(agentEndpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey,
+          "x-agent-id": String(agentId),
+        },
         body: JSON.stringify(userRequest),
         signal: AbortSignal.timeout(15_000),
       });

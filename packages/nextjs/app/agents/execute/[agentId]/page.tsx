@@ -223,7 +223,7 @@ const AgentExecutePage: NextPage = () => {
               <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-slate-400">Payment Breakdown</p>
               {(() => {
                 const agentPrice = Number(formatUnits(agentDetails.agent.price, 6));
-                const feePct = feeBps ? Number(feeBps) / 100 : 10;
+                const feePct = feeBps !== undefined ? Number(feeBps) / 100 : 10;
                 const fee = (agentPrice * feePct) / 100;
                 const total = agentPrice + fee;
                 return (

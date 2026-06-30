@@ -264,7 +264,9 @@ describe("MarketplaceRouter", function () {
     it("Should transfer accumulated earnings to the agent owner", async function () {
       await lockAndProcessPayment();
       const agentOwnerBefore = await usdc.balanceOf(agentOwner.address);
-      await router.withdrawAgentEarnings(agentId);
+      await expect(router.withdrawAgentEarnings(agentId))
+        .to.emit(router, "AgentEarningsWithdrawn")
+        .withArgs(agentId, agentOwner.address, AGENT_PRICE);
       expect(await usdc.balanceOf(agentOwner.address)).to.equal(agentOwnerBefore + AGENT_PRICE);
       expect(await router.agentBalances(agentId)).to.equal(0n);
     });
@@ -524,6 +526,18 @@ describe("MarketplaceRouter", function () {
       expect(await router.pendingOwner()).to.equal(newOwner.address);
     });
 
+    // Emits OwnershipTransferStarted when transferOwnership is called
+    it("Should emit OwnershipTransferStarted when transferOwnership is called", async function () {
+      const [, , , , newOwner] = await ethers.getSigners();
+      const tx = await router.connect(owner).transferOwnership(newOwner.address);
+      const pendingOwner = await router.pendingOwner();
+      const waitOwnerUntil = await router.waitOwnerUntil();
+      await expect(tx)
+        .to.emit(router, "OwnershipTransferStarted")
+        .withArgs(owner.address, pendingOwner, waitOwnerUntil);
+      expect(pendingOwner).to.equal(newOwner.address);
+    });
+
     // Reverts with NotOwner if caller is not the pending owner on acceptOwnership
     it("Should revert acceptOwnership with NotOwner if caller is not the pending owner", async function () {
       const [, , , , newOwner] = await ethers.getSigners();
@@ -573,7 +587,10 @@ describe("MarketplaceRouter", function () {
     // Updates the treasury successfully and verifies it in state
     it("Should update the treasury successfully and verify it in state", async function () {
       const [, , , , , newTreasury] = await ethers.getSigners();
-      await router.connect(owner).changeTreasury(newTreasury.address);
+      const oldTreasury = await router.treasury();
+      await expect(router.connect(owner).changeTreasury(newTreasury.address))
+        .to.emit(router, "TreasuryUpdated")
+        .withArgs(oldTreasury, newTreasury.address);
       expect(await router.treasury()).to.equal(newTreasury.address);
     });
 
@@ -613,6 +630,20 @@ describe("MarketplaceRouter", function () {
           await agentMarketplace.getAddress(),
           await iReputationRegistry.getAddress(),
           ethers.ZeroAddress,
+          FEE_BPS,
+          treasury.address,
+        ),
+      ).to.be.revertedWithCustomError(router, "ZeroAddress");
+    });
+
+    // Reverts constructor with ZeroAddress if reputation registry is address(0)
+    it("Should revert constructor with ZeroAddress if reputation registry is address(0)", async function () {
+      const RouterFactory = await ethers.getContractFactory("MarketplaceRouter");
+      await expect(
+        RouterFactory.deploy(
+          await agentMarketplace.getAddress(),
+          ethers.ZeroAddress,
+          USDC_ADDRESS,
           FEE_BPS,
           treasury.address,
         ),

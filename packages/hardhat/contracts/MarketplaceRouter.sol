@@ -42,9 +42,12 @@ contract MarketplaceRouter {
     error PaymentNotLocked();
 
     event FeesWithdrawn(uint256 tokenAmount, uint256 time);
+    event AgentEarningsWithdrawn(uint256 indexed agentId, address indexed recipient, uint256 amount);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
+    event OwnershipTransferStarted(address indexed currentOwner, address indexed newOwner, uint256 waitUntil);
     event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);
     event RelayerUpdated(address indexed newRelayer);
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event PaymentLocked(
         bytes32 indexed nonce,
         address indexed client,
@@ -75,6 +78,7 @@ contract MarketplaceRouter {
     ) {
         if (_treasury == address(0)) revert ZeroAddress();
         if (_agentMarketplace == address(0)) revert ZeroAddress();
+        if (_reputationRegistry == address(0)) revert ZeroAddress();
         if (_token == address(0)) revert ZeroAddress();
         if (_feeBps > 1000) revert FeeTooHigh();
         treasury = _treasury;
@@ -101,7 +105,6 @@ contract MarketplaceRouter {
 
     function withdrawAgentEarnings(uint256 agentId) external {
         IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);
-        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
         if (agentBalances[agentId] == 0) revert NoFeesToWithdraw();
         uint256 amountToTransfer = agentBalances[agentId];
         address receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).ownerOf(agentId);
@@ -111,7 +114,7 @@ contract MarketplaceRouter {
         if (receipient == address(0)) revert ZeroAddress();
         agentBalances[agentId] = 0;
         totalAgentLiabilities -= amountToTransfer;
-        emit FeesWithdrawn(amountToTransfer, block.timestamp);
+        emit AgentEarningsWithdrawn(agentId, receipient, amountToTransfer);
         bool success = token.transfer(receipient, amountToTransfer);
         if (!success) revert TransferFailed();
     }
@@ -120,6 +123,7 @@ contract MarketplaceRouter {
         if (newOwner == owner) revert SameOwner();
         pendingOwner = newOwner;
         waitOwnerUntil = block.timestamp + WAITING_PERIOD;
+        emit OwnershipTransferStarted(owner, newOwner, waitOwnerUntil);
     }
 
     function acceptOwnership() external {
@@ -134,6 +138,7 @@ contract MarketplaceRouter {
 
     function changeTreasury(address newTreasury) external onlyOwner {
         if (newTreasury == address(0)) revert ZeroAddress();
+        emit TreasuryUpdated(treasury, newTreasury);
         treasury = newTreasury;
     }
 

@@ -24,27 +24,32 @@ export const menuLinks: HeaderMenuLink[] = [
   { label: "Explorer", href: "/blockexplorer" },
 ];
 
-export const HeaderMenuLinks = () => {
+export const HeaderMenuLinks = ({ isLocalNetwork }: { isLocalNetwork: boolean }) => {
   const pathname = usePathname();
 
   return (
     <>
-      {menuLinks.map(({ label, href }) => {
-        const isActive = pathname === href;
-        return (
-          <li key={href}>
-            <Link
-              href={href}
-              passHref
-              className={`${
-                isActive ? "border-b-2 border-slate-900 text-slate-900" : "text-slate-600 hover:text-slate-900"
-              } px-3 py-3 text-sm font-medium transition whitespace-nowrap`}
-            >
-              {label}
-            </Link>
-          </li>
-        );
-      })}
+      {menuLinks
+        .filter(({ href }) => {
+          if (href === "/debug" || href === "/blockexplorer") return isLocalNetwork;
+          return true;
+        })
+        .map(({ label, href }) => {
+          const isActive = pathname === href;
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                passHref
+                className={`${
+                  isActive ? "border-b-2 border-slate-900 text-slate-900" : "text-slate-600 hover:text-slate-900"
+                } px-3 py-3 text-sm font-medium transition whitespace-nowrap`}
+              >
+                {label}
+              </Link>
+            </li>
+          );
+        })}
     </>
   );
 };
@@ -70,7 +75,7 @@ export const Header = () => {
 
           {/* Desktop nav */}
           <ul className="hidden lg:flex lg:flex-nowrap items-center gap-1 ml-8">
-            <HeaderMenuLinks />
+            <HeaderMenuLinks isLocalNetwork={isLocalNetwork} />
           </ul>
 
           {/* Mobile burger */}
@@ -82,7 +87,7 @@ export const Header = () => {
               className="dropdown-content menu bg-white border border-slate-200 rounded-none w-52 shadow-lg"
               onClick={() => burgerMenuRef?.current?.removeAttribute("open")}
             >
-              <HeaderMenuLinks />
+              <HeaderMenuLinks isLocalNetwork={isLocalNetwork} />
             </ul>
           </details>
 

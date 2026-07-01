@@ -24,15 +24,6 @@ export const Footer = () => {
             <Link href="/agents/add" className="hover:text-white transition">
               Add Agent
             </Link>
-            <Link href="/agents/my" className="hover:text-white transition">
-              My Agents
-            </Link>
-            <Link href="/debug" className="hover:text-white transition">
-              Debug
-            </Link>
-            <Link href="/blockexplorer" className="hover:text-white transition">
-              Explorer
-            </Link>
           </nav>
         </div>
       </div>

@@ -3,6 +3,7 @@ pragma solidity ^0.8.35;
 
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
 import { IAgentMarketplace } from "./interfaces/IAgentMarketplace.sol";
@@ -28,6 +29,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     event PriceUpdated(uint256 indexed agentId, uint256 oldPrice, uint256 newPrice, uint256 time);
     event AgentReactivated(uint256 indexed agentId, uint256 time);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);
+    event OwnershipTransferStarted(address indexed currentOwner, address indexed newOwner, uint256 waitUntil);
     event AgentTransferred(uint256 indexed agentId, address indexed from, address indexed to);
     event PaymentDestinationUpdated(uint256 indexed agentId, bool payToAgentWallet);
     event NonceIncremented(uint256 indexed agentId, uint256 newNonce);
@@ -83,11 +85,11 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     // Register an existing agent by ID
     function register(uint256 price, uint256 agentId, bool payToAgentWallet) external returns (uint256) {
+        // Ensure not already registered
+        if (agents[agentId].owner != address(0)) revert AlreadyActive();
         // Ensure caller owns the agent token
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         if (price == 0) revert ZeroPrice();
-        // Ensure not already registered
-        if (agents[agentId].agentId != 0) revert AlreadyActive();
         agents[agentId] = Agent({
             owner: msg.sender,
             agentId: agentId,
@@ -104,8 +106,8 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     }
 
     function transferAgent(uint256 agentId, address newOwner) external {
+        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();
         if (newOwner == address(0)) revert ZeroAddress();
-        if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
 
         address currentOwner = identityRegistry.ownerOf(agentId);
 
@@ -124,7 +126,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     }
 
     function syncAgentOwnership(uint256 agentId) external {
-        if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();
 
         address currentOwner = identityRegistry.ownerOf(agentId);
         address marketplaceRecordedOwner = agents[agentId].owner;
@@ -153,27 +155,27 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     // slither-disable-end reentrancy-benign,reentrancy-events
 
     function deactivateAgent(uint256 agentId) external {
-        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         Agent storage agent = agents[agentId];
-        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();
+        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         if (!agent.active) revert AlreadyDeactivated();
         agent.active = false;
         emit AgentDeactivated(agentId, block.timestamp);
     }
 
     function reactivateAgent(uint256 agentId) external {
-        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         Agent storage agent = agents[agentId];
-        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();
+        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         if (agent.active) revert AlreadyActive();
         agent.active = true;
         emit AgentReactivated(agentId, block.timestamp);
     }
 
     function updatePrice(uint256 agentId, uint256 newPrice) external {
-        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         Agent storage agent = agents[agentId];
-        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();
+        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         if (newPrice == 0) revert ZeroPrice();
         if (newPrice == agent.price) revert SamePrice();
         emit PriceUpdated(agentId, agent.price, newPrice, block.timestamp);
@@ -182,7 +184,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     function setPaymentDestination(uint256 agentId, bool newPayToAgentWallet) external {
         Agent storage agent = agents[agentId];
-        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         if (agent.payToAgentWallet == newPayToAgentWallet) revert SamePaymentDestination();
         agent.payToAgentWallet = newPayToAgentWallet;
@@ -192,16 +194,15 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
     /// @notice Increments the agent's nonce, rotating its derived API key.
     /// @dev Only the current agent owner (per the IdentityRegistry) may call this.
     function incrementNonce(uint256 agentId) external {
-        if (agents[agentId].agentId != agentId) revert AgentNotFoundInMarketplace();
+        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();
         agents[agentId].nonce++;
         emit NonceIncremented(agentId, agents[agentId].nonce);
     }
 
     function getAgent(uint256 agentId) public view returns (Agent memory) {
-        Agent memory agent = agents[agentId];
-        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();
-        return agent;
+        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();
+        return agents[agentId];
     }
 
     // slither-disable-next-line calls-loop
@@ -258,6 +259,7 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
         if (newOwner == owner) revert SameOwner();
         pendingOwner = newOwner;
         waitOwnerUntil = block.timestamp + WAITING_PERIOD;
+        emit OwnershipTransferStarted(owner, newOwner, waitOwnerUntil);
     }
 
     function acceptOwnership() external {
@@ -271,5 +273,9 @@ contract AgentMarketplace is IAgentMarketplace, ERC721Holder {
 
     function rescueERC721(address nftContract, uint256 tokenId) external onlyOwner {
         IERC721(nftContract).safeTransferFrom(address(this), msg.sender, tokenId);
+    }
+
+    function rescueERC20(address tokenContract, uint256 amount) external onlyOwner {
+        require(IERC20(tokenContract).transfer(msg.sender, amount));
     }
 }

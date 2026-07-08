@@ -1,0 +1,1184 @@
+{
+  "address": "0xa4a2555f28C21AC7c28B3f34356D8Ff3a634A51b",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_identityRegistry",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AgentNotFoundInMarketplace",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AlreadyActive",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AlreadyDeactivated",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "EmptyURI",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidPage",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotOwnerOfAgent",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SameOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SamePaymentDestination",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SamePrice",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WaitingPeriodNotOver",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroPrice",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "AgentDeactivated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "AgentReactivated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "payToAgentWallet",
+          "type": "bool"
+        }
+      ],
+      "name": "AgentRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "AgentTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "NonceIncremented",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "oldOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "OwnerTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "currentOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waitUntil",
+          "type": "uint256"
+        }
+      ],
+      "name": "OwnershipTransferStarted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "payToAgentWallet",
+          "type": "bool"
+        }
+      ],
+      "name": "PaymentDestinationUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "PriceUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "WAITING_PERIOD",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "acceptOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "agents",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "nonce",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "payToAgentWallet",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "allAgentIds",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "deactivateAgent",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getAgent",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "agentId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "payToAgentWallet",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct IAgentMarketplace.Agent",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getAgentFullDetails",
+      "outputs": [
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "agentId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "price",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "nonce",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "payToAgentWallet",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "active",
+                  "type": "bool"
+                }
+              ],
+              "internalType": "struct IAgentMarketplace.Agent",
+              "name": "agent",
+              "type": "tuple"
+            },
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "uri",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct IAgentMarketplace.AgentFullDetails",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "agentOwner",
+          "type": "address"
+        }
+      ],
+      "name": "getAgentsByOwner",
+      "outputs": [
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "agentId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "price",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "nonce",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "payToAgentWallet",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "active",
+                  "type": "bool"
+                }
+              ],
+              "internalType": "struct IAgentMarketplace.Agent",
+              "name": "agent",
+              "type": "tuple"
+            },
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "uri",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct IAgentMarketplace.AgentFullDetails[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "page",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "count",
+          "type": "uint256"
+        }
+      ],
+      "name": "getAgentsFullPaginated",
+      "outputs": [
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "agentId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "price",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "nonce",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "payToAgentWallet",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "active",
+                  "type": "bool"
+                }
+              ],
+              "internalType": "struct IAgentMarketplace.Agent",
+              "name": "agent",
+              "type": "tuple"
+            },
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "string",
+              "name": "uri",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct IAgentMarketplace.AgentFullDetails[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "identityRegistry",
+      "outputs": [
+        {
+          "internalType": "contract IIdentityRegistry",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "incrementNonce",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "name": "onERC721Received",
+      "outputs": [
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingOwner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "reactivateAgent",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "agentURI",
+          "type": "string"
+        },
+        {
+          "internalType": "bool",
+          "name": "payToAgentWallet",
+          "type": "bool"
+        }
+      ],
+      "name": "register",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "price",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "payToAgentWallet",
+          "type": "bool"
+        }
+      ],
+      "name": "register",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "tokenContract",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "rescueERC20",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "nftContract",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "rescueERC721",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "newPayToAgentWallet",
+          "type": "bool"
+        }
+      ],
+      "name": "setPaymentDestination",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "syncAgentOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferAgent",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "newPrice",
+          "type": "uint256"
+        }
+      ],
+      "name": "updatePrice",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "waitOwnerUntil",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x1bf2fc4914e9d5769a5c2131d1d1e31af172afb2276eddea18302a29667c51d6",
+  "receipt": {
+    "to": null,
+    "from": "0x80e517f0FA43F47a79F38B16E43C583761e8c457",
+    "contractAddress": "0xa4a2555f28C21AC7c28B3f34356D8Ff3a634A51b",
+    "transactionIndex": 9,
+    "gasUsed": "1712419",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x970b0d149ea785051fa594b9fbf8e2f1f37579168e95d537d13c0d646abe47d6",
+    "transactionHash": "0x1bf2fc4914e9d5769a5c2131d1d1e31af172afb2276eddea18302a29667c51d6",
+    "logs": [],
+    "blockNumber": 43806980,
+    "cumulativeGasUsed": "3595673",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "20f4e0478eef7a9cc2d93313f1e8a9a7",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.35+commit.47b9dedd\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_identityRegistry\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AgentNotFoundInMarketplace\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"AlreadyActive\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"AlreadyDeactivated\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"EmptyURI\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidPage\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotOwner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotOwnerOfAgent\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SameOwner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SamePaymentDestination\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SamePrice\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"WaitingPeriodNotOver\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroPrice\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"AgentDeactivated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"AgentReactivated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"}],\"name\":\"AgentRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"}],\"name\":\"AgentTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newNonce\",\"type\":\"uint256\"}],\"name\":\"NonceIncremented\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"OwnerTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"currentOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"waitUntil\",\"type\":\"uint256\"}],\"name\":\"OwnershipTransferStarted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"}],\"name\":\"PaymentDestinationUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"oldPrice\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newPrice\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"PriceUpdated\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"WAITING_PERIOD\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"acceptOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"agents\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"allAgentIds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"deactivateAgent\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"getAgent\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"internalType\":\"struct IAgentMarketplace.Agent\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"getAgentFullDetails\",\"outputs\":[{\"components\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"internalType\":\"struct IAgentMarketplace.Agent\",\"name\":\"agent\",\"type\":\"tuple\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"struct IAgentMarketplace.AgentFullDetails\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"agentOwner\",\"type\":\"address\"}],\"name\":\"getAgentsByOwner\",\"outputs\":[{\"components\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"internalType\":\"struct IAgentMarketplace.Agent\",\"name\":\"agent\",\"type\":\"tuple\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"struct IAgentMarketplace.AgentFullDetails[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"page\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"count\",\"type\":\"uint256\"}],\"name\":\"getAgentsFullPaginated\",\"outputs\":[{\"components\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"internalType\":\"struct IAgentMarketplace.Agent\",\"name\":\"agent\",\"type\":\"tuple\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"struct IAgentMarketplace.AgentFullDetails[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"identityRegistry\",\"outputs\":[{\"internalType\":\"contract IIdentityRegistry\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"incrementNonce\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC721Received\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pendingOwner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"reactivateAgent\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"agentURI\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"price\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"payToAgentWallet\",\"type\":\"bool\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenContract\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"rescueERC20\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"nftContract\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"rescueERC721\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"newPayToAgentWallet\",\"type\":\"bool\"}],\"name\":\"setPaymentDestination\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"syncAgentOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferAgent\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"newPrice\",\"type\":\"uint256\"}],\"name\":\"updatePrice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"waitOwnerUntil\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"incrementNonce(uint256)\":{\"details\":\"Only the current agent owner (per the IdentityRegistry) may call this.\"},\"onERC721Received(address,address,uint256,bytes)\":{\"details\":\"See {IERC721Receiver-onERC721Received}. Always returns `IERC721Receiver.onERC721Received.selector`.\"}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"getAgentsByOwner(address)\":{\"notice\":\"Returns the list of agents owned by a specific address.\"},\"incrementNonce(uint256)\":{\"notice\":\"Increments the agent's nonce, rotating its derived API key.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/AgentMarketplace.sol\":\"AgentMarketplace\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC20/IERC20.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Interface of the ERC20 standard as defined in the EIP.\\n */\\ninterface IERC20 {\\n    /**\\n     * @dev Emitted when `value` tokens are moved from one account (`from`) to\\n     * another (`to`).\\n     *\\n     * Note that `value` may be zero.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 value);\\n\\n    /**\\n     * @dev Emitted when the allowance of a `spender` for an `owner` is set by\\n     * a call to {approve}. `value` is the new allowance.\\n     */\\n    event Approval(address indexed owner, address indexed spender, uint256 value);\\n\\n    /**\\n     * @dev Returns the value of tokens in existence.\\n     */\\n    function totalSupply() external view returns (uint256);\\n\\n    /**\\n     * @dev Returns the value of tokens owned by `account`.\\n     */\\n    function balanceOf(address account) external view returns (uint256);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from the caller's account to `to`.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transfer(address to, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Returns the remaining number of tokens that `spender` will be\\n     * allowed to spend on behalf of `owner` through {transferFrom}. This is\\n     * zero by default.\\n     *\\n     * This value changes when {approve} or {transferFrom} are called.\\n     */\\n    function allowance(address owner, address spender) external view returns (uint256);\\n\\n    /**\\n     * @dev Sets a `value` amount of tokens as the allowance of `spender` over the\\n     * caller's tokens.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * IMPORTANT: Beware that changing an allowance with this method brings the risk\\n     * that someone may use both the old and the new allowance by unfortunate\\n     * transaction ordering. One possible solution to mitigate this race\\n     * condition is to first reduce the spender's allowance to 0 and set the\\n     * desired value afterwards:\\n     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address spender, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from `from` to `to` using the\\n     * allowance mechanism. `value` is then deducted from the caller's\\n     * allowance.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(address from, address to, uint256 value) external returns (bool);\\n}\\n\",\"keccak256\":\"0xc6a8ff0ea489379b61faa647490411b80102578440ab9d84e9a957cc12164e70\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC721/IERC721.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC721/IERC721.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC165} from \\\"../../utils/introspection/IERC165.sol\\\";\\n\\n/**\\n * @dev Required interface of an ERC721 compliant contract.\\n */\\ninterface IERC721 is IERC165 {\\n    /**\\n     * @dev Emitted when `tokenId` token is transferred from `from` to `to`.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);\\n\\n    /**\\n     * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.\\n     */\\n    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);\\n\\n    /**\\n     * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.\\n     */\\n    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);\\n\\n    /**\\n     * @dev Returns the number of tokens in ``owner``'s account.\\n     */\\n    function balanceOf(address owner) external view returns (uint256 balance);\\n\\n    /**\\n     * @dev Returns the owner of the `tokenId` token.\\n     *\\n     * Requirements:\\n     *\\n     * - `tokenId` must exist.\\n     */\\n    function ownerOf(uint256 tokenId) external view returns (address owner);\\n\\n    /**\\n     * @dev Safely transfers `tokenId` token from `from` to `to`.\\n     *\\n     * Requirements:\\n     *\\n     * - `from` cannot be the zero address.\\n     * - `to` cannot be the zero address.\\n     * - `tokenId` token must exist and be owned by `from`.\\n     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.\\n     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon\\n     *   a safe transfer.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;\\n\\n    /**\\n     * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients\\n     * are aware of the ERC721 protocol to prevent tokens from being forever locked.\\n     *\\n     * Requirements:\\n     *\\n     * - `from` cannot be the zero address.\\n     * - `to` cannot be the zero address.\\n     * - `tokenId` token must exist and be owned by `from`.\\n     * - If the caller is not `from`, it must have been allowed to move this token by either {approve} or\\n     *   {setApprovalForAll}.\\n     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon\\n     *   a safe transfer.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function safeTransferFrom(address from, address to, uint256 tokenId) external;\\n\\n    /**\\n     * @dev Transfers `tokenId` token from `from` to `to`.\\n     *\\n     * WARNING: Note that the caller is responsible to confirm that the recipient is capable of receiving ERC721\\n     * or else they may be permanently lost. Usage of {safeTransferFrom} prevents loss, though the caller must\\n     * understand this adds an external call which potentially creates a reentrancy vulnerability.\\n     *\\n     * Requirements:\\n     *\\n     * - `from` cannot be the zero address.\\n     * - `to` cannot be the zero address.\\n     * - `tokenId` token must be owned by `from`.\\n     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(address from, address to, uint256 tokenId) external;\\n\\n    /**\\n     * @dev Gives permission to `to` to transfer `tokenId` token to another account.\\n     * The approval is cleared when the token is transferred.\\n     *\\n     * Only a single account can be approved at a time, so approving the zero address clears previous approvals.\\n     *\\n     * Requirements:\\n     *\\n     * - The caller must own the token or be an approved operator.\\n     * - `tokenId` must exist.\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address to, uint256 tokenId) external;\\n\\n    /**\\n     * @dev Approve or remove `operator` as an operator for the caller.\\n     * Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.\\n     *\\n     * Requirements:\\n     *\\n     * - The `operator` cannot be the address zero.\\n     *\\n     * Emits an {ApprovalForAll} event.\\n     */\\n    function setApprovalForAll(address operator, bool approved) external;\\n\\n    /**\\n     * @dev Returns the account approved for `tokenId` token.\\n     *\\n     * Requirements:\\n     *\\n     * - `tokenId` must exist.\\n     */\\n    function getApproved(uint256 tokenId) external view returns (address operator);\\n\\n    /**\\n     * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.\\n     *\\n     * See {setApprovalForAll}\\n     */\\n    function isApprovedForAll(address owner, address operator) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x5ef46daa3b58ef2702279d514780316efaa952915ee1aa3396f041ee2982b0b4\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC721/IERC721Receiver.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @title ERC721 token receiver interface\\n * @dev Interface for any contract that wants to support safeTransfers\\n * from ERC721 asset contracts.\\n */\\ninterface IERC721Receiver {\\n    /**\\n     * @dev Whenever an {IERC721} `tokenId` token is transferred to this contract via {IERC721-safeTransferFrom}\\n     * by `operator` from `from`, this function is called.\\n     *\\n     * It must return its Solidity selector to confirm the token transfer.\\n     * If any other value is returned or the interface is not implemented by the recipient, the transfer will be\\n     * reverted.\\n     *\\n     * The selector can be obtained in Solidity with `IERC721Receiver.onERC721Received.selector`.\\n     */\\n    function onERC721Received(\\n        address operator,\\n        address from,\\n        uint256 tokenId,\\n        bytes calldata data\\n    ) external returns (bytes4);\\n}\\n\",\"keccak256\":\"0x7f7a26306c79a65fb8b3b6c757cd74660c532cd8a02e165488e30027dd34ca49\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC721/extensions/IERC721Metadata.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC721} from \\\"../IERC721.sol\\\";\\n\\n/**\\n * @title ERC-721 Non-Fungible Token Standard, optional metadata extension\\n * @dev See https://eips.ethereum.org/EIPS/eip-721\\n */\\ninterface IERC721Metadata is IERC721 {\\n    /**\\n     * @dev Returns the token collection name.\\n     */\\n    function name() external view returns (string memory);\\n\\n    /**\\n     * @dev Returns the token collection symbol.\\n     */\\n    function symbol() external view returns (string memory);\\n\\n    /**\\n     * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.\\n     */\\n    function tokenURI(uint256 tokenId) external view returns (string memory);\\n}\\n\",\"keccak256\":\"0x37d1aaaa5a2908a09e9dcf56a26ddf762ecf295afb5964695937344fc6802ce1\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC721/utils/ERC721Holder.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC721Receiver} from \\\"../IERC721Receiver.sol\\\";\\n\\n/**\\n * @dev Implementation of the {IERC721Receiver} interface.\\n *\\n * Accepts all token transfers.\\n * Make sure the contract is able to use its token with {IERC721-safeTransferFrom}, {IERC721-approve} or\\n * {IERC721-setApprovalForAll}.\\n */\\nabstract contract ERC721Holder is IERC721Receiver {\\n    /**\\n     * @dev See {IERC721Receiver-onERC721Received}.\\n     *\\n     * Always returns `IERC721Receiver.onERC721Received.selector`.\\n     */\\n    function onERC721Received(address, address, uint256, bytes memory) public virtual returns (bytes4) {\\n        return this.onERC721Received.selector;\\n    }\\n}\\n\",\"keccak256\":\"0xaad20f8713b5cd98114278482d5d91b9758f9727048527d582e8e88fd4901fd8\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (utils/introspection/IERC165.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Interface of the ERC165 standard, as defined in the\\n * https://eips.ethereum.org/EIPS/eip-165[EIP].\\n *\\n * Implementers can declare support of contract interfaces, which can then be\\n * queried by others ({ERC165Checker}).\\n *\\n * For an implementation, see {ERC165}.\\n */\\ninterface IERC165 {\\n    /**\\n     * @dev Returns true if this contract implements the interface defined by\\n     * `interfaceId`. See the corresponding\\n     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]\\n     * to learn more about how these ids are created.\\n     *\\n     * This function call must use less than 30 000 gas.\\n     */\\n    function supportsInterface(bytes4 interfaceId) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x4296879f55019b23e135000eb36896057e7101fb7fb859c5ef690cf14643757b\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/structs/EnumerableSet.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (utils/structs/EnumerableSet.sol)\\n// This file was procedurally generated from scripts/generate/templates/EnumerableSet.js.\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Library for managing\\n * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive\\n * types.\\n *\\n * Sets have the following properties:\\n *\\n * - Elements are added, removed, and checked for existence in constant time\\n * (O(1)).\\n * - Elements are enumerated in O(n). No guarantees are made on the ordering.\\n *\\n * ```solidity\\n * contract Example {\\n *     // Add the library methods\\n *     using EnumerableSet for EnumerableSet.AddressSet;\\n *\\n *     // Declare a set state variable\\n *     EnumerableSet.AddressSet private mySet;\\n * }\\n * ```\\n *\\n * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)\\n * and `uint256` (`UintSet`) are supported.\\n *\\n * [WARNING]\\n * ====\\n * Trying to delete such a structure from storage will likely result in data corruption, rendering the structure\\n * unusable.\\n * See https://github.com/ethereum/solidity/pull/11843[ethereum/solidity#11843] for more info.\\n *\\n * In order to clean an EnumerableSet, you can either remove all elements one by one or create a fresh instance using an\\n * array of EnumerableSet.\\n * ====\\n */\\nlibrary EnumerableSet {\\n    // To implement this library for multiple types with as little code\\n    // repetition as possible, we write it in terms of a generic Set type with\\n    // bytes32 values.\\n    // The Set implementation uses private functions, and user-facing\\n    // implementations (such as AddressSet) are just wrappers around the\\n    // underlying Set.\\n    // This means that we can only create new EnumerableSets for types that fit\\n    // in bytes32.\\n\\n    struct Set {\\n        // Storage of set values\\n        bytes32[] _values;\\n        // Position is the index of the value in the `values` array plus 1.\\n        // Position 0 is used to mean a value is not in the set.\\n        mapping(bytes32 value => uint256) _positions;\\n    }\\n\\n    /**\\n     * @dev Add a value to a set. O(1).\\n     *\\n     * Returns true if the value was added to the set, that is if it was not\\n     * already present.\\n     */\\n    function _add(Set storage set, bytes32 value) private returns (bool) {\\n        if (!_contains(set, value)) {\\n            set._values.push(value);\\n            // The value is stored at length-1, but we add 1 to all indexes\\n            // and use 0 as a sentinel value\\n            set._positions[value] = set._values.length;\\n            return true;\\n        } else {\\n            return false;\\n        }\\n    }\\n\\n    /**\\n     * @dev Removes a value from a set. O(1).\\n     *\\n     * Returns true if the value was removed from the set, that is if it was\\n     * present.\\n     */\\n    function _remove(Set storage set, bytes32 value) private returns (bool) {\\n        // We cache the value's position to prevent multiple reads from the same storage slot\\n        uint256 position = set._positions[value];\\n\\n        if (position != 0) {\\n            // Equivalent to contains(set, value)\\n            // To delete an element from the _values array in O(1), we swap the element to delete with the last one in\\n            // the array, and then remove the last element (sometimes called as 'swap and pop').\\n            // This modifies the order of the array, as noted in {at}.\\n\\n            uint256 valueIndex = position - 1;\\n            uint256 lastIndex = set._values.length - 1;\\n\\n            if (valueIndex != lastIndex) {\\n                bytes32 lastValue = set._values[lastIndex];\\n\\n                // Move the lastValue to the index where the value to delete is\\n                set._values[valueIndex] = lastValue;\\n                // Update the tracked position of the lastValue (that was just moved)\\n                set._positions[lastValue] = position;\\n            }\\n\\n            // Delete the slot where the moved value was stored\\n            set._values.pop();\\n\\n            // Delete the tracked position for the deleted slot\\n            delete set._positions[value];\\n\\n            return true;\\n        } else {\\n            return false;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns true if the value is in the set. O(1).\\n     */\\n    function _contains(Set storage set, bytes32 value) private view returns (bool) {\\n        return set._positions[value] != 0;\\n    }\\n\\n    /**\\n     * @dev Returns the number of values on the set. O(1).\\n     */\\n    function _length(Set storage set) private view returns (uint256) {\\n        return set._values.length;\\n    }\\n\\n    /**\\n     * @dev Returns the value stored at position `index` in the set. O(1).\\n     *\\n     * Note that there are no guarantees on the ordering of values inside the\\n     * array, and it may change when more values are added or removed.\\n     *\\n     * Requirements:\\n     *\\n     * - `index` must be strictly less than {length}.\\n     */\\n    function _at(Set storage set, uint256 index) private view returns (bytes32) {\\n        return set._values[index];\\n    }\\n\\n    /**\\n     * @dev Return the entire set in an array\\n     *\\n     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed\\n     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that\\n     * this function has an unbounded cost, and using it as part of a state-changing function may render the function\\n     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.\\n     */\\n    function _values(Set storage set) private view returns (bytes32[] memory) {\\n        return set._values;\\n    }\\n\\n    // Bytes32Set\\n\\n    struct Bytes32Set {\\n        Set _inner;\\n    }\\n\\n    /**\\n     * @dev Add a value to a set. O(1).\\n     *\\n     * Returns true if the value was added to the set, that is if it was not\\n     * already present.\\n     */\\n    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {\\n        return _add(set._inner, value);\\n    }\\n\\n    /**\\n     * @dev Removes a value from a set. O(1).\\n     *\\n     * Returns true if the value was removed from the set, that is if it was\\n     * present.\\n     */\\n    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {\\n        return _remove(set._inner, value);\\n    }\\n\\n    /**\\n     * @dev Returns true if the value is in the set. O(1).\\n     */\\n    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {\\n        return _contains(set._inner, value);\\n    }\\n\\n    /**\\n     * @dev Returns the number of values in the set. O(1).\\n     */\\n    function length(Bytes32Set storage set) internal view returns (uint256) {\\n        return _length(set._inner);\\n    }\\n\\n    /**\\n     * @dev Returns the value stored at position `index` in the set. O(1).\\n     *\\n     * Note that there are no guarantees on the ordering of values inside the\\n     * array, and it may change when more values are added or removed.\\n     *\\n     * Requirements:\\n     *\\n     * - `index` must be strictly less than {length}.\\n     */\\n    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {\\n        return _at(set._inner, index);\\n    }\\n\\n    /**\\n     * @dev Return the entire set in an array\\n     *\\n     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed\\n     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that\\n     * this function has an unbounded cost, and using it as part of a state-changing function may render the function\\n     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.\\n     */\\n    function values(Bytes32Set storage set) internal view returns (bytes32[] memory) {\\n        bytes32[] memory store = _values(set._inner);\\n        bytes32[] memory result;\\n\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            result := store\\n        }\\n\\n        return result;\\n    }\\n\\n    // AddressSet\\n\\n    struct AddressSet {\\n        Set _inner;\\n    }\\n\\n    /**\\n     * @dev Add a value to a set. O(1).\\n     *\\n     * Returns true if the value was added to the set, that is if it was not\\n     * already present.\\n     */\\n    function add(AddressSet storage set, address value) internal returns (bool) {\\n        return _add(set._inner, bytes32(uint256(uint160(value))));\\n    }\\n\\n    /**\\n     * @dev Removes a value from a set. O(1).\\n     *\\n     * Returns true if the value was removed from the set, that is if it was\\n     * present.\\n     */\\n    function remove(AddressSet storage set, address value) internal returns (bool) {\\n        return _remove(set._inner, bytes32(uint256(uint160(value))));\\n    }\\n\\n    /**\\n     * @dev Returns true if the value is in the set. O(1).\\n     */\\n    function contains(AddressSet storage set, address value) internal view returns (bool) {\\n        return _contains(set._inner, bytes32(uint256(uint160(value))));\\n    }\\n\\n    /**\\n     * @dev Returns the number of values in the set. O(1).\\n     */\\n    function length(AddressSet storage set) internal view returns (uint256) {\\n        return _length(set._inner);\\n    }\\n\\n    /**\\n     * @dev Returns the value stored at position `index` in the set. O(1).\\n     *\\n     * Note that there are no guarantees on the ordering of values inside the\\n     * array, and it may change when more values are added or removed.\\n     *\\n     * Requirements:\\n     *\\n     * - `index` must be strictly less than {length}.\\n     */\\n    function at(AddressSet storage set, uint256 index) internal view returns (address) {\\n        return address(uint160(uint256(_at(set._inner, index))));\\n    }\\n\\n    /**\\n     * @dev Return the entire set in an array\\n     *\\n     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed\\n     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that\\n     * this function has an unbounded cost, and using it as part of a state-changing function may render the function\\n     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.\\n     */\\n    function values(AddressSet storage set) internal view returns (address[] memory) {\\n        bytes32[] memory store = _values(set._inner);\\n        address[] memory result;\\n\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            result := store\\n        }\\n\\n        return result;\\n    }\\n\\n    // UintSet\\n\\n    struct UintSet {\\n        Set _inner;\\n    }\\n\\n    /**\\n     * @dev Add a value to a set. O(1).\\n     *\\n     * Returns true if the value was added to the set, that is if it was not\\n     * already present.\\n     */\\n    function add(UintSet storage set, uint256 value) internal returns (bool) {\\n        return _add(set._inner, bytes32(value));\\n    }\\n\\n    /**\\n     * @dev Removes a value from a set. O(1).\\n     *\\n     * Returns true if the value was removed from the set, that is if it was\\n     * present.\\n     */\\n    function remove(UintSet storage set, uint256 value) internal returns (bool) {\\n        return _remove(set._inner, bytes32(value));\\n    }\\n\\n    /**\\n     * @dev Returns true if the value is in the set. O(1).\\n     */\\n    function contains(UintSet storage set, uint256 value) internal view returns (bool) {\\n        return _contains(set._inner, bytes32(value));\\n    }\\n\\n    /**\\n     * @dev Returns the number of values in the set. O(1).\\n     */\\n    function length(UintSet storage set) internal view returns (uint256) {\\n        return _length(set._inner);\\n    }\\n\\n    /**\\n     * @dev Returns the value stored at position `index` in the set. O(1).\\n     *\\n     * Note that there are no guarantees on the ordering of values inside the\\n     * array, and it may change when more values are added or removed.\\n     *\\n     * Requirements:\\n     *\\n     * - `index` must be strictly less than {length}.\\n     */\\n    function at(UintSet storage set, uint256 index) internal view returns (uint256) {\\n        return uint256(_at(set._inner, index));\\n    }\\n\\n    /**\\n     * @dev Return the entire set in an array\\n     *\\n     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed\\n     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that\\n     * this function has an unbounded cost, and using it as part of a state-changing function may render the function\\n     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.\\n     */\\n    function values(UintSet storage set) internal view returns (uint256[] memory) {\\n        bytes32[] memory store = _values(set._inner);\\n        uint256[] memory result;\\n\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            result := store\\n        }\\n\\n        return result;\\n    }\\n}\\n\",\"keccak256\":\"0x86c1470cbfd878491e5de030072b647352d36bd27122cffb928970b1945282aa\",\"license\":\"MIT\"},\"contracts/AgentMarketplace.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\nimport { ERC721Holder } from \\\"@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol\\\";\\nimport { IERC721 } from \\\"@openzeppelin/contracts/token/ERC721/IERC721.sol\\\";\\nimport { IERC20 } from \\\"@openzeppelin/contracts/token/ERC20/IERC20.sol\\\";\\nimport { EnumerableSet } from \\\"@openzeppelin/contracts/utils/structs/EnumerableSet.sol\\\";\\nimport { IIdentityRegistry } from \\\"./interfaces/IIdentityRegistry.sol\\\";\\nimport { IAgentMarketplace } from \\\"./interfaces/IAgentMarketplace.sol\\\";\\n\\ncontract AgentMarketplace is IAgentMarketplace, ERC721Holder {\\n    using EnumerableSet for EnumerableSet.UintSet;\\n\\n    address public owner;\\n    IIdentityRegistry public immutable identityRegistry;\\n\\n    mapping(uint256 => Agent) public agents;\\n    uint256[] public allAgentIds;\\n\\n    // EnumerableSet for efficient owner-based lookups\\n    mapping(address => EnumerableSet.UintSet) private _ownerAgents;\\n\\n    uint256 public constant WAITING_PERIOD = 7 days; // Waiting period to transfer ownership.\\n    address public pendingOwner;\\n    uint256 public waitOwnerUntil; // Timestamp from which the pending owner can accept ownership.\\n\\n    event AgentRegistered(uint256 indexed agentId, address indexed owner, uint256 price, bool payToAgentWallet);\\n    event AgentDeactivated(uint256 indexed agentId, uint256 time);\\n    event PriceUpdated(uint256 indexed agentId, uint256 oldPrice, uint256 newPrice, uint256 time);\\n    event AgentReactivated(uint256 indexed agentId, uint256 time);\\n    event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);\\n    event OwnershipTransferStarted(address indexed currentOwner, address indexed newOwner, uint256 waitUntil);\\n    event AgentTransferred(uint256 indexed agentId, address indexed from, address indexed to);\\n    event PaymentDestinationUpdated(uint256 indexed agentId, bool payToAgentWallet);\\n    event NonceIncremented(uint256 indexed agentId, uint256 newNonce);\\n\\n    error ZeroPrice();\\n    error EmptyURI();\\n    error AgentNotFoundInMarketplace();\\n    error ZeroAddress();\\n    error NotOwnerOfAgent();\\n    error AlreadyDeactivated();\\n    error SamePrice();\\n    error AlreadyActive();\\n    error InvalidPage();\\n    error NotOwner();\\n    error SameOwner();\\n    error SamePaymentDestination();\\n    error WaitingPeriodNotOver();\\n\\n    modifier onlyOwner() {\\n        if (msg.sender != owner) revert NotOwner();\\n        _;\\n    }\\n\\n    constructor(address _identityRegistry) {\\n        if (_identityRegistry == address(0)) revert ZeroAddress();\\n        identityRegistry = IIdentityRegistry(_identityRegistry);\\n        owner = msg.sender;\\n    }\\n\\n    // slither-disable-start reentrancy-benign,reentrancy-events\\n    function register(uint256 price, string memory agentURI, bool payToAgentWallet) external returns (uint256 agentId) {\\n        //cannot be <0 as it is uint and in this version of Solidity it would revert negative inputs as uints\\n        if (price == 0) revert ZeroPrice();\\n        if (bytes(agentURI).length == 0) revert EmptyURI();\\n        agentId = identityRegistry.register(agentURI);\\n\\n        agents[agentId] = Agent({\\n            owner: msg.sender,\\n            agentId: agentId,\\n            price: price,\\n            nonce: 0,\\n            payToAgentWallet: payToAgentWallet,\\n            active: true\\n        });\\n        allAgentIds.push(agentId);\\n        // slither-disable-next-line unused-return\\n        _ownerAgents[msg.sender].add(agentId);\\n        emit AgentRegistered(agentId, msg.sender, price, payToAgentWallet);\\n\\n        //As we are the owner currently we have to transfer the ownership to the msg.sender\\n        identityRegistry.safeTransferFrom(address(this), msg.sender, agentId);\\n    }\\n\\n    // Register an existing agent by ID\\n    function register(uint256 price, uint256 agentId, bool payToAgentWallet) external returns (uint256) {\\n        // Ensure not already registered\\n        if (agents[agentId].owner != address(0)) revert AlreadyActive();\\n        // Ensure caller owns the agent token\\n        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();\\n        if (price == 0) revert ZeroPrice();\\n        agents[agentId] = Agent({\\n            owner: msg.sender,\\n            agentId: agentId,\\n            price: price,\\n            nonce: 0,\\n            payToAgentWallet: payToAgentWallet,\\n            active: true\\n        });\\n        allAgentIds.push(agentId);\\n        // slither-disable-next-line unused-return\\n        _ownerAgents[msg.sender].add(agentId);\\n        emit AgentRegistered(agentId, msg.sender, price, payToAgentWallet);\\n        return agentId;\\n    }\\n\\n    function transferAgent(uint256 agentId, address newOwner) external {\\n        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();\\n        if (newOwner == address(0)) revert ZeroAddress();\\n\\n        address currentOwner = identityRegistry.ownerOf(agentId);\\n\\n        if (msg.sender != currentOwner) revert NotOwnerOfAgent();\\n        if (currentOwner == newOwner) revert SameOwner();\\n\\n        agents[agentId].owner = newOwner;\\n        // slither-disable-next-line unused-return\\n        _ownerAgents[currentOwner].remove(agentId);\\n        // slither-disable-next-line unused-return\\n        _ownerAgents[newOwner].add(agentId);\\n\\n        emit AgentTransferred(agentId, currentOwner, newOwner);\\n\\n        identityRegistry.safeTransferFrom(currentOwner, newOwner, agentId);\\n    }\\n\\n    function syncAgentOwnership(uint256 agentId) external {\\n        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();\\n\\n        address currentOwner = identityRegistry.ownerOf(agentId);\\n        address marketplaceRecordedOwner = agents[agentId].owner;\\n\\n        if (currentOwner == marketplaceRecordedOwner) revert SameOwner();\\n\\n        agents[agentId].owner = currentOwner;\\n        // slither-disable-next-line unused-return\\n        _ownerAgents[marketplaceRecordedOwner].remove(agentId);\\n        // slither-disable-next-line unused-return\\n        _ownerAgents[currentOwner].add(agentId);\\n\\n        emit AgentTransferred(agentId, marketplaceRecordedOwner, currentOwner);\\n    }\\n\\n    /// @notice Returns the list of agents owned by a specific address.\\n    function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory) {\\n        uint256[] memory agentIds = _ownerAgents[agentOwner].values();\\n        AgentFullDetails[] memory details = new AgentFullDetails[](agentIds.length);\\n        for (uint256 i = 0; i < agentIds.length; i++) {\\n            details[i] = getAgentFullDetails(agentIds[i]);\\n        }\\n        return details;\\n    }\\n\\n    // slither-disable-end reentrancy-benign,reentrancy-events\\n\\n    function deactivateAgent(uint256 agentId) external {\\n        Agent storage agent = agents[agentId];\\n        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();\\n        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();\\n        if (!agent.active) revert AlreadyDeactivated();\\n        agent.active = false;\\n        emit AgentDeactivated(agentId, block.timestamp);\\n    }\\n\\n    function reactivateAgent(uint256 agentId) external {\\n        Agent storage agent = agents[agentId];\\n        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();\\n        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();\\n        if (agent.active) revert AlreadyActive();\\n        agent.active = true;\\n        emit AgentReactivated(agentId, block.timestamp);\\n    }\\n\\n    function updatePrice(uint256 agentId, uint256 newPrice) external {\\n        Agent storage agent = agents[agentId];\\n        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();\\n        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();\\n        if (newPrice == 0) revert ZeroPrice();\\n        if (newPrice == agent.price) revert SamePrice();\\n        emit PriceUpdated(agentId, agent.price, newPrice, block.timestamp);\\n        agent.price = newPrice;\\n    }\\n\\n    function setPaymentDestination(uint256 agentId, bool newPayToAgentWallet) external {\\n        Agent storage agent = agents[agentId];\\n        if (agent.owner == address(0)) revert AgentNotFoundInMarketplace();\\n        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();\\n        if (agent.payToAgentWallet == newPayToAgentWallet) revert SamePaymentDestination();\\n        agent.payToAgentWallet = newPayToAgentWallet;\\n        emit PaymentDestinationUpdated(agentId, newPayToAgentWallet);\\n    }\\n\\n    /// @notice Increments the agent's nonce, rotating its derived API key.\\n    /// @dev Only the current agent owner (per the IdentityRegistry) may call this.\\n    function incrementNonce(uint256 agentId) external {\\n        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();\\n        if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotOwnerOfAgent();\\n        agents[agentId].nonce++;\\n        emit NonceIncremented(agentId, agents[agentId].nonce);\\n    }\\n\\n    function getAgent(uint256 agentId) public view returns (Agent memory) {\\n        if (agents[agentId].owner == address(0)) revert AgentNotFoundInMarketplace();\\n        return agents[agentId];\\n    }\\n\\n    // slither-disable-next-line calls-loop\\n    function getAgentFullDetails(uint256 agentId) public view returns (AgentFullDetails memory) {\\n        Agent memory agent = getAgent(agentId);\\n\\n        address agentOwner = address(0);\\n        try identityRegistry.ownerOf(agentId) returns (address o) {\\n            agentOwner = o;\\n        } catch {\\n            // Token burned or non-existent in the registry \\u2014 return inactive, zeroed-out record\\n            agent.active = false;\\n            return AgentFullDetails(agent, address(0), \\\"\\\");\\n        }\\n\\n        string memory uri = \\\"\\\";\\n        try identityRegistry.tokenURI(agentId) returns (string memory u) {\\n            uri = u;\\n        } catch {\\n            uri = \\\"\\\";\\n        }\\n\\n        return AgentFullDetails(agent, agentOwner, uri);\\n    }\\n\\n    function getAgentsFullPaginated(uint256 page, uint256 count) external view returns (AgentFullDetails[] memory) {\\n        if (page == 0) revert InvalidPage();\\n        if (count == 0) return new AgentFullDetails[](0);\\n\\n        uint256 totalAgents = allAgentIds.length;\\n        uint256 startIndex = (page - 1) * count;\\n\\n        if (startIndex >= totalAgents) revert InvalidPage();\\n\\n        uint256 endIndex = startIndex + count;\\n        if (endIndex > totalAgents) {\\n            endIndex = totalAgents;\\n        }\\n\\n        uint256 actualCount = endIndex - startIndex;\\n        AgentFullDetails[] memory res = new AgentFullDetails[](actualCount);\\n\\n        for (uint256 i = 0; i < actualCount; i++) {\\n            res[i] = getAgentFullDetails(allAgentIds[startIndex + i]);\\n        }\\n\\n        return res;\\n    }\\n\\n    //To transfer ownership of the marketplace there is a two-step verification. First the actual owner approves a new address and then this new//\\n    //address has to call acceptOwnership. this prevents commiting mistakes, and brings extra security in a crticial process. //\\n\\n    function transferOwnership(address newOwner) external onlyOwner {\\n        if (newOwner == owner) revert SameOwner();\\n        pendingOwner = newOwner;\\n        waitOwnerUntil = block.timestamp + WAITING_PERIOD;\\n        emit OwnershipTransferStarted(owner, newOwner, waitOwnerUntil);\\n    }\\n\\n    function acceptOwnership() external {\\n        if (msg.sender != pendingOwner) revert NotOwner();\\n        // slither-disable-next-line timestamp\\n        if (block.timestamp < waitOwnerUntil) revert WaitingPeriodNotOver();\\n        emit OwnerTransferred(owner, pendingOwner, block.timestamp);\\n        owner = pendingOwner;\\n        pendingOwner = address(0);\\n    }\\n\\n    function rescueERC721(address nftContract, uint256 tokenId) external onlyOwner {\\n        IERC721(nftContract).safeTransferFrom(address(this), msg.sender, tokenId);\\n    }\\n\\n    function rescueERC20(address tokenContract, uint256 amount) external onlyOwner {\\n        require(IERC20(tokenContract).transfer(msg.sender, amount));\\n    }\\n}\\n\",\"keccak256\":\"0xe5f8d23cf8151c4fc0cd038f2a765161676a31384c0661d0ef65c2fa6d555e54\",\"license\":\"MIT\"},\"contracts/interfaces/IAgentMarketplace.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\nimport { IIdentityRegistry } from \\\"./IIdentityRegistry.sol\\\";\\n\\ninterface IAgentMarketplace {\\n    struct Agent {\\n        address owner;\\n        uint256 agentId;\\n        uint256 price;\\n        uint256 nonce;\\n        bool payToAgentWallet;\\n        bool active;\\n    }\\n\\n    struct AgentFullDetails {\\n        Agent agent;\\n        address owner;\\n        string uri;\\n    }\\n\\n    function getAgent(uint256) external view returns (Agent memory);\\n    function getAgentFullDetails(uint256) external view returns (AgentFullDetails memory);\\n    function getAgentsFullPaginated(uint256 page, uint256 count) external view returns (AgentFullDetails[] memory);\\n    function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory);\\n    function identityRegistry() external view returns (IIdentityRegistry);\\n}\\n\",\"keccak256\":\"0xea99bb2e22d84c1516bade57febaf0ebd8c7740455f1ae1452a8420758b2ff4c\",\"license\":\"MIT\"},\"contracts/interfaces/IIdentityRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\nimport { IERC721Metadata } from \\\"@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol\\\";\\n\\n/**\\n * @title IIdentityRegistry\\n * @dev Interface for the ERC-8004 Identity Registry.\\n * It manages agent identities as portable and transferable ERC-721 tokens.\\n */\\ninterface IIdentityRegistry is IERC721Metadata {\\n    /**\\n     * @dev Metadata structure as defined in the source code.\\n     */\\n    struct MetadataEntry {\\n        string metadataKey;\\n        bytes metadataValue;\\n    }\\n\\n    // --- Events ---\\n\\n    event AgentRegistered(uint256 indexed agentId, address indexed owner);\\n    event AgentURIUpdated(uint256 indexed agentId, string uri);\\n    event MetadataUpdated(uint256 indexed agentId, string indexed key, bytes value);\\n    event AgentWalletUpdated(uint256 indexed agentId, address indexed newWallet);\\n\\n    // --- Registration Methods (The 3 Variants) ---\\n\\n    /**\\n     * @notice Basic registration. Mints an agent NFT to the caller.\\n     */\\n    function register() external returns (uint256 agentId);\\n\\n    /**\\n     * @notice Registers an agent and sets the initial agentURI (tokenURI).\\n     * @param uri The URI pointing to the agent's registration JSON file.\\n     */\\n    function register(string calldata uri) external returns (uint256 agentId);\\n\\n    /**\\n     * @notice Registers an agent, sets the URI, and initializes on-chain metadata.\\n     * @param uri The initial registration file URI.\\n     * @param metadata Initial metadata entries for the agent.\\n     */\\n    function register(string calldata uri, MetadataEntry[] calldata metadata) external returns (uint256 agentId);\\n\\n    // --- Agent URI Management ---\\n\\n    /**\\n     * @notice Updates the agent's registration file URI (tokenURI).\\n     */\\n    function setAgentURI(uint256 agentId, string calldata uri) external;\\n\\n    // --- Metadata Management ---\\n\\n    /**\\n     * @notice Retrieves the raw bytes value of a metadata key for an agent.\\n     */\\n    function getMetadata(uint256 agentId, string calldata metadataKey) external view returns (bytes memory);\\n\\n    /**\\n     * @notice Sets a single on-chain metadata value.\\n     */\\n    function setMetadata(uint256 agentId, string calldata metadataKey, bytes calldata metadataValue) external;\\n\\n    // --- Agent Wallet Management ---\\n\\n    /**\\n     * @notice Gets the verified wallet address associated with the agent.\\n     */\\n    function getAgentWallet(uint256 agentId) external view returns (address);\\n\\n    /**\\n     * @notice Updates the verified wallet using an EIP-712 or ERC-1271 signature.\\n     * @dev This wallet is cleared automatically upon NFT transfer.\\n     */\\n    function setAgentWallet(uint256 agentId, address newWallet, uint256 expiry, bytes calldata signature) external;\\n\\n    /**\\n     * @notice Manually removes the verified wallet association.\\n     */\\n    function unsetAgentWallet(uint256 agentId) external;\\n\\n    /**\\n     * @notice Returns the EIP-712 domain separator information.\\n     */\\n    function eip712Domain()\\n        external\\n        view\\n        returns (\\n            bytes1 fields,\\n            string memory name,\\n            string memory version,\\n            uint256 chainId,\\n            address verifyingContract,\\n            bytes32 salt,\\n            uint256[] memory extensions\\n        );\\n}\\n\",\"keccak256\":\"0x4ecaba38295fb82edf758c700b95dd873002e97ffe1c58e01835dcc0a05bb16e\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60a0346100db57601f611e8c38819003918201601f19168301916001600160401b038311848410176100e0578084926020946040528339810103126100db57516001600160a01b038116908190036100db5780156100ca57608052600080546001600160a01b03191633179055604051611d9590816100f78239608051818181610180015281816102c9015281816105cd015281816107d601528181610a9701528181610c7b01528181610efe01528181611273015281816112ef0152818161140901526118260152f35b63d92e233d60e01b60005260046000fd5b600080fd5b634e487b7160e01b600052604160045260246000fdfe608080604052600436101561001357600080fd5b600090813560e01c90816302783a11146113ac5750806311ba6b4a146112a2578063134e18f41461125d578063150b7a02146111f557806316e654cd146111c15780631ab6f888146110f75780631e5afc16146110cc578063285a0617146110ae5780632de5aaf714611043578063513856c814610fd2578063692f85f614610eb25780636f85c7e414610e9457806373213d6f14610c0657806379ba509714610b6c57806382367b2d14610a4d5780638cd4426d146109995780638da5cb5b1461097257806398be7c8d14610938578063b3a74f7114610775578063c24be7fb14610577578063d7981834146104cb578063e30c3978146104a2578063f2fde38b146103de578063f44109701461027d5763fd6103171461013457600080fd5b3461027a57602036600319011261027a5760043580825260016020526040822080546001600160a01b03161561026b576040516331a9108f60e11b8152600481018390526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa908115610260578491610231575b50336001600160a01b039091160361022257600401805460ff8160081c16610213576101009061ff0019161790557f0d64a69c9f9e791b623cc17fb28a10f0e4150d9f8721884411e4687d3f462bdd6020604051428152a280f35b637cdf305160e11b8452600484fd5b63132433d160e21b8352600483fd5b610253915060203d602011610259575b61024b8183611590565b810190611785565b386101b8565b503d610241565b6040513d86823e3d90fd5b638b74e58160e01b8352600483fd5b80fd5b503461027a57602036600319011261027a57600435808252600160205260408220546001600160a01b0316156103cf576040516331a9108f60e11b8152600481018290526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156103c45783916103a5575b50818352600160205260408320546001600160a01b039182169291169082821461039657808452600160205260408420836001600160601b0360a01b82541617905581845260036020526103588160408620611c8c565b50828452600360205261036e8160408620611c32565b507fd6ba5fac6fb963adac1793479c359f94fa1284132187bb1bd9302880a18a8fc38480a480f35b630a98f1f360e21b8452600484fd5b6103be915060203d6020116102595761024b8183611590565b38610301565b6040513d85823e3d90fd5b638b74e58160e01b8252600482fd5b503461027a57602036600319011261027a576103f8611516565b81546001600160a01b03169033829003610493576001600160a01b03169080821461048457816001600160601b0360a01b600454161760045562093a804201804211610470576020817f2ac05566ef5f778eb7c7dc3f0b38cff7ea0add92e735667d6f405cff3a132b7b92600555604051908152a380f35b634e487b7160e01b84526011600452602484fd5b630a98f1f360e21b8352600483fd5b6330cd747160e01b8352600483fd5b503461027a578060031936011261027a576004546040516001600160a01b039091168152602090f35b503461027a57604036600319011261027a576104e5611516565b81546001600160a01b031633036105685781906001600160a01b0316803b1561056557604051632142170760e11b8152306004820152336024808301919091523560448201529082908290818381606481015b03925af1801561055a576105495750f35b8161055391611590565b61027a5780f35b6040513d84823e3d90fd5b50fd5b6330cd747160e01b8252600482fd5b503461027a57606036600319011261027a57602435600435610597611502565b828452600160205260408420546001600160a01b0316610213576040516331a9108f60e11b8152600481018490526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa90811561076a57859161074b575b50336001600160a01b039091160361073c57811561072d577f3e8641fa8ffb83003907796bfb9f94f1074f311c8862f941c4bd9bada585698961072284926107088460406020996106f289835161065b81611542565b3381528d81018681528582019283526060820185815289151560808401908152600160a085018181528a89526020829052898920955186546001600160a01b039091166001600160a01b03199091161786559351908501559351600284015551600383015591516004909101805460ff191691151560ff16919091178155905b51815461ff00191690151560081b61ff0016179055565b6106fb83611bf3565b33815260038b5220611c32565b506040805195865290151560208601523394918291820190565b0390a3604051908152f35b634dfba02360e01b8452600484fd5b63132433d160e21b8452600484fd5b610764915060203d6020116102595761024b8183611590565b38610605565b6040513d87823e3d90fd5b503461027a57604036600319011261027a576004359061079361152c565b828252600160205260408220546001600160a01b0316156103cf576001600160a01b038116928315610929576040516331a9108f60e11b815260048101829052917f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316602084602481845afa93841561076a578594610908575b506001600160a01b03841693338590036108f9578685146108ea578596848752600160205260408720816001600160601b0360a01b82541617905585875260036020526108658560408920611c8c565b50808752600360205261087b8560408920611c32565b5060405195857fd6ba5fac6fb963adac1793479c359f94fa1284132187bb1bd9302880a18a8fc38980a4813b156108e657632142170760e11b85526001600160a01b039081166004860152909116602484015260448301919091528290829081838160648101610538565b8580fd5b630a98f1f360e21b8652600486fd5b63132433d160e21b8652600486fd5b61092291945060203d6020116102595761024b8183611590565b9238610815565b63d92e233d60e01b8352600483fd5b503461027a57602036600319011261027a576004359060025482101561027a5760206109638361173c565b90549060031b1c604051908152f35b503461027a578060031936011261027a57546040516001600160a01b039091168152602090f35b503461027a57604036600319011261027a576109b3611516565b81546001600160a01b031633036105685760405163a9059cbb60e01b81523360048201526024803590820152906020908290604490829086906001600160a01b03165af190811561055a578291610a0e575b501561027a5780f35b90506020813d602011610a45575b81610a2960209383611590565b81010312610a4157518015158103610a415738610a05565b5080fd5b3d9150610a1c565b503461027a57610a5c36611726565b81835260016020526040832080549192916001600160a01b031615610b5d576040516331a9108f60e11b8152600481018390526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa90811561076a578591610b3e575b50336001600160a01b039091160361073c57821561072d57600201908154808414610b2f5760607fc6d3da45896ce1bca9d198309a2dbeea3c73a991748f8d88d796ffa06029de9391604051908152856020820152426040820152a25580f35b632685e7c560e01b8552600485fd5b610b57915060203d6020116102595761024b8183611590565b38610acf565b638b74e58160e01b8452600484fd5b503461027a578060031936011261027a576004546001600160a01b03811633819003610493576005544210610bf757825460405142815282906001600160a01b038316907f3d31a89e4a3654a3fba36b07bef4af433bbf9e873f5b38e852c56f80d58e7d8c90602090a36001600160601b0360a01b161782556001600160601b0360a01b1660045580f35b630832f48360e21b8352600483fd5b503461027a57606036600319011261027a576004359060243567ffffffffffffffff8111610a415736602382011215610a4157610c4d9036906024816004013591016115ce565b91610c56611502565b8115610e8557835115610e76576040516379614c5f60e11b81526020600482018190527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031695919493929185908190610cbb906024830190611628565b038186895af19384156103c4578394610e1c575b507f3e8641fa8ffb83003907796bfb9f94f1074f311c8862f941c4bd9bada5856989610dae8592610d9086856106db6004604051610d0c81611542565b33815260208101848152604082018c81526060830191878352604060808501988b15158a5260a086019860018a5281526001602052209360018060a01b039060018060a01b03905116166001600160601b0360a01b8554161784555160018401555160028301555160038201550192511515839060ff801983541691151516179055565b610d9984611bf3565b33865260036020526107088460408820611c32565b0390a3823b1561027a57604051632142170760e11b8152306004820152336024820152604481018390529281908490606490829084905af1928315610e0f57602093610dff575b5050604051908152f35b81610e0991611590565b38610df5565b50604051903d90823e3d90fd5b9493506020853d602011610e6e575b81610e3860209383611590565b81010312610e6a57935192937f3e8641fa8ffb83003907796bfb9f94f1074f311c8862f941c4bd9bada5856989610ccf565b8280fd5b3d9150610e2b565b63683d806b60e11b8352600483fd5b634dfba02360e01b8352600483fd5b503461027a578060031936011261027a57602060405162093a808152f35b503461027a57602036600319011261027a57600435808252600160205260408220546001600160a01b0316156103cf576040516331a9108f60e11b8152600481018290526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156103c4578391610fb3575b50336001600160a01b0390911603610fa4578082526001602052604082206003018054600019811461047057600101905580825260016020527f6f10d0a0f810e2bbb2ab0cb8955175cab71e68792a4a5cbcc95ebd0da879561960206003604085200154604051908152a280f35b63132433d160e21b8252600482fd5b610fcc915060203d6020116102595761024b8183611590565b38610f36565b503461027a57602036600319011261027a57604060c091600435815260016020522060ff60018060a01b0382541691600181015490600281015460046003830154920154926040519586526020860152604085015260608401528181161515608084015260081c16151560a0820152f35b503461027a57602036600319011261027a5760c0611062600435611b59565b6110ac604051809260a08091600180831b03815116845260208101516020850152604081015160408501526060810151606085015260808101511515608085015201511515910152565bf35b503461027a578060031936011261027a576020600554604051908152f35b503461027a576110f36110e76110e136611726565b90611a57565b604051918291826116c6565b0390f35b503461027a57602036600319011261027a576001600160a01b03611119611516565b1681526003602052604081206040518082602082945493848152019085526020852092855b8181106111a857505061115392500382611590565b61115d81516119d0565b915b815181101561119a578061117e61117860019385611a20565b516117fc565b6111888286611a20565b526111938185611a20565b500161115f565b604051806110f385826116c6565b845483526001948501948694506020909301920161113e565b503461027a57602036600319011261027a576110f36111e16004356117fc565b60405191829160208352602083019061164d565b503461027a57608036600319011261027a5761120f611516565b5061121861152c565b5060643567ffffffffffffffff8111610a415736602382011215610a415761124a9036906024816004013591016115ce565b50604051630a85bd0160e11b8152602090f35b503461027a578060031936011261027a576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b503461027a57602036600319011261027a5760043580825260016020526040822080546001600160a01b03161561026b576040516331a9108f60e11b8152600481018390526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa90811561026057849161138d575b50336001600160a01b039091160361022257600401805460ff8160081c161561137e5761ff00191690557f0b69d5ec2a1fb8f6ccb495208da819a90a3ba49eabd4e1ff66ba3ad7425c0f3e6020604051428152a280f35b6305deafd960e41b8452600484fd5b6113a6915060203d6020116102595761024b8183611590565b38611327565b905034610a41576040366003190112610a415760043590602435801515918282036114fe5783855260016020526040852080549091906001600160a01b0316156114ef576331a9108f60e11b8152600481018590526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156114e45786916114c5575b50336001600160a01b03909116036114b6576004018260ff8254161515146114a7579161149d6020927f3846cb949f82f1d3a39e011b476f100f88bfc6962314894db2fade5b4b18ece3949060ff801983541691151516179055565b604051908152a280f35b635d9880db60e01b8552600485fd5b63132433d160e21b8552600485fd5b6114de915060203d6020116102595761024b8183611590565b38611441565b6040513d88823e3d90fd5b638b74e58160e01b8652600486fd5b8480fd5b60443590811515820361151157565b600080fd5b600435906001600160a01b038216820361151157565b602435906001600160a01b038216820361151157565b60c0810190811067ffffffffffffffff82111761155e57604052565b634e487b7160e01b600052604160045260246000fd5b6060810190811067ffffffffffffffff82111761155e57604052565b90601f8019910116810190811067ffffffffffffffff82111761155e57604052565b67ffffffffffffffff811161155e57601f01601f191660200190565b9291926115da826115b2565b916115e86040519384611590565b829481845281830111611511578281602093846000960137010152565b60005b8381106116185750506000910152565b8181015183820152602001611608565b9060209161164181518092818552858086019101611605565b601f01601f1916010190565b9061010060406116c39361169f84825160a08091600180831b03815116845260208101516020850152604081015160408501526060810151606085015260808101511515608085015201511515910152565b60208101516001600160a01b031660c0850152015160e08301829052910190611628565b90565b602081016020825282518091526040820191602060408360051b8301019401926000915b8383106116f957505050505090565b9091929394602080611717600193603f19868203018752895161164d565b970193019301919392906116ea565b6040906003190112611511576004359060243590565b60025481101561175757600260005260206000200190600090565b634e487b7160e01b600052603260045260246000fd5b80548210156117575760005260206000200190600090565b9081602091031261151157516001600160a01b03811681036115115790565b604051906117b182611542565b600060a0838281528260208201528260408201528260608201528260808201520152565b604051906117e282611574565b60606040836117ef6117a4565b8152600060208201520152565b6118046117d5565b5061180e81611b59565b6040516331a9108f60e11b81526004810183905290917f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031691602081602481865afa60009181611997575b506118a057505050600060a08201526040519061187d82611574565b815260006020820152604051611894602082611590565b60008152604082015290565b9160006020926040516118b38582611590565b8281525060246040518094819363c87b56dd60e01b835260048301525afa6000918161191d575b5061191757506040516118ed8282611590565b60008152915b6040519361190085611574565b84526001600160a01b031690830152604082015290565b916118f3565b90913d8082843e61192e8184611590565b8201918481840312610a415780519067ffffffffffffffff8211610e6a570182601f82011215610a4157805191611964836115b2565b936119726040519586611590565b83855286848401011161027a57509061199091858085019101611605565b90386118da565b6119b191925060203d6020116102595761024b8183611590565b9038611861565b67ffffffffffffffff811161155e5760051b60200190565b906119da826119b8565b6119e76040519182611590565b82815280926119f8601f19916119b8565b019060005b828110611a0957505050565b602090611a146117d5565b828285010152016119fd565b80518210156117575760209160051b010190565b91908201809211611a4157565b634e487b7160e01b600052601160045260246000fd5b908115611b0d578015611b1e57600254906000198301928311611a415780830292808404821490151715611a415781831015611b0d57611a979083611a34565b90808211611b05575b50818103908111611a4157611ab4816119d0565b9160005b828110611ac55750505090565b80611ae9611add611ad860019486611a34565b61173c565b90549060031b1c6117fc565b611af38287611a20565b52611afe8186611a20565b5001611ab8565b905038611aa0565b634f718ccb60e11b60005260046000fd5b50506040516000611b30602083611590565b81526000805b818110611b4257505090565b602090611b4d6117d5565b82828601015201611b36565b611b616117a4565b506000818152600160205260409020546001600160a01b031615611be2576000526001602052604060002060ff600460405192611b9d84611542565b80546001600160a01b0316845260018101546020850152600281015460408501526003810154606085015201548181161515608084015260081c16151560a082015290565b638b74e58160e01b60005260046000fd5b600254600160401b81101561155e57611c17816001611c2e9301600255600261176d565b819391549060031b91821b91600019901b19161790565b9055565b6001810190826000528160205260406000205415600014611c84578054600160401b81101561155e57611c6f611c1782600187940185558461176d565b90555491600052602052604060002055600190565b505050600090565b9060018201918160005282602052604060002054801515600014611d56576000198101818111611a41578254600019810191908211611a4157818103611d1f575b50505080548015611d09576000190190611ce7828261176d565b8154906000199060031b1b191690555560005260205260006040812055600190565b634e487b7160e01b600052603160045260246000fd5b611d3f611d2f611c17938661176d565b90549060031b1c9283928661176d565b905560005283602052604060002055388080611ccd565b5050505060009056fea2646970667358221220b03d359f56cdd5090110e355fe6abda0fb6f3c6ec0b8d1200ae855e0a63a9db364736f6c63430008230033",
+  "deployedBytecode": "0x608080604052600436101561001357600080fd5b600090813560e01c90816302783a11146113ac5750806311ba6b4a146112a2578063134e18f41461125d578063150b7a02146111f557806316e654cd146111c15780631ab6f888146110f75780631e5afc16146110cc578063285a0617146110ae5780632de5aaf714611043578063513856c814610fd2578063692f85f614610eb25780636f85c7e414610e9457806373213d6f14610c0657806379ba509714610b6c57806382367b2d14610a4d5780638cd4426d146109995780638da5cb5b1461097257806398be7c8d14610938578063b3a74f7114610775578063c24be7fb14610577578063d7981834146104cb578063e30c3978146104a2578063f2fde38b146103de578063f44109701461027d5763fd6103171461013457600080fd5b3461027a57602036600319011261027a5760043580825260016020526040822080546001600160a01b03161561026b576040516331a9108f60e11b8152600481018390526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa908115610260578491610231575b50336001600160a01b039091160361022257600401805460ff8160081c16610213576101009061ff0019161790557f0d64a69c9f9e791b623cc17fb28a10f0e4150d9f8721884411e4687d3f462bdd6020604051428152a280f35b637cdf305160e11b8452600484fd5b63132433d160e21b8352600483fd5b610253915060203d602011610259575b61024b8183611590565b810190611785565b386101b8565b503d610241565b6040513d86823e3d90fd5b638b74e58160e01b8352600483fd5b80fd5b503461027a57602036600319011261027a57600435808252600160205260408220546001600160a01b0316156103cf576040516331a9108f60e11b8152600481018290526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156103c45783916103a5575b50818352600160205260408320546001600160a01b039182169291169082821461039657808452600160205260408420836001600160601b0360a01b82541617905581845260036020526103588160408620611c8c565b50828452600360205261036e8160408620611c32565b507fd6ba5fac6fb963adac1793479c359f94fa1284132187bb1bd9302880a18a8fc38480a480f35b630a98f1f360e21b8452600484fd5b6103be915060203d6020116102595761024b8183611590565b38610301565b6040513d85823e3d90fd5b638b74e58160e01b8252600482fd5b503461027a57602036600319011261027a576103f8611516565b81546001600160a01b03169033829003610493576001600160a01b03169080821461048457816001600160601b0360a01b600454161760045562093a804201804211610470576020817f2ac05566ef5f778eb7c7dc3f0b38cff7ea0add92e735667d6f405cff3a132b7b92600555604051908152a380f35b634e487b7160e01b84526011600452602484fd5b630a98f1f360e21b8352600483fd5b6330cd747160e01b8352600483fd5b503461027a578060031936011261027a576004546040516001600160a01b039091168152602090f35b503461027a57604036600319011261027a576104e5611516565b81546001600160a01b031633036105685781906001600160a01b0316803b1561056557604051632142170760e11b8152306004820152336024808301919091523560448201529082908290818381606481015b03925af1801561055a576105495750f35b8161055391611590565b61027a5780f35b6040513d84823e3d90fd5b50fd5b6330cd747160e01b8252600482fd5b503461027a57606036600319011261027a57602435600435610597611502565b828452600160205260408420546001600160a01b0316610213576040516331a9108f60e11b8152600481018490526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa90811561076a57859161074b575b50336001600160a01b039091160361073c57811561072d577f3e8641fa8ffb83003907796bfb9f94f1074f311c8862f941c4bd9bada585698961072284926107088460406020996106f289835161065b81611542565b3381528d81018681528582019283526060820185815289151560808401908152600160a085018181528a89526020829052898920955186546001600160a01b039091166001600160a01b03199091161786559351908501559351600284015551600383015591516004909101805460ff191691151560ff16919091178155905b51815461ff00191690151560081b61ff0016179055565b6106fb83611bf3565b33815260038b5220611c32565b506040805195865290151560208601523394918291820190565b0390a3604051908152f35b634dfba02360e01b8452600484fd5b63132433d160e21b8452600484fd5b610764915060203d6020116102595761024b8183611590565b38610605565b6040513d87823e3d90fd5b503461027a57604036600319011261027a576004359061079361152c565b828252600160205260408220546001600160a01b0316156103cf576001600160a01b038116928315610929576040516331a9108f60e11b815260048101829052917f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316602084602481845afa93841561076a578594610908575b506001600160a01b03841693338590036108f9578685146108ea578596848752600160205260408720816001600160601b0360a01b82541617905585875260036020526108658560408920611c8c565b50808752600360205261087b8560408920611c32565b5060405195857fd6ba5fac6fb963adac1793479c359f94fa1284132187bb1bd9302880a18a8fc38980a4813b156108e657632142170760e11b85526001600160a01b039081166004860152909116602484015260448301919091528290829081838160648101610538565b8580fd5b630a98f1f360e21b8652600486fd5b63132433d160e21b8652600486fd5b61092291945060203d6020116102595761024b8183611590565b9238610815565b63d92e233d60e01b8352600483fd5b503461027a57602036600319011261027a576004359060025482101561027a5760206109638361173c565b90549060031b1c604051908152f35b503461027a578060031936011261027a57546040516001600160a01b039091168152602090f35b503461027a57604036600319011261027a576109b3611516565b81546001600160a01b031633036105685760405163a9059cbb60e01b81523360048201526024803590820152906020908290604490829086906001600160a01b03165af190811561055a578291610a0e575b501561027a5780f35b90506020813d602011610a45575b81610a2960209383611590565b81010312610a4157518015158103610a415738610a05565b5080fd5b3d9150610a1c565b503461027a57610a5c36611726565b81835260016020526040832080549192916001600160a01b031615610b5d576040516331a9108f60e11b8152600481018390526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa90811561076a578591610b3e575b50336001600160a01b039091160361073c57821561072d57600201908154808414610b2f5760607fc6d3da45896ce1bca9d198309a2dbeea3c73a991748f8d88d796ffa06029de9391604051908152856020820152426040820152a25580f35b632685e7c560e01b8552600485fd5b610b57915060203d6020116102595761024b8183611590565b38610acf565b638b74e58160e01b8452600484fd5b503461027a578060031936011261027a576004546001600160a01b03811633819003610493576005544210610bf757825460405142815282906001600160a01b038316907f3d31a89e4a3654a3fba36b07bef4af433bbf9e873f5b38e852c56f80d58e7d8c90602090a36001600160601b0360a01b161782556001600160601b0360a01b1660045580f35b630832f48360e21b8352600483fd5b503461027a57606036600319011261027a576004359060243567ffffffffffffffff8111610a415736602382011215610a4157610c4d9036906024816004013591016115ce565b91610c56611502565b8115610e8557835115610e76576040516379614c5f60e11b81526020600482018190527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031695919493929185908190610cbb906024830190611628565b038186895af19384156103c4578394610e1c575b507f3e8641fa8ffb83003907796bfb9f94f1074f311c8862f941c4bd9bada5856989610dae8592610d9086856106db6004604051610d0c81611542565b33815260208101848152604082018c81526060830191878352604060808501988b15158a5260a086019860018a5281526001602052209360018060a01b039060018060a01b03905116166001600160601b0360a01b8554161784555160018401555160028301555160038201550192511515839060ff801983541691151516179055565b610d9984611bf3565b33865260036020526107088460408820611c32565b0390a3823b1561027a57604051632142170760e11b8152306004820152336024820152604481018390529281908490606490829084905af1928315610e0f57602093610dff575b5050604051908152f35b81610e0991611590565b38610df5565b50604051903d90823e3d90fd5b9493506020853d602011610e6e575b81610e3860209383611590565b81010312610e6a57935192937f3e8641fa8ffb83003907796bfb9f94f1074f311c8862f941c4bd9bada5856989610ccf565b8280fd5b3d9150610e2b565b63683d806b60e11b8352600483fd5b634dfba02360e01b8352600483fd5b503461027a578060031936011261027a57602060405162093a808152f35b503461027a57602036600319011261027a57600435808252600160205260408220546001600160a01b0316156103cf576040516331a9108f60e11b8152600481018290526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156103c4578391610fb3575b50336001600160a01b0390911603610fa4578082526001602052604082206003018054600019811461047057600101905580825260016020527f6f10d0a0f810e2bbb2ab0cb8955175cab71e68792a4a5cbcc95ebd0da879561960206003604085200154604051908152a280f35b63132433d160e21b8252600482fd5b610fcc915060203d6020116102595761024b8183611590565b38610f36565b503461027a57602036600319011261027a57604060c091600435815260016020522060ff60018060a01b0382541691600181015490600281015460046003830154920154926040519586526020860152604085015260608401528181161515608084015260081c16151560a0820152f35b503461027a57602036600319011261027a5760c0611062600435611b59565b6110ac604051809260a08091600180831b03815116845260208101516020850152604081015160408501526060810151606085015260808101511515608085015201511515910152565bf35b503461027a578060031936011261027a576020600554604051908152f35b503461027a576110f36110e76110e136611726565b90611a57565b604051918291826116c6565b0390f35b503461027a57602036600319011261027a576001600160a01b03611119611516565b1681526003602052604081206040518082602082945493848152019085526020852092855b8181106111a857505061115392500382611590565b61115d81516119d0565b915b815181101561119a578061117e61117860019385611a20565b516117fc565b6111888286611a20565b526111938185611a20565b500161115f565b604051806110f385826116c6565b845483526001948501948694506020909301920161113e565b503461027a57602036600319011261027a576110f36111e16004356117fc565b60405191829160208352602083019061164d565b503461027a57608036600319011261027a5761120f611516565b5061121861152c565b5060643567ffffffffffffffff8111610a415736602382011215610a415761124a9036906024816004013591016115ce565b50604051630a85bd0160e11b8152602090f35b503461027a578060031936011261027a576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b503461027a57602036600319011261027a5760043580825260016020526040822080546001600160a01b03161561026b576040516331a9108f60e11b8152600481018390526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa90811561026057849161138d575b50336001600160a01b039091160361022257600401805460ff8160081c161561137e5761ff00191690557f0b69d5ec2a1fb8f6ccb495208da819a90a3ba49eabd4e1ff66ba3ad7425c0f3e6020604051428152a280f35b6305deafd960e41b8452600484fd5b6113a6915060203d6020116102595761024b8183611590565b38611327565b905034610a41576040366003190112610a415760043590602435801515918282036114fe5783855260016020526040852080549091906001600160a01b0316156114ef576331a9108f60e11b8152600481018590526020816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156114e45786916114c5575b50336001600160a01b03909116036114b6576004018260ff8254161515146114a7579161149d6020927f3846cb949f82f1d3a39e011b476f100f88bfc6962314894db2fade5b4b18ece3949060ff801983541691151516179055565b604051908152a280f35b635d9880db60e01b8552600485fd5b63132433d160e21b8552600485fd5b6114de915060203d6020116102595761024b8183611590565b38611441565b6040513d88823e3d90fd5b638b74e58160e01b8652600486fd5b8480fd5b60443590811515820361151157565b600080fd5b600435906001600160a01b038216820361151157565b602435906001600160a01b038216820361151157565b60c0810190811067ffffffffffffffff82111761155e57604052565b634e487b7160e01b600052604160045260246000fd5b6060810190811067ffffffffffffffff82111761155e57604052565b90601f8019910116810190811067ffffffffffffffff82111761155e57604052565b67ffffffffffffffff811161155e57601f01601f191660200190565b9291926115da826115b2565b916115e86040519384611590565b829481845281830111611511578281602093846000960137010152565b60005b8381106116185750506000910152565b8181015183820152602001611608565b9060209161164181518092818552858086019101611605565b601f01601f1916010190565b9061010060406116c39361169f84825160a08091600180831b03815116845260208101516020850152604081015160408501526060810151606085015260808101511515608085015201511515910152565b60208101516001600160a01b031660c0850152015160e08301829052910190611628565b90565b602081016020825282518091526040820191602060408360051b8301019401926000915b8383106116f957505050505090565b9091929394602080611717600193603f19868203018752895161164d565b970193019301919392906116ea565b6040906003190112611511576004359060243590565b60025481101561175757600260005260206000200190600090565b634e487b7160e01b600052603260045260246000fd5b80548210156117575760005260206000200190600090565b9081602091031261151157516001600160a01b03811681036115115790565b604051906117b182611542565b600060a0838281528260208201528260408201528260608201528260808201520152565b604051906117e282611574565b60606040836117ef6117a4565b8152600060208201520152565b6118046117d5565b5061180e81611b59565b6040516331a9108f60e11b81526004810183905290917f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031691602081602481865afa60009181611997575b506118a057505050600060a08201526040519061187d82611574565b815260006020820152604051611894602082611590565b60008152604082015290565b9160006020926040516118b38582611590565b8281525060246040518094819363c87b56dd60e01b835260048301525afa6000918161191d575b5061191757506040516118ed8282611590565b60008152915b6040519361190085611574565b84526001600160a01b031690830152604082015290565b916118f3565b90913d8082843e61192e8184611590565b8201918481840312610a415780519067ffffffffffffffff8211610e6a570182601f82011215610a4157805191611964836115b2565b936119726040519586611590565b83855286848401011161027a57509061199091858085019101611605565b90386118da565b6119b191925060203d6020116102595761024b8183611590565b9038611861565b67ffffffffffffffff811161155e5760051b60200190565b906119da826119b8565b6119e76040519182611590565b82815280926119f8601f19916119b8565b019060005b828110611a0957505050565b602090611a146117d5565b828285010152016119fd565b80518210156117575760209160051b010190565b91908201809211611a4157565b634e487b7160e01b600052601160045260246000fd5b908115611b0d578015611b1e57600254906000198301928311611a415780830292808404821490151715611a415781831015611b0d57611a979083611a34565b90808211611b05575b50818103908111611a4157611ab4816119d0565b9160005b828110611ac55750505090565b80611ae9611add611ad860019486611a34565b61173c565b90549060031b1c6117fc565b611af38287611a20565b52611afe8186611a20565b5001611ab8565b905038611aa0565b634f718ccb60e11b60005260046000fd5b50506040516000611b30602083611590565b81526000805b818110611b4257505090565b602090611b4d6117d5565b82828601015201611b36565b611b616117a4565b506000818152600160205260409020546001600160a01b031615611be2576000526001602052604060002060ff600460405192611b9d84611542565b80546001600160a01b0316845260018101546020850152600281015460408501526003810154606085015201548181161515608084015260081c16151560a082015290565b638b74e58160e01b60005260046000fd5b600254600160401b81101561155e57611c17816001611c2e9301600255600261176d565b819391549060031b91821b91600019901b19161790565b9055565b6001810190826000528160205260406000205415600014611c84578054600160401b81101561155e57611c6f611c1782600187940185558461176d565b90555491600052602052604060002055600190565b505050600090565b9060018201918160005282602052604060002054801515600014611d56576000198101818111611a41578254600019810191908211611a4157818103611d1f575b50505080548015611d09576000190190611ce7828261176d565b8154906000199060031b1b191690555560005260205260006040812055600190565b634e487b7160e01b600052603160045260246000fd5b611d3f611d2f611c17938661176d565b90549060031b1c9283928661176d565b905560005283602052604060002055388080611ccd565b5050505060009056fea2646970667358221220b03d359f56cdd5090110e355fe6abda0fb6f3c6ec0b8d1200ae855e0a63a9db364736f6c63430008230033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "incrementNonce(uint256)": {
+        "details": "Only the current agent owner (per the IdentityRegistry) may call this."
+      },
+      "onERC721Received(address,address,uint256,bytes)": {
+        "details": "See {IERC721Receiver-onERC721Received}. Always returns `IERC721Receiver.onERC721Received.selector`."
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "getAgentsByOwner(address)": {
+        "notice": "Returns the list of agents owned by a specific address."
+      },
+      "incrementNonce(uint256)": {
+        "notice": "Increments the agent's nonce, rotating its derived API key."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 3530,
+        "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+        "label": "owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 3538,
+        "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+        "label": "agents",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_uint256,t_struct(Agent)5721_storage)"
+      },
+      {
+        "astId": 3541,
+        "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+        "label": "allAgentIds",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_array(t_uint256)dyn_storage"
+      },
+      {
+        "astId": 3546,
+        "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+        "label": "_ownerAgents",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_mapping(t_address,t_struct(UintSet)3376_storage)"
+      },
+      {
+        "astId": 3551,
+        "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+        "label": "pendingOwner",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_address"
+      },
+      {
+        "astId": 3553,
+        "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+        "label": "waitOwnerUntil",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_uint256"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_array(t_bytes32)dyn_storage": {
+        "base": "t_bytes32",
+        "encoding": "dynamic_array",
+        "label": "bytes32[]",
+        "numberOfBytes": "32"
+      },
+      "t_array(t_uint256)dyn_storage": {
+        "base": "t_uint256",
+        "encoding": "dynamic_array",
+        "label": "uint256[]",
+        "numberOfBytes": "32"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_struct(UintSet)3376_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => struct EnumerableSet.UintSet)",
+        "numberOfBytes": "32",
+        "value": "t_struct(UintSet)3376_storage"
+      },
+      "t_mapping(t_bytes32,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_mapping(t_uint256,t_struct(Agent)5721_storage)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => struct IAgentMarketplace.Agent)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Agent)5721_storage"
+      },
+      "t_struct(Agent)5721_storage": {
+        "encoding": "inplace",
+        "label": "struct IAgentMarketplace.Agent",
+        "members": [
+          {
+            "astId": 5710,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "owner",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address"
+          },
+          {
+            "astId": 5712,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "agentId",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 5714,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "price",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 5716,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "nonce",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 5718,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "payToAgentWallet",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_bool"
+          },
+          {
+            "astId": 5720,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "active",
+            "offset": 1,
+            "slot": "4",
+            "type": "t_bool"
+          }
+        ],
+        "numberOfBytes": "160"
+      },
+      "t_struct(Set)2904_storage": {
+        "encoding": "inplace",
+        "label": "struct EnumerableSet.Set",
+        "members": [
+          {
+            "astId": 2899,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "_values",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_array(t_bytes32)dyn_storage"
+          },
+          {
+            "astId": 2903,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "_positions",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_bytes32,t_uint256)"
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "t_struct(UintSet)3376_storage": {
+        "encoding": "inplace",
+        "label": "struct EnumerableSet.UintSet",
+        "members": [
+          {
+            "astId": 3375,
+            "contract": "contracts/AgentMarketplace.sol:AgentMarketplace",
+            "label": "_inner",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(Set)2904_storage"
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

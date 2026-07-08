@@ -1,0 +1,976 @@
+{
+  "address": "0x2e1E0cc29Acb66A979a14E07Ac749d02Ee87145a",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_agentMarketplace",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_reputationRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_feeBps",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_treasury",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AgentNotActive",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "AgentNotFoundInMarketplace",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "FeeTooHigh",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InsufficientAmount",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAuthorization",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoFeesToWithdraw",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotRelayer",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PaymentAlreadyProcessed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PaymentNotLocked",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SameFeeBps",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SameOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WaitingPeriodNotOver",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "AgentEarningsWithdrawn",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldFeeBps",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newFeeBps",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeeBpsUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "tokenAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeesWithdrawn",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "oldOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "OwnerTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "currentOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "waitUntil",
+          "type": "uint256"
+        }
+      ],
+      "name": "OwnershipTransferStarted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "agentEarnings",
+          "type": "uint256"
+        }
+      ],
+      "name": "PaymentFinalized",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "client",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "agentEarnings",
+          "type": "uint256"
+        }
+      ],
+      "name": "PaymentLocked",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "client",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "refundedAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "feeRetained",
+          "type": "uint256"
+        }
+      ],
+      "name": "PaymentRefunded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newRelayer",
+          "type": "address"
+        }
+      ],
+      "name": "RelayerUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "ReputationFeedbackFailed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "oldTreasury",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newTreasury",
+          "type": "address"
+        }
+      ],
+      "name": "TreasuryUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "WAITING_PERIOD",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "acceptOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "agentBalances",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "agentMarketplace",
+      "outputs": [
+        {
+          "internalType": "contract IAgentMarketplace",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newTreasury",
+          "type": "address"
+        }
+      ],
+      "name": "changeTreasury",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "feeBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        }
+      ],
+      "name": "finalizePayment",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "client",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "validUntil",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "signature",
+          "type": "bytes"
+        }
+      ],
+      "name": "lockPayment",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "lockedPayments",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "client",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "agentEarnings",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingOwner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "processesNonces",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        }
+      ],
+      "name": "refundPayment",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "relayer",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "reputationRegistry",
+      "outputs": [
+        {
+          "internalType": "contract IReputationRegistry",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newRelayer",
+          "type": "address"
+        }
+      ],
+      "name": "setRelayer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "token",
+      "outputs": [
+        {
+          "internalType": "contract IUSDC",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalAgentLiabilities",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalLocked",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "treasury",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "newFeeBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateFeeBps",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "waitOwnerUntil",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "agentId",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdrawAgentEarnings",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdrawFees",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x793862e4fd1538c6ff454e6a682eed1fec656a692c4b1f2f68907327e583713d",
+  "receipt": {
+    "to": null,
+    "from": "0x80e517f0FA43F47a79F38B16E43C583761e8c457",
+    "contractAddress": "0x2e1E0cc29Acb66A979a14E07Ac749d02Ee87145a",
+    "transactionIndex": 166,
+    "gasUsed": "1440502",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "transactionHash": "0x793862e4fd1538c6ff454e6a682eed1fec656a692c4b1f2f68907327e583713d",
+    "logs": [],
+    "blockNumber": 48325051,
+    "cumulativeGasUsed": "21131466",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xa4a2555f28C21AC7c28B3f34356D8Ff3a634A51b",
+    "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    1000,
+    "0x80e517f0FA43F47a79F38B16E43C583761e8c457"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "20f4e0478eef7a9cc2d93313f1e8a9a7",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.35+commit.47b9dedd\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_agentMarketplace\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_reputationRegistry\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_feeBps\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_treasury\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AgentNotActive\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"AgentNotFoundInMarketplace\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"FeeTooHigh\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InsufficientAmount\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAuthorization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NoFeesToWithdraw\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotOwner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotRelayer\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"PaymentAlreadyProcessed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"PaymentNotLocked\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SameFeeBps\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SameOwner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TransferFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"WaitingPeriodNotOver\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"AgentEarningsWithdrawn\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"oldFeeBps\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newFeeBps\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"FeeBpsUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"FeesWithdrawn\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"OwnerTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"currentOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"waitUntil\",\"type\":\"uint256\"}],\"name\":\"OwnershipTransferStarted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"agentEarnings\",\"type\":\"uint256\"}],\"name\":\"PaymentFinalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"client\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"totalAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"agentEarnings\",\"type\":\"uint256\"}],\"name\":\"PaymentLocked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"client\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"refundedAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"feeRetained\",\"type\":\"uint256\"}],\"name\":\"PaymentRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newRelayer\",\"type\":\"address\"}],\"name\":\"RelayerUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"ReputationFeedbackFailed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldTreasury\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newTreasury\",\"type\":\"address\"}],\"name\":\"TreasuryUpdated\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"WAITING_PERIOD\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"acceptOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"agentBalances\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"agentMarketplace\",\"outputs\":[{\"internalType\":\"contract IAgentMarketplace\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newTreasury\",\"type\":\"address\"}],\"name\":\"changeTreasury\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"feeBps\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"}],\"name\":\"finalizePayment\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"client\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"validUntil\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"lockPayment\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"lockedPayments\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"client\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"totalAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"agentEarnings\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pendingOwner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"processesNonces\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"nonce\",\"type\":\"bytes32\"}],\"name\":\"refundPayment\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"relayer\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reputationRegistry\",\"outputs\":[{\"internalType\":\"contract IReputationRegistry\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newRelayer\",\"type\":\"address\"}],\"name\":\"setRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"token\",\"outputs\":[{\"internalType\":\"contract IUSDC\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"totalAgentLiabilities\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"totalLocked\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"treasury\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newFeeBps\",\"type\":\"uint256\"}],\"name\":\"updateFeeBps\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"waitOwnerUntil\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"agentId\",\"type\":\"uint256\"}],\"name\":\"withdrawAgentEarnings\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawFees\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/MarketplaceRouter.sol\":\"MarketplaceRouter\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/token/ERC721/IERC721.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC721/IERC721.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC165} from \\\"../../utils/introspection/IERC165.sol\\\";\\n\\n/**\\n * @dev Required interface of an ERC721 compliant contract.\\n */\\ninterface IERC721 is IERC165 {\\n    /**\\n     * @dev Emitted when `tokenId` token is transferred from `from` to `to`.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);\\n\\n    /**\\n     * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.\\n     */\\n    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);\\n\\n    /**\\n     * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.\\n     */\\n    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);\\n\\n    /**\\n     * @dev Returns the number of tokens in ``owner``'s account.\\n     */\\n    function balanceOf(address owner) external view returns (uint256 balance);\\n\\n    /**\\n     * @dev Returns the owner of the `tokenId` token.\\n     *\\n     * Requirements:\\n     *\\n     * - `tokenId` must exist.\\n     */\\n    function ownerOf(uint256 tokenId) external view returns (address owner);\\n\\n    /**\\n     * @dev Safely transfers `tokenId` token from `from` to `to`.\\n     *\\n     * Requirements:\\n     *\\n     * - `from` cannot be the zero address.\\n     * - `to` cannot be the zero address.\\n     * - `tokenId` token must exist and be owned by `from`.\\n     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.\\n     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon\\n     *   a safe transfer.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;\\n\\n    /**\\n     * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients\\n     * are aware of the ERC721 protocol to prevent tokens from being forever locked.\\n     *\\n     * Requirements:\\n     *\\n     * - `from` cannot be the zero address.\\n     * - `to` cannot be the zero address.\\n     * - `tokenId` token must exist and be owned by `from`.\\n     * - If the caller is not `from`, it must have been allowed to move this token by either {approve} or\\n     *   {setApprovalForAll}.\\n     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon\\n     *   a safe transfer.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function safeTransferFrom(address from, address to, uint256 tokenId) external;\\n\\n    /**\\n     * @dev Transfers `tokenId` token from `from` to `to`.\\n     *\\n     * WARNING: Note that the caller is responsible to confirm that the recipient is capable of receiving ERC721\\n     * or else they may be permanently lost. Usage of {safeTransferFrom} prevents loss, though the caller must\\n     * understand this adds an external call which potentially creates a reentrancy vulnerability.\\n     *\\n     * Requirements:\\n     *\\n     * - `from` cannot be the zero address.\\n     * - `to` cannot be the zero address.\\n     * - `tokenId` token must be owned by `from`.\\n     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(address from, address to, uint256 tokenId) external;\\n\\n    /**\\n     * @dev Gives permission to `to` to transfer `tokenId` token to another account.\\n     * The approval is cleared when the token is transferred.\\n     *\\n     * Only a single account can be approved at a time, so approving the zero address clears previous approvals.\\n     *\\n     * Requirements:\\n     *\\n     * - The caller must own the token or be an approved operator.\\n     * - `tokenId` must exist.\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address to, uint256 tokenId) external;\\n\\n    /**\\n     * @dev Approve or remove `operator` as an operator for the caller.\\n     * Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.\\n     *\\n     * Requirements:\\n     *\\n     * - The `operator` cannot be the address zero.\\n     *\\n     * Emits an {ApprovalForAll} event.\\n     */\\n    function setApprovalForAll(address operator, bool approved) external;\\n\\n    /**\\n     * @dev Returns the account approved for `tokenId` token.\\n     *\\n     * Requirements:\\n     *\\n     * - `tokenId` must exist.\\n     */\\n    function getApproved(uint256 tokenId) external view returns (address operator);\\n\\n    /**\\n     * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.\\n     *\\n     * See {setApprovalForAll}\\n     */\\n    function isApprovedForAll(address owner, address operator) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x5ef46daa3b58ef2702279d514780316efaa952915ee1aa3396f041ee2982b0b4\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (token/ERC721/extensions/IERC721Metadata.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC721} from \\\"../IERC721.sol\\\";\\n\\n/**\\n * @title ERC-721 Non-Fungible Token Standard, optional metadata extension\\n * @dev See https://eips.ethereum.org/EIPS/eip-721\\n */\\ninterface IERC721Metadata is IERC721 {\\n    /**\\n     * @dev Returns the token collection name.\\n     */\\n    function name() external view returns (string memory);\\n\\n    /**\\n     * @dev Returns the token collection symbol.\\n     */\\n    function symbol() external view returns (string memory);\\n\\n    /**\\n     * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.\\n     */\\n    function tokenURI(uint256 tokenId) external view returns (string memory);\\n}\\n\",\"keccak256\":\"0x37d1aaaa5a2908a09e9dcf56a26ddf762ecf295afb5964695937344fc6802ce1\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (utils/introspection/IERC165.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Interface of the ERC165 standard, as defined in the\\n * https://eips.ethereum.org/EIPS/eip-165[EIP].\\n *\\n * Implementers can declare support of contract interfaces, which can then be\\n * queried by others ({ERC165Checker}).\\n *\\n * For an implementation, see {ERC165}.\\n */\\ninterface IERC165 {\\n    /**\\n     * @dev Returns true if this contract implements the interface defined by\\n     * `interfaceId`. See the corresponding\\n     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]\\n     * to learn more about how these ids are created.\\n     *\\n     * This function call must use less than 30 000 gas.\\n     */\\n    function supportsInterface(bytes4 interfaceId) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x4296879f55019b23e135000eb36896057e7101fb7fb859c5ef690cf14643757b\",\"license\":\"MIT\"},\"contracts/MarketplaceRouter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\nimport { IIdentityRegistry } from \\\"./interfaces/IIdentityRegistry.sol\\\";\\nimport { IAgentMarketplace } from \\\"./interfaces/IAgentMarketplace.sol\\\";\\nimport { IUSDC } from \\\"./interfaces/IUSDC.sol\\\";\\nimport { IReputationRegistry } from \\\"./interfaces/IReputationRegistry.sol\\\";\\n\\ncontract MarketplaceRouter {\\n    address public owner;\\n    IAgentMarketplace public immutable agentMarketplace;\\n    IReputationRegistry public immutable reputationRegistry;\\n    IUSDC public immutable token;\\n    address public relayer;\\n\\n    uint256 public feeBps;\\n    uint256 public constant WAITING_PERIOD = 7 days;\\n    address public pendingOwner;\\n    uint256 public waitOwnerUntil;\\n    address public treasury;\\n\\n    mapping(uint256 => uint256) public agentBalances;\\n    uint256 public totalAgentLiabilities;\\n    // USDC held in escrow, not yet assigned to agents or fees\\n    uint256 public totalLocked;\\n    mapping(bytes32 => bool) public processesNonces;\\n\\n    error AgentNotActive();\\n    error NotOwner();\\n    error NotRelayer();\\n    error NoFeesToWithdraw();\\n    error ZeroAddress();\\n    error InsufficientAmount();\\n    error FeeTooHigh();\\n    error SameOwner();\\n    error SameFeeBps();\\n    error TransferFailed();\\n    error WaitingPeriodNotOver();\\n    error InvalidAuthorization();\\n    error AgentNotFoundInMarketplace();\\n    error PaymentAlreadyProcessed();\\n    error PaymentNotLocked();\\n\\n    event FeesWithdrawn(uint256 tokenAmount, uint256 time);\\n    event AgentEarningsWithdrawn(uint256 indexed agentId, address indexed recipient, uint256 amount);\\n    event OwnerTransferred(address indexed oldOwner, address indexed newOwner, uint256 time);\\n    event OwnershipTransferStarted(address indexed currentOwner, address indexed newOwner, uint256 waitUntil);\\n    event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps, uint256 time);\\n    event RelayerUpdated(address indexed newRelayer);\\n    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);\\n    event PaymentLocked(\\n        bytes32 indexed nonce,\\n        address indexed client,\\n        uint256 indexed agentId,\\n        uint256 totalAmount,\\n        uint256 agentEarnings\\n    );\\n    event PaymentFinalized(bytes32 indexed nonce, uint256 indexed agentId, uint256 agentEarnings);\\n    event PaymentRefunded(bytes32 indexed nonce, address indexed client, uint256 refundedAmount, uint256 feeRetained);\\n    event ReputationFeedbackFailed(bytes32 indexed nonce, uint256 indexed agentId, string reason);\\n\\n    modifier onlyOwner() {\\n        if (msg.sender != owner) revert NotOwner();\\n        _;\\n    }\\n\\n    modifier onlyRelayer() {\\n        if (msg.sender != relayer) revert NotRelayer();\\n        _;\\n    }\\n\\n    constructor(\\n        address _agentMarketplace,\\n        address _reputationRegistry,\\n        address _token,\\n        uint256 _feeBps,\\n        address _treasury\\n    ) {\\n        if (_treasury == address(0)) revert ZeroAddress();\\n        if (_agentMarketplace == address(0)) revert ZeroAddress();\\n        if (_reputationRegistry == address(0)) revert ZeroAddress();\\n        if (_token == address(0)) revert ZeroAddress();\\n        if (_feeBps > 1000) revert FeeTooHigh();\\n        treasury = _treasury;\\n        agentMarketplace = IAgentMarketplace(_agentMarketplace);\\n        reputationRegistry = IReputationRegistry(_reputationRegistry);\\n        token = IUSDC(_token);\\n        feeBps = _feeBps;\\n        owner = msg.sender;\\n        relayer = msg.sender;\\n    }\\n\\n    function withdrawFees() external onlyOwner {\\n        uint256 currentBalance = token.balanceOf(address(this));\\n\\n        if (currentBalance <= totalAgentLiabilities + totalLocked) revert NoFeesToWithdraw();\\n\\n        uint256 available = currentBalance - totalAgentLiabilities - totalLocked;\\n\\n        emit FeesWithdrawn(available, block.timestamp);\\n\\n        bool success = token.transfer(treasury, available);\\n        if (!success) revert TransferFailed();\\n    }\\n\\n    function withdrawAgentEarnings(uint256 agentId) external {\\n        IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);\\n        if (agentBalances[agentId] == 0) revert NoFeesToWithdraw();\\n        uint256 amountToTransfer = agentBalances[agentId];\\n        address receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).ownerOf(agentId);\\n        if (agent.payToAgentWallet) {\\n            receipient = IIdentityRegistry(agentMarketplace.identityRegistry()).getAgentWallet(agentId);\\n        }\\n        if (receipient == address(0)) revert ZeroAddress();\\n        agentBalances[agentId] = 0;\\n        totalAgentLiabilities -= amountToTransfer;\\n        emit AgentEarningsWithdrawn(agentId, receipient, amountToTransfer);\\n        bool success = token.transfer(receipient, amountToTransfer);\\n        if (!success) revert TransferFailed();\\n    }\\n\\n    function transferOwnership(address newOwner) external onlyOwner {\\n        if (newOwner == owner) revert SameOwner();\\n        pendingOwner = newOwner;\\n        waitOwnerUntil = block.timestamp + WAITING_PERIOD;\\n        emit OwnershipTransferStarted(owner, newOwner, waitOwnerUntil);\\n    }\\n\\n    function acceptOwnership() external {\\n        if (msg.sender != pendingOwner) revert NotOwner();\\n        // slither-disable-next-line timestamp\\n        if (block.timestamp < waitOwnerUntil) revert WaitingPeriodNotOver();\\n\\n        emit OwnerTransferred(owner, pendingOwner, block.timestamp);\\n        owner = pendingOwner;\\n        pendingOwner = address(0);\\n    }\\n\\n    function changeTreasury(address newTreasury) external onlyOwner {\\n        if (newTreasury == address(0)) revert ZeroAddress();\\n        emit TreasuryUpdated(treasury, newTreasury);\\n        treasury = newTreasury;\\n    }\\n\\n    function updateFeeBps(uint256 newFeeBps) external onlyOwner {\\n        if (newFeeBps > 1000) revert FeeTooHigh();\\n        if (newFeeBps == feeBps) revert SameFeeBps();\\n        emit FeeBpsUpdated(feeBps, newFeeBps, block.timestamp);\\n        feeBps = newFeeBps;\\n    }\\n\\n    function setRelayer(address newRelayer) external onlyOwner {\\n        if (newRelayer == address(0)) revert ZeroAddress();\\n        emit RelayerUpdated(newRelayer);\\n        relayer = newRelayer;\\n    }\\n\\n    struct LockedPayment {\\n        uint256 agentId;\\n        address client;\\n        uint256 totalAmount;\\n        uint256 agentEarnings;\\n        bool active;\\n    }\\n\\n    mapping(bytes32 => LockedPayment) public lockedPayments;\\n\\n    function lockPayment(\\n        address client,\\n        uint256 agentId,\\n        uint256 amount,\\n        uint256 validUntil,\\n        bytes32 nonce,\\n        bytes calldata signature\\n    ) external onlyRelayer {\\n        if (lockedPayments[nonce].active || processesNonces[nonce]) revert PaymentAlreadyProcessed();\\n        IAgentMarketplace.Agent memory agent = agentMarketplace.getAgent(agentId);\\n        if (agent.agentId != agentId) revert AgentNotFoundInMarketplace();\\n        if (!agent.active) revert AgentNotActive();\\n        uint256 agentEarnings = agent.price;\\n        uint256 platformFee = (agentEarnings * feeBps) / 10000;\\n        uint256 expectedTotal = agentEarnings + platformFee;\\n        if (amount < expectedTotal) revert InsufficientAmount();\\n        lockedPayments[nonce] = LockedPayment({\\n            agentId: agentId,\\n            client: client,\\n            totalAmount: amount,\\n            agentEarnings: agentEarnings,\\n            active: true\\n        });\\n        totalLocked += amount;\\n        processesNonces[nonce] = true;\\n        if (signature.length != 65) revert InvalidAuthorization();\\n        bytes32 r;\\n        bytes32 s;\\n        uint8 v;\\n        // slither-disable-next-line assembly\\n        assembly {\\n            r := calldataload(signature.offset)\\n            s := calldataload(add(signature.offset, 32))\\n            v := byte(0, calldataload(add(signature.offset, 64)))\\n        }\\n        emit PaymentLocked(nonce, client, agentId, amount, agentEarnings);\\n        IUSDC(token).receiveWithAuthorization(client, address(this), amount, 0, validUntil, nonce, v, r, s);\\n    }\\n\\n    function finalizePayment(bytes32 nonce) external onlyRelayer {\\n        LockedPayment storage payment = lockedPayments[nonce];\\n        if (!payment.active) revert PaymentNotLocked();\\n        uint256 agentId = payment.agentId;\\n        uint256 agentEarnings = payment.agentEarnings;\\n        uint256 totalAmount = payment.totalAmount;\\n        payment.active = false;\\n        delete lockedPayments[nonce];\\n        totalLocked -= totalAmount;\\n        agentBalances[agentId] += agentEarnings;\\n        totalAgentLiabilities += agentEarnings;\\n        emit PaymentFinalized(nonce, agentId, agentEarnings);\\n        _recordReputationFeedback(nonce, agentId, int128(1), \\\"execution_success\\\");\\n    }\\n\\n    function refundPayment(bytes32 nonce) external onlyRelayer {\\n        LockedPayment storage payment = lockedPayments[nonce];\\n        if (!payment.active) revert PaymentNotLocked();\\n        uint256 totalAmount = payment.totalAmount;\\n        uint256 agentEarnings = payment.agentEarnings;\\n        address client = payment.client;\\n        uint256 agentId = payment.agentId;\\n        payment.active = false;\\n        delete lockedPayments[nonce];\\n        totalLocked -= totalAmount;\\n        // Refund only agent earnings; platform fee is retained to cover gas costs\\n        // incurred by the relayer regardless of agent outcome.\\n        uint256 feeRetained = totalAmount - agentEarnings;\\n        emit PaymentRefunded(nonce, client, agentEarnings, feeRetained);\\n        bool success = token.transfer(client, agentEarnings);\\n        if (!success) revert TransferFailed();\\n        _recordReputationFeedback(nonce, agentId, int128(0), \\\"execution_failed\\\");\\n    }\\n\\n    /**\\n     * @dev Records reputation feedback for a settled payment. The call is wrapped\\n     * in try/catch so a reverting reputation registry cannot trap funds in escrow.\\n     */\\n    function _recordReputationFeedback(bytes32 nonce, uint256 agentId, int128 value, string memory tag1) internal {\\n        try reputationRegistry.giveFeedback(agentId, value, uint8(0), tag1, \\\"x402_payment\\\", \\\"\\\", \\\"\\\", bytes32(0)) {\\n            return;\\n        } catch {\\n            // slither-disable-next-line reentrancy-events\\n            emit ReputationFeedbackFailed(nonce, agentId, \\\"giveFeedback reverted\\\");\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x114ad256c77f907561f36460879481fc72518ba795d61c54e6e3def2271c083d\",\"license\":\"MIT\"},\"contracts/interfaces/IAgentMarketplace.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\nimport { IIdentityRegistry } from \\\"./IIdentityRegistry.sol\\\";\\n\\ninterface IAgentMarketplace {\\n    struct Agent {\\n        address owner;\\n        uint256 agentId;\\n        uint256 price;\\n        uint256 nonce;\\n        bool payToAgentWallet;\\n        bool active;\\n    }\\n\\n    struct AgentFullDetails {\\n        Agent agent;\\n        address owner;\\n        string uri;\\n    }\\n\\n    function getAgent(uint256) external view returns (Agent memory);\\n    function getAgentFullDetails(uint256) external view returns (AgentFullDetails memory);\\n    function getAgentsFullPaginated(uint256 page, uint256 count) external view returns (AgentFullDetails[] memory);\\n    function getAgentsByOwner(address agentOwner) external view returns (AgentFullDetails[] memory);\\n    function identityRegistry() external view returns (IIdentityRegistry);\\n}\\n\",\"keccak256\":\"0xea99bb2e22d84c1516bade57febaf0ebd8c7740455f1ae1452a8420758b2ff4c\",\"license\":\"MIT\"},\"contracts/interfaces/IIdentityRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\nimport { IERC721Metadata } from \\\"@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol\\\";\\n\\n/**\\n * @title IIdentityRegistry\\n * @dev Interface for the ERC-8004 Identity Registry.\\n * It manages agent identities as portable and transferable ERC-721 tokens.\\n */\\ninterface IIdentityRegistry is IERC721Metadata {\\n    /**\\n     * @dev Metadata structure as defined in the source code.\\n     */\\n    struct MetadataEntry {\\n        string metadataKey;\\n        bytes metadataValue;\\n    }\\n\\n    // --- Events ---\\n\\n    event AgentRegistered(uint256 indexed agentId, address indexed owner);\\n    event AgentURIUpdated(uint256 indexed agentId, string uri);\\n    event MetadataUpdated(uint256 indexed agentId, string indexed key, bytes value);\\n    event AgentWalletUpdated(uint256 indexed agentId, address indexed newWallet);\\n\\n    // --- Registration Methods (The 3 Variants) ---\\n\\n    /**\\n     * @notice Basic registration. Mints an agent NFT to the caller.\\n     */\\n    function register() external returns (uint256 agentId);\\n\\n    /**\\n     * @notice Registers an agent and sets the initial agentURI (tokenURI).\\n     * @param uri The URI pointing to the agent's registration JSON file.\\n     */\\n    function register(string calldata uri) external returns (uint256 agentId);\\n\\n    /**\\n     * @notice Registers an agent, sets the URI, and initializes on-chain metadata.\\n     * @param uri The initial registration file URI.\\n     * @param metadata Initial metadata entries for the agent.\\n     */\\n    function register(string calldata uri, MetadataEntry[] calldata metadata) external returns (uint256 agentId);\\n\\n    // --- Agent URI Management ---\\n\\n    /**\\n     * @notice Updates the agent's registration file URI (tokenURI).\\n     */\\n    function setAgentURI(uint256 agentId, string calldata uri) external;\\n\\n    // --- Metadata Management ---\\n\\n    /**\\n     * @notice Retrieves the raw bytes value of a metadata key for an agent.\\n     */\\n    function getMetadata(uint256 agentId, string calldata metadataKey) external view returns (bytes memory);\\n\\n    /**\\n     * @notice Sets a single on-chain metadata value.\\n     */\\n    function setMetadata(uint256 agentId, string calldata metadataKey, bytes calldata metadataValue) external;\\n\\n    // --- Agent Wallet Management ---\\n\\n    /**\\n     * @notice Gets the verified wallet address associated with the agent.\\n     */\\n    function getAgentWallet(uint256 agentId) external view returns (address);\\n\\n    /**\\n     * @notice Updates the verified wallet using an EIP-712 or ERC-1271 signature.\\n     * @dev This wallet is cleared automatically upon NFT transfer.\\n     */\\n    function setAgentWallet(uint256 agentId, address newWallet, uint256 expiry, bytes calldata signature) external;\\n\\n    /**\\n     * @notice Manually removes the verified wallet association.\\n     */\\n    function unsetAgentWallet(uint256 agentId) external;\\n\\n    /**\\n     * @notice Returns the EIP-712 domain separator information.\\n     */\\n    function eip712Domain()\\n        external\\n        view\\n        returns (\\n            bytes1 fields,\\n            string memory name,\\n            string memory version,\\n            uint256 chainId,\\n            address verifyingContract,\\n            bytes32 salt,\\n            uint256[] memory extensions\\n        );\\n}\\n\",\"keccak256\":\"0x4ecaba38295fb82edf758c700b95dd873002e97ffe1c58e01835dcc0a05bb16e\",\"license\":\"MIT\"},\"contracts/interfaces/IReputationRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\n/**\\n * @title IReputationRegistry\\n * @dev Interface for the ERC-8004 Reputation Registry.\\n * It manages trust signals for agents as signed fixed-point numbers.\\n */\\ninterface IReputationRegistry {\\n    // --- Events ---\\n\\n    /**\\n     * @notice Emitted when feedback is recorded for an agent.\\n     */\\n    event FeedbackGiven(\\n        uint256 indexed agentId,\\n        address indexed client,\\n        int128 value,\\n        uint8 valueDecimals,\\n        string tag1,\\n        string tag2,\\n        string endpoint\\n    );\\n\\n    /**\\n     * @notice Emitted when a client revokes their previously given feedback [3].\\n     */\\n    event FeedbackRevoked(uint256 indexed agentId, address indexed client, uint256 feedbackIndex);\\n\\n    /**\\n     * @notice Emitted when a response is appended to an existing feedback entry [3].\\n     */\\n    event ResponseAppended(\\n        uint256 indexed agentId,\\n        address indexed client,\\n        uint256 feedbackIndex,\\n        address responder,\\n        string responseURI\\n    );\\n\\n    // --- Core Functions ---\\n\\n    /**\\n     * @notice Records a feedback signal for an agent with 8 parameters.\\n     * @dev Prevents self-feedback by checking the agent owner/operator via Identity Registry.\\n     * @param agentId The identifier of the agent receiving feedback.\\n     * @param value The numeric value of the signal (int128).\\n     * @param valueDecimals The precision of the value (0-18).\\n     * @param tag1 Primary categorization tag (e.g., \\\"mcp\\\", \\\"performance\\\").\\n     * @param tag2 Secondary categorization tag (e.g., \\\"accuracy\\\", \\\"latency\\\").\\n     * @param endpoint The specific agent endpoint or service URI related to this feedback.\\n     * @param feedbackURI URI pointing to a verbose off-chain JSON payload.\\n     * @param feedbackHash Hash of the off-chain payload for integrity.\\n     */\\n    function giveFeedback(\\n        uint256 agentId,\\n        int128 value,\\n        uint8 valueDecimals,\\n        string calldata tag1,\\n        string calldata tag2,\\n        string calldata endpoint,\\n        string calldata feedbackURI,\\n        bytes32 feedbackHash\\n    ) external;\\n\\n    /**\\n     * @notice Allows a client to revoke their feedback [3].\\n     * @param agentId The identifier of the agent.\\n     * @param feedbackIndex The index of the feedback to revoke.\\n     */\\n    function revokeFeedback(uint256 agentId, uint256 feedbackIndex) external;\\n\\n    /**\\n     * @notice Appends a response (e.g., from the agent or a third party) to feedback [3].\\n     * @param agentId The identifier of the agent.\\n     * @param client The address of the original feedback provider.\\n     * @param feedbackIndex The index of the feedback entry.\\n     * @param responseURI URI for the response context.\\n     * @param responseHash Hash of the response content.\\n     */\\n    function appendResponse(\\n        uint256 agentId,\\n        address client,\\n        uint256 feedbackIndex,\\n        string calldata responseURI,\\n        bytes32 responseHash\\n    ) external;\\n\\n    // --- Read & Aggregation Functions [2] ---\\n\\n    /**\\n     * @notice Retrieves a specific feedback entry.\\n     */\\n    function readFeedback(\\n        uint256 agentId,\\n        address client,\\n        uint256 feedbackIndex\\n    )\\n        external\\n        view\\n        returns (\\n            int128 value,\\n            uint8 valueDecimals,\\n            string memory tag1,\\n            string memory tag2,\\n            string memory endpoint,\\n            string memory feedbackURI,\\n            bytes32 feedbackHash,\\n            bool revoked\\n        );\\n\\n    /**\\n     * @notice Returns all feedback for an agent, filtered by clients and tags.\\n     */\\n    function readAllFeedback(\\n        uint256 agentId,\\n        address[] calldata clientAddresses,\\n        string calldata tag1,\\n        string calldata tag2,\\n        bool includeRevoked\\n    ) external view returns (bytes[] memory feedbacks);\\n\\n    /**\\n     * @notice Returns a summary of feedback signals for an agent.\\n     * @dev Requires clientAddresses to mitigate Sybil/spam risks.\\n     * @return count Total number of feedbacks found.\\n     * @return summaryValue Aggregated signal value.\\n     * @return summaryValueDecimals Precision of the aggregated value.\\n     */\\n    function getSummary(\\n        uint256 agentId,\\n        address[] calldata clientAddresses,\\n        string calldata tag1,\\n        string calldata tag2\\n    ) external view returns (uint256 count, int128 summaryValue, uint8 summaryValueDecimals);\\n}\\n\",\"keccak256\":\"0xec97127c7e6c3781d1f5c3099a815862306be13a934eb411dd101c11c9f1f1cb\",\"license\":\"MIT\"},\"contracts/interfaces/IUSDC.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.35;\\n\\ninterface IUSDC {\\n    function transfer(address to, uint256 amount) external returns (bool);\\n    function balanceOf(address account) external view returns (uint256);\\n    function transferFrom(address from, address to, uint256 amount) external returns (bool);\\n    function transferWithAuthorization(\\n        address from,\\n        address to,\\n        uint256 value,\\n        uint256 validAfter,\\n        uint256 validBefore,\\n        bytes32 nonce,\\n        uint8 v,\\n        bytes32 r,\\n        bytes32 s\\n    ) external;\\n\\n    function receiveWithAuthorization(\\n        address from,\\n        address to,\\n        uint256 value,\\n        uint256 validAfter,\\n        uint256 validBefore,\\n        bytes32 nonce,\\n        uint8 v,\\n        bytes32 r,\\n        bytes32 s\\n    ) external;\\n}\\n\",\"keccak256\":\"0xa7b1a3a9af5c14f681845cd1c94cdf229e5ac636d720481a4b0eb4a1fc30fe9d\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60e03461018057601f61191038819003918201601f19168301916001600160401b038311848410176101855780849260a094604052833981010312610180576100478161019b565b6100536020830161019b565b61005f6040840161019b565b6060840151939091906001600160a01b039061007d9060800161019b565b1692831561016f576001600160a01b031690811561016f576001600160a01b031691821561016f576001600160a01b031692831561016f576103e8851161015e5760018060a01b0319600554161760055560805260a05260c0526002553360018060a01b031960005416176000553360018060a01b0319600154161760015560405161176090816101b0823960805181818161060701528181610741015261101e015260a05181818161064c0152818161145801526115ce015260c05181818161014901528181610507015281816108a101528181610de201526111980152f35b63cd4e616760e01b60005260046000fd5b63d92e233d60e01b60005260046000fd5b600080fd5b634e487b7160e01b600052604160045260246000fd5b51906001600160a01b03821682036101805756fe608080604052600436101561001357600080fd5b600090813560e01c90816305ce78d214610f725750806324a9d85314610f54578063285a061714610f36578063476343ee14610dab578063478322b714610d485780635689141214610d2a57806360e7493314610cfb57806361d027b314610cd25780636548e9bc14610c5d5780636f85c7e414610c3f57806379ba509714610ba55780638406c07914610b7c5780638da5cb5b14610b5557806396a1cd2714610ac057806398041c6814610716578063b14f2a391461067b578063c8db44e314610636578063d9e31c9a146105f1578063de8f8b3f146103f0578063df199425146103c6578063e0376c4114610286578063e08d33a514610268578063e30c39781461023f578063f2fde38b1461017b5763fc0c546a1461013457600080fd5b346101785780600319360112610178576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b80fd5b503461017857602036600319011261017857610195611317565b81546001600160a01b03169033829003610230576001600160a01b03169080821461022157816001600160601b0360a01b600354161760035562093a80420180421161020d576020817f2ac05566ef5f778eb7c7dc3f0b38cff7ea0add92e735667d6f405cff3a132b7b92600455604051908152a380f35b634e487b7160e01b84526011600452602484fd5b630a98f1f360e21b8352600483fd5b6330cd747160e01b8352600483fd5b50346101785780600319360112610178576003546040516001600160a01b039091168152602090f35b50346101785780600319360112610178576020600754604051908152f35b50346101785760203660031901126101785760015460043591906001600160a01b031633036103b757818152600a60205260408120916004830180549060ff8216156103a857827f284162bb112666007128413200cd45a5c505b17a0b479bd58836c4acf2084c736020876103426103a5989954968796600260038501549401549160ff19169055858b52600a845261033a60408c2060046000918281558260018201558260028201558260038201550155565b600854611426565b600855848952600682526040892061035b828254611403565b905561036981600754611403565b600755604051908152a360405191610382604084611332565b6011835270657865637574696f6e5f7375636365737360781b60208401526115c8565b80f35b63093a167560e41b8452600484fd5b63c64891a560e01b8152600490fd5b50346101785760203660031901126101785760406020916004358152600683522054604051908152f35b503461017857602036600319011261017857600154600435906001600160a01b031633036105e257808252600a602052604082206004810180549160ff8316156105d35760406105029282867f1b3ad87ea8be1cf4b091096674b2a91976eef034c5ceb55281a7717451713283846104c68b600260209901546104b26003880154998a9360018060a01b0360018b0154169a8b9a549f60ff19169055888152600a8d522060046000918281558260018201558260028201558260038201550155565b6104be81600854611426565b600855611426565b81519087825288820152a360405163a9059cbb60e01b81526001600160a01b039091166004820152602481019190915291829081906044820190565b0381877f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165af19081156105c857849161058a575b501561057b57906103a59160405191610559604084611332565b601083526f195e1958dd5d1a5bdb97d9985a5b195960821b6020840152611452565b6312171d8360e31b8352600483fd5b90506020813d6020116105c0575b816105a560209383611332565b810103126105bc576105b69061137e565b3861053f565b8380fd5b3d9150610598565b6040513d86823e3d90fd5b63093a167560e41b8552600485fd5b63c64891a560e01b8252600482fd5b50346101785780600319360112610178576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b50346101785780600319360112610178576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b503461017857602036600319011261017857610695611317565b81546001600160a01b03163303610707576001600160a01b031680156106f857600554816001600160a01b0382167f4ab5be82436d353e61ca18726e984e561f5c1cc7c6d38b29d2553c790434705a8580a36001600160a01b0319161760055580f35b63d92e233d60e01b8252600482fd5b6330cd747160e01b8252600482fd5b503461017857602036600319011261017857604051632de5aaf760e01b8152600480359082018190527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316919060c082602481865afa9182156105c8578492610a8f575b508084526006602052604084205415610a805780845260066020526040842054926040516304d3863d60e21b8152602081600481855afa908115610a58576024916020918891610a63575b506040516331a9108f60e11b81526004810186905292839182906001600160a01b03165afa8015610a58578690610a1a575b60809150930151610949575b506001600160a01b03821690811561093a579161089c93918360209487526006855286604081205561083f84600754611426565b6007557f8ea27c58a4dd7171ca680259d58b92fa7c47586b08243d1d256d1177a41ab6f385604051868152a360405163a9059cbb60e01b81526001600160a01b039091166004820152602481019190915291829081906044820190565b0381857f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165af190811561092f5782916108f1575b50156108e25780f35b6312171d8360e31b8152600490fd5b90506020813d602011610927575b8161090c60209383611332565b810103126109235761091d9061137e565b386108d9565b5080fd5b3d91506108ff565b6040513d84823e3d90fd5b63d92e233d60e01b8552600485fd5b6040516304d3863d60e21b8152919250602090829060049082905afa9081156105c85760249160209186916109ed575b506040516233950960e01b81526004810185905292839182906001600160a01b03165afa9081156105c85784916109b3575b50903861080b565b90506020813d6020116109e5575b816109ce60209383611332565b810103126105bc576109df9061136a565b386109ab565b3d91506109c1565b610a0d9150823d8411610a13575b610a058183611332565b810190611433565b38610979565b503d6109fb565b506020813d602011610a50575b81610a3460209383611332565b81010312610a4c57610a4760809161136a565b6107ff565b8580fd5b3d9150610a27565b6040513d88823e3d90fd5b610a7a9150823d8411610a1357610a058183611332565b386107cd565b630d00db4d60e31b8452600484fd5b610ab291925060c03d60c011610ab9575b610aaa8183611332565b81019061138b565b9038610782565b503d610aa0565b5034610178576020366003190112610178578054600435906001600160a01b03163303610707576103e88111610b4657600254808214610b375760607f34b2abd93806144b72c7912dbe3f7f773594fd84a87e51a5c85f4337d524310891604051908152836020820152426040820152a160025580f35b632a0da3f760e01b8352600483fd5b63cd4e616760e01b8252600482fd5b5034610178578060031936011261017857546040516001600160a01b039091168152602090f35b50346101785780600319360112610178576001546040516001600160a01b039091168152602090f35b50346101785780600319360112610178576003546001600160a01b03811633819003610230576004544210610c3057825460405142815282906001600160a01b038316907f3d31a89e4a3654a3fba36b07bef4af433bbf9e873f5b38e852c56f80d58e7d8c90602090a36001600160601b0360a01b161782556001600160601b0360a01b1660035580f35b630832f48360e21b8352600483fd5b5034610178578060031936011261017857602060405162093a808152f35b503461017857602036600319011261017857610c77611317565b81546001600160a01b03163303610707576001600160a01b031680156106f857807f09bf35b7806e61e7baf86e6547c4221f69d130ccc0a19215d064685a89464a708380a26001600160601b0360a01b600154161760015580f35b50346101785780600319360112610178576005546040516001600160a01b039091168152602090f35b50346101785760203660031901126101785760ff60406020926004358152600984522054166040519015158152f35b50346101785780600319360112610178576020600854604051908152f35b503461017857602036600319011261017857604060a0916004358152600a60205220805490600180841b0360018201541690600281015460ff60046003840154930154169260405194855260208501526040840152606083015215156080820152f35b503461017857806003193601126101785780546001600160a01b03163303610f27576040516370a0823160e01b81523060048201527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690602081602481855afa908115610f1c578391610ee6575b5060075460085491610e348383611403565b811115610ed757602092610e4f610ebd9593610e5493611426565b611426565b907fd9787bf70d3926a4a81c52cba8799d18903ce0132aaa4b7de9e92dc893303a7f604080518481524286820152a160055460405163a9059cbb60e01b81526001600160a01b039091166004820152602481019290925290928391908290869082906044820190565b03925af190811561092f5782916108f15750156108e25780f35b630d00db4d60e31b8552600485fd5b90506020813d602011610f14575b81610f0160209383611332565b81010312610f10575138610e22565b8280fd5b3d9150610ef4565b6040513d85823e3d90fd5b6330cd747160e01b8152600490fd5b50346101785780600319360112610178576020600454604051908152f35b50346101785780600319360112610178576020600254604051908152f35b82346101785760c036600319011261017857610f8c611317565b6024356044356084359260a4359267ffffffffffffffff8411610a4c5736602385011215610a4c5783600401359667ffffffffffffffff8811611313573660248987010111611313576001546001600160a01b0316330361130457858752600a60205260ff60046040892001541680156112ee575b6112df57632de5aaf760e01b81526004810182905260c0816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156112d45787916112b5575b50816020820151036112a65760a08101511561129757604001519660025480890290898204148915171561128357612710611092910489611403565b84106112745760405160a0810181811067ffffffffffffffff8211176112605760046041939289926040528581528b8b602083019860018060a01b0316988981526040808501928c8452606086019485526080860197600189528152600a6020522093518455600184019060018060a01b039051166001600160601b0360a01b825416179055516002830155516003820155019051151560ff8019835416911617905561114185600854611403565b600855868852600960205260408820805460ff19166001179055036112515781857fad5b5e2644e9a69601aa5cf70dcd1677275104438a0acd7eb2be9125242f25bc6040899a819a999a51908882526020820152a47f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690813b1561124d57846101249260448296604051998a9788966377aadf6360e11b8852600488015230602488015283870152846064870152606435608487015260a48601526064810135841a60c4860152602481013560e486015201356101048401525af18015611240576112325780f35b61123b91611332565b818180f35b50604051903d90823e3d90fd5b8480fd5b632ce87eeb60e01b8652600486fd5b634e487b7160e01b89526041600452602489fd5b632ca2f52b60e11b8752600487fd5b634e487b7160e01b88526011600452602488fd5b632437e77160e11b8752600487fd5b638b74e58160e01b8752600487fd5b6112ce915060c03d60c011610ab957610aaa8183611332565b88611056565b6040513d89823e3d90fd5b63424e8d7160e01b8752600487fd5b50858752600960205260ff604088205416611001565b63c64891a560e01b8752600487fd5b8680fd5b600435906001600160a01b038216820361132d57565b600080fd5b90601f8019910116810190811067ffffffffffffffff82111761135457604052565b634e487b7160e01b600052604160045260246000fd5b51906001600160a01b038216820361132d57565b5190811515820361132d57565b908160c091031261132d576040519060c0820182811067ffffffffffffffff821117611354576113fb9160a0916040526113c48161136a565b84526020810151602085015260408101516040850152606081015160608501526113f06080820161137e565b60808501520161137e565b60a082015290565b9190820180921161141057565b634e487b7160e01b600052601160045260246000fd5b9190820391821161141057565b9081602091031261132d57516001600160a01b038116810361132d5790565b909160007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316803b1561092357918190604051938491631e01b53f60e11b8352876004840152836024840152836044840152610100606484015280519081610104850152845b8281106115ac5750508360808282610124879586010152601f8019910116830182610184610124868403019260031984016084880152600c6101248201526b1e0d0c0c97dc185e5b595b9d60a21b610144820152603c840160a488015282610164820152605c840160c488015201528260e485015201925af1918261159c575b5050611598577f990a4140ab93f7c47ea00f9c4bb98383846a04e051bb391d0dd16984a44f3209606060405160208152601560208201527419da5d9951995959189858dac81c995d995c9d1959605a1b6040820152a3565b5050565b816115a691611332565b38611540565b60208183018101516101248a84010152879650889550016114c0565b909160007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316803b1561092357918190604051938491631e01b53f60e11b835287600484015260016024840152836044840152610100606484015280519081610104850152845b82811061170e5750508360808282610124879586010152601f8019910116830182610184610124868403019260031984016084880152600c6101248201526b1e0d0c0c97dc185e5b595b9d60a21b610144820152603c840160a488015282610164820152605c840160c488015201528260e485015201925af1918261159c575050611598577f990a4140ab93f7c47ea00f9c4bb98383846a04e051bb391d0dd16984a44f3209606060405160208152601560208201527419da5d9951995959189858dac81c995d995c9d1959605a1b6040820152a3565b60208183018101516101248a840101528796508895500161163756fea2646970667358221220b2b5944a385f021b136b358b7ded84dd61197a81942bcaa1e72a41b9820e767564736f6c63430008230033",
+  "deployedBytecode": "0x608080604052600436101561001357600080fd5b600090813560e01c90816305ce78d214610f725750806324a9d85314610f54578063285a061714610f36578063476343ee14610dab578063478322b714610d485780635689141214610d2a57806360e7493314610cfb57806361d027b314610cd25780636548e9bc14610c5d5780636f85c7e414610c3f57806379ba509714610ba55780638406c07914610b7c5780638da5cb5b14610b5557806396a1cd2714610ac057806398041c6814610716578063b14f2a391461067b578063c8db44e314610636578063d9e31c9a146105f1578063de8f8b3f146103f0578063df199425146103c6578063e0376c4114610286578063e08d33a514610268578063e30c39781461023f578063f2fde38b1461017b5763fc0c546a1461013457600080fd5b346101785780600319360112610178576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b80fd5b503461017857602036600319011261017857610195611317565b81546001600160a01b03169033829003610230576001600160a01b03169080821461022157816001600160601b0360a01b600354161760035562093a80420180421161020d576020817f2ac05566ef5f778eb7c7dc3f0b38cff7ea0add92e735667d6f405cff3a132b7b92600455604051908152a380f35b634e487b7160e01b84526011600452602484fd5b630a98f1f360e21b8352600483fd5b6330cd747160e01b8352600483fd5b50346101785780600319360112610178576003546040516001600160a01b039091168152602090f35b50346101785780600319360112610178576020600754604051908152f35b50346101785760203660031901126101785760015460043591906001600160a01b031633036103b757818152600a60205260408120916004830180549060ff8216156103a857827f284162bb112666007128413200cd45a5c505b17a0b479bd58836c4acf2084c736020876103426103a5989954968796600260038501549401549160ff19169055858b52600a845261033a60408c2060046000918281558260018201558260028201558260038201550155565b600854611426565b600855848952600682526040892061035b828254611403565b905561036981600754611403565b600755604051908152a360405191610382604084611332565b6011835270657865637574696f6e5f7375636365737360781b60208401526115c8565b80f35b63093a167560e41b8452600484fd5b63c64891a560e01b8152600490fd5b50346101785760203660031901126101785760406020916004358152600683522054604051908152f35b503461017857602036600319011261017857600154600435906001600160a01b031633036105e257808252600a602052604082206004810180549160ff8316156105d35760406105029282867f1b3ad87ea8be1cf4b091096674b2a91976eef034c5ceb55281a7717451713283846104c68b600260209901546104b26003880154998a9360018060a01b0360018b0154169a8b9a549f60ff19169055888152600a8d522060046000918281558260018201558260028201558260038201550155565b6104be81600854611426565b600855611426565b81519087825288820152a360405163a9059cbb60e01b81526001600160a01b039091166004820152602481019190915291829081906044820190565b0381877f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165af19081156105c857849161058a575b501561057b57906103a59160405191610559604084611332565b601083526f195e1958dd5d1a5bdb97d9985a5b195960821b6020840152611452565b6312171d8360e31b8352600483fd5b90506020813d6020116105c0575b816105a560209383611332565b810103126105bc576105b69061137e565b3861053f565b8380fd5b3d9150610598565b6040513d86823e3d90fd5b63093a167560e41b8552600485fd5b63c64891a560e01b8252600482fd5b50346101785780600319360112610178576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b50346101785780600319360112610178576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b503461017857602036600319011261017857610695611317565b81546001600160a01b03163303610707576001600160a01b031680156106f857600554816001600160a01b0382167f4ab5be82436d353e61ca18726e984e561f5c1cc7c6d38b29d2553c790434705a8580a36001600160a01b0319161760055580f35b63d92e233d60e01b8252600482fd5b6330cd747160e01b8252600482fd5b503461017857602036600319011261017857604051632de5aaf760e01b8152600480359082018190527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316919060c082602481865afa9182156105c8578492610a8f575b508084526006602052604084205415610a805780845260066020526040842054926040516304d3863d60e21b8152602081600481855afa908115610a58576024916020918891610a63575b506040516331a9108f60e11b81526004810186905292839182906001600160a01b03165afa8015610a58578690610a1a575b60809150930151610949575b506001600160a01b03821690811561093a579161089c93918360209487526006855286604081205561083f84600754611426565b6007557f8ea27c58a4dd7171ca680259d58b92fa7c47586b08243d1d256d1177a41ab6f385604051868152a360405163a9059cbb60e01b81526001600160a01b039091166004820152602481019190915291829081906044820190565b0381857f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165af190811561092f5782916108f1575b50156108e25780f35b6312171d8360e31b8152600490fd5b90506020813d602011610927575b8161090c60209383611332565b810103126109235761091d9061137e565b386108d9565b5080fd5b3d91506108ff565b6040513d84823e3d90fd5b63d92e233d60e01b8552600485fd5b6040516304d3863d60e21b8152919250602090829060049082905afa9081156105c85760249160209186916109ed575b506040516233950960e01b81526004810185905292839182906001600160a01b03165afa9081156105c85784916109b3575b50903861080b565b90506020813d6020116109e5575b816109ce60209383611332565b810103126105bc576109df9061136a565b386109ab565b3d91506109c1565b610a0d9150823d8411610a13575b610a058183611332565b810190611433565b38610979565b503d6109fb565b506020813d602011610a50575b81610a3460209383611332565b81010312610a4c57610a4760809161136a565b6107ff565b8580fd5b3d9150610a27565b6040513d88823e3d90fd5b610a7a9150823d8411610a1357610a058183611332565b386107cd565b630d00db4d60e31b8452600484fd5b610ab291925060c03d60c011610ab9575b610aaa8183611332565b81019061138b565b9038610782565b503d610aa0565b5034610178576020366003190112610178578054600435906001600160a01b03163303610707576103e88111610b4657600254808214610b375760607f34b2abd93806144b72c7912dbe3f7f773594fd84a87e51a5c85f4337d524310891604051908152836020820152426040820152a160025580f35b632a0da3f760e01b8352600483fd5b63cd4e616760e01b8252600482fd5b5034610178578060031936011261017857546040516001600160a01b039091168152602090f35b50346101785780600319360112610178576001546040516001600160a01b039091168152602090f35b50346101785780600319360112610178576003546001600160a01b03811633819003610230576004544210610c3057825460405142815282906001600160a01b038316907f3d31a89e4a3654a3fba36b07bef4af433bbf9e873f5b38e852c56f80d58e7d8c90602090a36001600160601b0360a01b161782556001600160601b0360a01b1660035580f35b630832f48360e21b8352600483fd5b5034610178578060031936011261017857602060405162093a808152f35b503461017857602036600319011261017857610c77611317565b81546001600160a01b03163303610707576001600160a01b031680156106f857807f09bf35b7806e61e7baf86e6547c4221f69d130ccc0a19215d064685a89464a708380a26001600160601b0360a01b600154161760015580f35b50346101785780600319360112610178576005546040516001600160a01b039091168152602090f35b50346101785760203660031901126101785760ff60406020926004358152600984522054166040519015158152f35b50346101785780600319360112610178576020600854604051908152f35b503461017857602036600319011261017857604060a0916004358152600a60205220805490600180841b0360018201541690600281015460ff60046003840154930154169260405194855260208501526040840152606083015215156080820152f35b503461017857806003193601126101785780546001600160a01b03163303610f27576040516370a0823160e01b81523060048201527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690602081602481855afa908115610f1c578391610ee6575b5060075460085491610e348383611403565b811115610ed757602092610e4f610ebd9593610e5493611426565b611426565b907fd9787bf70d3926a4a81c52cba8799d18903ce0132aaa4b7de9e92dc893303a7f604080518481524286820152a160055460405163a9059cbb60e01b81526001600160a01b039091166004820152602481019290925290928391908290869082906044820190565b03925af190811561092f5782916108f15750156108e25780f35b630d00db4d60e31b8552600485fd5b90506020813d602011610f14575b81610f0160209383611332565b81010312610f10575138610e22565b8280fd5b3d9150610ef4565b6040513d85823e3d90fd5b6330cd747160e01b8152600490fd5b50346101785780600319360112610178576020600454604051908152f35b50346101785780600319360112610178576020600254604051908152f35b82346101785760c036600319011261017857610f8c611317565b6024356044356084359260a4359267ffffffffffffffff8411610a4c5736602385011215610a4c5783600401359667ffffffffffffffff8811611313573660248987010111611313576001546001600160a01b0316330361130457858752600a60205260ff60046040892001541680156112ee575b6112df57632de5aaf760e01b81526004810182905260c0816024817f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03165afa9081156112d45787916112b5575b50816020820151036112a65760a08101511561129757604001519660025480890290898204148915171561128357612710611092910489611403565b84106112745760405160a0810181811067ffffffffffffffff8211176112605760046041939289926040528581528b8b602083019860018060a01b0316988981526040808501928c8452606086019485526080860197600189528152600a6020522093518455600184019060018060a01b039051166001600160601b0360a01b825416179055516002830155516003820155019051151560ff8019835416911617905561114185600854611403565b600855868852600960205260408820805460ff19166001179055036112515781857fad5b5e2644e9a69601aa5cf70dcd1677275104438a0acd7eb2be9125242f25bc6040899a819a999a51908882526020820152a47f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690813b1561124d57846101249260448296604051998a9788966377aadf6360e11b8852600488015230602488015283870152846064870152606435608487015260a48601526064810135841a60c4860152602481013560e486015201356101048401525af18015611240576112325780f35b61123b91611332565b818180f35b50604051903d90823e3d90fd5b8480fd5b632ce87eeb60e01b8652600486fd5b634e487b7160e01b89526041600452602489fd5b632ca2f52b60e11b8752600487fd5b634e487b7160e01b88526011600452602488fd5b632437e77160e11b8752600487fd5b638b74e58160e01b8752600487fd5b6112ce915060c03d60c011610ab957610aaa8183611332565b88611056565b6040513d89823e3d90fd5b63424e8d7160e01b8752600487fd5b50858752600960205260ff604088205416611001565b63c64891a560e01b8752600487fd5b8680fd5b600435906001600160a01b038216820361132d57565b600080fd5b90601f8019910116810190811067ffffffffffffffff82111761135457604052565b634e487b7160e01b600052604160045260246000fd5b51906001600160a01b038216820361132d57565b5190811515820361132d57565b908160c091031261132d576040519060c0820182811067ffffffffffffffff821117611354576113fb9160a0916040526113c48161136a565b84526020810151602085015260408101516040850152606081015160608501526113f06080820161137e565b60808501520161137e565b60a082015290565b9190820180921161141057565b634e487b7160e01b600052601160045260246000fd5b9190820391821161141057565b9081602091031261132d57516001600160a01b038116810361132d5790565b909160007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316803b1561092357918190604051938491631e01b53f60e11b8352876004840152836024840152836044840152610100606484015280519081610104850152845b8281106115ac5750508360808282610124879586010152601f8019910116830182610184610124868403019260031984016084880152600c6101248201526b1e0d0c0c97dc185e5b595b9d60a21b610144820152603c840160a488015282610164820152605c840160c488015201528260e485015201925af1918261159c575b5050611598577f990a4140ab93f7c47ea00f9c4bb98383846a04e051bb391d0dd16984a44f3209606060405160208152601560208201527419da5d9951995959189858dac81c995d995c9d1959605a1b6040820152a3565b5050565b816115a691611332565b38611540565b60208183018101516101248a84010152879650889550016114c0565b909160007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316803b1561092357918190604051938491631e01b53f60e11b835287600484015260016024840152836044840152610100606484015280519081610104850152845b82811061170e5750508360808282610124879586010152601f8019910116830182610184610124868403019260031984016084880152600c6101248201526b1e0d0c0c97dc185e5b595b9d60a21b610144820152603c840160a488015282610164820152605c840160c488015201528260e485015201925af1918261159c575050611598577f990a4140ab93f7c47ea00f9c4bb98383846a04e051bb391d0dd16984a44f3209606060405160208152601560208201527419da5d9951995959189858dac81c995d995c9d1959605a1b6040820152a3565b60208183018101516101248a840101528796508895500161163756fea2646970667358221220b2b5944a385f021b136b358b7ded84dd61197a81942bcaa1e72a41b9820e767564736f6c63430008230033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 4689,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 4700,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "relayer",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_address"
+      },
+      {
+        "astId": 4702,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "feeBps",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4707,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "pendingOwner",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_address"
+      },
+      {
+        "astId": 4709,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "waitOwnerUntil",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4711,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "treasury",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_address"
+      },
+      {
+        "astId": 4715,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "agentBalances",
+        "offset": 0,
+        "slot": "6",
+        "type": "t_mapping(t_uint256,t_uint256)"
+      },
+      {
+        "astId": 4717,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "totalAgentLiabilities",
+        "offset": 0,
+        "slot": "7",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4719,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "totalLocked",
+        "offset": 0,
+        "slot": "8",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4723,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "processesNonces",
+        "offset": 0,
+        "slot": "9",
+        "type": "t_mapping(t_bytes32,t_bool)"
+      },
+      {
+        "astId": 5282,
+        "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+        "label": "lockedPayments",
+        "offset": 0,
+        "slot": "10",
+        "type": "t_mapping(t_bytes32,t_struct(LockedPayment)5277_storage)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_bytes32,t_struct(LockedPayment)5277_storage)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => struct MarketplaceRouter.LockedPayment)",
+        "numberOfBytes": "32",
+        "value": "t_struct(LockedPayment)5277_storage"
+      },
+      "t_mapping(t_uint256,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_struct(LockedPayment)5277_storage": {
+        "encoding": "inplace",
+        "label": "struct MarketplaceRouter.LockedPayment",
+        "members": [
+          {
+            "astId": 5268,
+            "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+            "label": "agentId",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 5270,
+            "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+            "label": "client",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address"
+          },
+          {
+            "astId": 5272,
+            "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+            "label": "totalAmount",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 5274,
+            "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+            "label": "agentEarnings",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 5276,
+            "contract": "contracts/MarketplaceRouter.sol:MarketplaceRouter",
+            "label": "active",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_bool"
+          }
+        ],
+        "numberOfBytes": "160"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

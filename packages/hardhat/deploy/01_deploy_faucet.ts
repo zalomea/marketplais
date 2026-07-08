@@ -9,18 +9,18 @@ const deployUSDCFaucet: DeployFunction = async function (hre: HardhatRuntimeEnvi
   const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
   const WHALE_ADDRESS = "0x8da91A6298eA5d1A8Bc985e99798fd0A0f05701a";
 
-  // 1. Deploy the Faucet
-  const faucetDeployment = await deploy("USDCFaucet", {
-    from: deployer,
-    args: [USDC_ADDRESS],
-    log: true,
-    autoMine: true,
-  });
-
-  console.log("💧 Faucet deployed at:", faucetDeployment.address);
-
-  // 2. Fund the Faucet only if we are on the local network
   if (hre.network.name === "localhost") {
+    // 1. Deploy the Faucet
+    const faucetDeployment = await deploy("USDCFaucet", {
+      from: deployer,
+      args: [USDC_ADDRESS],
+      log: true,
+      autoMine: true,
+    });
+
+    console.log("💧 Faucet deployed at:", faucetDeployment.address);
+
+    // 2. Fund the Faucet only if we are on the local network
     console.log("🐋 Preparing the whale to fund the Faucet...");
 
     // Inject 10 ETH into the whale so it can pay for gas

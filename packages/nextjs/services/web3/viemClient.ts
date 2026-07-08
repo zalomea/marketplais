@@ -23,7 +23,7 @@ const getRpcUrl = () => {
   const override = (scaffoldConfig.rpcOverrides as Record<number, string>)?.[targetNetwork.id];
   if (override) return override;
 
-  if (targetNetwork.id === 31337 && process.env.NEXT_PUBLIC_RPC_URL) {
+  if ((targetNetwork.id as number) === 31337 && process.env.NEXT_PUBLIC_RPC_URL) {
     return process.env.NEXT_PUBLIC_RPC_URL;
   }
 
@@ -44,7 +44,8 @@ export function getRelayerWalletClient() {
   // On localhost (chain 31337) fall back to Hardhat account #0 so deployer === relayer in dev.
   // In production RELAYER_PRIVATE_KEY remains mandatory.
   const pk =
-    process.env.RELAYER_PRIVATE_KEY || (targetNetwork.id === 31337 ? DEV_FALLBACK_RELAYER_PRIVATE_KEY : undefined);
+    process.env.RELAYER_PRIVATE_KEY ||
+    ((targetNetwork.id as number) === 31337 ? DEV_FALLBACK_RELAYER_PRIVATE_KEY : undefined);
   if (!pk) throw new Error("RELAYER_PRIVATE_KEY is not set");
   // FIX 10 — validate format before passing to privateKeyToAccount
   if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) {

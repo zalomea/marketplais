@@ -13,7 +13,7 @@ import { verifyAgentApiKey } from "~~/utils/agentAuth";
 | Real dynamic pricing will be implemented in middleware (#25).
 */
 
-const DEFAULT_AGENT_PRICE_MICRO_USDC = 20_000; // 0.02 USDC
+//const DEFAULT_AGENT_PRICE_MICRO_USDC = 20_000; // 0.02 USDC
 
 /*
 |--------------------------------------------------------------------------
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { prompt, agentPrice } = body;
+    const { prompt } = body;
 
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     | Middleware (#25) will later replace this logic.
     */
 
-    const requiredPaymentMicroUsdc = agentPrice && agentPrice > 0 ? agentPrice : DEFAULT_AGENT_PRICE_MICRO_USDC;
+    //const requiredPaymentMicroUsdc = agentPrice && agentPrice > 0 ? agentPrice : DEFAULT_AGENT_PRICE_MICRO_USDC;
 
     /*
     |--------------------------------------------------------------------------
@@ -98,11 +98,11 @@ export async function POST(req: NextRequest) {
       status: "success",
       data: {
         analysis: result,
-
+        /*
         pricing: {
           requiredPaymentMicroUsdc,
         },
-
+*/
         usage: usage
           ? {
               inputTokens: usage.prompt_tokens,

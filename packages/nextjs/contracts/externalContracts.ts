@@ -856,6 +856,20 @@ const externalContracts = {
       abi: erc20ABI,
     },
   },
+  84532: {
+    IdentityRegistry: {
+      address: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      abi: identityRegistryABI,
+    },
+    ReputationRegistry: {
+      address: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+      abi: reputationRegistryABI,
+    },
+    USDC: {
+      address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      abi: erc20ABI,
+    },
+  },
 } as const;
 
 export default externalContracts satisfies GenericContractsDeclaration;

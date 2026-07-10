@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { NextPage } from "next";
-import { useAccount } from "wagmi";
 import { IntroSplash } from "~~/components/IntroSplash";
-import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useAllContracts } from "~~/utils/scaffold-eth/contractsData";
 
 export const HomePage: NextPage = () => {
-  const { address: connectedAddress } = useAccount();
   const [showIntro, setShowIntro] = useState(true);
   const [agentsActive, setAgentsActive] = useState<number[]>([]);
+
+  const { targetNetwork } = useTargetNetwork();
+  const allContracts = useAllContracts();
+  const explorerUrl = targetNetwork.blockExplorers?.default?.url;
 
   const { data: agentsPage } = useScaffoldReadContract({
     contractName: "AgentMarketplace",
@@ -164,13 +167,6 @@ export const HomePage: NextPage = () => {
               </div>
 
               <div className="border border-slate-200 bg-white p-5 rounded-none">
-                <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-2">MON // ADDR_HEX</span>
-                <p className="text-xs font-mono font-medium text-slate-900 break-all leading-relaxed">
-                  {connectedAddress ?? "No active connection"}
-                </p>
-              </div>
-
-              <div className="border border-slate-200 bg-white p-5 rounded-none">
                 <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-3">
                   SYS // LIVE_REGISTRY
                 </span>
@@ -192,6 +188,60 @@ export const HomePage: NextPage = () => {
                   ) : (
                     <div className="text-slate-400 bg-slate-50/50 p-3 border border-slate-100/50 text-center italic">
                       [ NO INSTANCES ACTIVE IN REGISTRY ]
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border border-slate-200 bg-white p-5 rounded-none">
+                <span className="font-mono text-[9px] tracking-wider text-slate-400 block mb-3">
+                  CONTRACTS // DEPLOYED
+                </span>
+                <div className="space-y-1.5">
+                  {allContracts["AgentMarketplace"] && (
+                    <div>
+                      <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider">
+                        AGENT_MARKETPLACE
+                      </span>
+                      <br />
+                      {explorerUrl ? (
+                        <a
+                          href={`${explorerUrl}/address/${allContracts["AgentMarketplace"].address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[11px] text-slate-900 hover:text-[#0ea5a5] transition-colors"
+                        >
+                          {`${allContracts["AgentMarketplace"].address.slice(0, 6)}...${allContracts["AgentMarketplace"].address.slice(-4)}`}{" "}
+                          <span className="text-[#0ea5a5] text-[10px]">↗</span>
+                        </a>
+                      ) : (
+                        <span className="font-mono text-[11px] text-slate-900">
+                          {`${allContracts["AgentMarketplace"].address.slice(0, 6)}...${allContracts["AgentMarketplace"].address.slice(-4)}`}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {allContracts["MarketplaceRouter"] && (
+                    <div>
+                      <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider">
+                        MARKETPLACE_ROUTER
+                      </span>
+                      <br />
+                      {explorerUrl ? (
+                        <a
+                          href={`${explorerUrl}/address/${allContracts["MarketplaceRouter"].address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[11px] text-slate-900 hover:text-[#0ea5a5] transition-colors"
+                        >
+                          {`${allContracts["MarketplaceRouter"].address.slice(0, 6)}...${allContracts["MarketplaceRouter"].address.slice(-4)}`}{" "}
+                          <span className="text-[#0ea5a5] text-[10px]">↗</span>
+                        </a>
+                      ) : (
+                        <span className="font-mono text-[11px] text-slate-900">
+                          {`${allContracts["MarketplaceRouter"].address.slice(0, 6)}...${allContracts["MarketplaceRouter"].address.slice(-4)}`}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
